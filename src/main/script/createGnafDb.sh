@@ -79,7 +79,7 @@ EoF
 # table name / data file pairs above pasted from g-naf_-_getting_started_guide.pdf referenced above
 
 progress "add constraints ..."
-sed --regexp-extended --file=constraint.sed "$gnaf/Extras/GNAF_TableCreation_Scripts/add_fk_constraints.sql"
+sed --regexp-extended --file=$scriptDir/constraint.sed "$gnaf/Extras/GNAF_TableCreation_Scripts/add_fk_constraints.sql"
 
 progress "add an index on STREET_NAME (this is not part of the getting_started_guide)..."
 echo "create index STREET_LOCALITY_NAME_IDX on STREET_LOCALITY (STREET_NAME);"
