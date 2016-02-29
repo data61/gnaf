@@ -1,0 +1,19 @@
+*.log
+*~
+
+# sbt specific
+/target/
+/project/project/
+/project/target/
+/.cache-main
+/.cache-tests
+
+# Scala-IDE specific
+/bin/
+/test-bin/
+/.classpath
+/.project
+.settings/
+.worksheet
+
+
