@@ -35,18 +35,33 @@ EclipseKeys.createSrc := EclipseCreateSrc.Default + EclipseCreateSrc.Resource
 
 com.github.retronym.SbtOneJar.oneJarSettings
 
-mainClass in run in Compile := Some("au.com.data61.gnaf.Main")
+mainClass in run in Compile := Some("au.com.data61.gnaf.indexer.Main")
+
+filterScalaLibrary := false // sbt-dependency-graph: include scala library in output
 
 libraryDependencies ++= Seq(
-  "com.typesafe.slick" %% "slick-codegen" % "3.1.1",
-  "com.h2database" % "h2" % "1.4.191",
-  "com.jsuereth" %% "scala-arm" % "2.0.0-M1",
+  "org.scala-lang" % "scala-reflect" % "2.11.7", // how to use scalaVersion?
+  "org.scala-lang.modules" %% "scala-xml" % "1.0.4",
   "com.typesafe.scala-logging" %% "scala-logging" % "3.1.0",
+  "com.typesafe.akka" %% "akka-actor" % "2.4.2",
+  "com.github.scopt" %% "scopt" % "3.3.0",
+  "com.jsuereth" %% "scala-arm" % "2.0.0-M1",
+  "com.h2database" % "h2" % "1.4.191",
   "org.slf4j" % "slf4j-api" % "1.7.12",
   "ch.qos.logback" % "logback-classic" % "1.1.3" % "runtime",
   "org.scalatest" %% "scalatest" % "2.2.4" % "test"
   )
 
+libraryDependencies ++= Seq(
+  "slick-codegen",
+  "slick"
+) map ("com.typesafe.slick" %% _ % "3.1.1")
+ 
+libraryDependencies ++= Seq(
+  "spray-can",
+  "spray-routing"
+) map ("io.spray" %% _ % "1.3.3")
+ 
 libraryDependencies ++= Seq(
   "lucene-core",
   "lucene-queryparser",

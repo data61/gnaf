@@ -89,9 +89,22 @@ but at least this is fast:
 Build a webapp using the scala spray async framework
 Look at slick async usage (and later how to do lucene async)
 
+We have:
+- PRIMARY_SECONDARY join table with PRIMARY_PID & SECONDARY_PID both referring to ADDRESS_DETAIL
+- STREET_LOCALITY_ALIAS for alternative street names
+- LOCALITY_ALIAS for alternative suburb names
+- ADDRESS_ALIAS join table with PRINCIPAL_PID & ALIAS_PID both referring to ADDRESS_ALIAS
+- ADDRESS_DETAIL.address_site_pid -> ADDRESS_SITE.ADDRESS_SITE_NAME = 'WANNIASSA HILLS PRIMARY SCH' etc. with ADDRESS_TYPE -> ADDRESS_TYPE_AUT: R -> RURAL, UR -> URBAN etc.
+- ADDRESS_DETAIL.flat_type_code -> FLAT_TYPE_AUT CODE (Abbreviation) and NAME (full name) = DESCRIPTION
+
+Lucene:
+- Store short and long street type and state names and locality names and aliases as multiple values in the same field
+
+
+
 Use it to (or just db queries) to explore the data to understand usage:
 - house/unit number prefixes/suffixes first/last (I think for 3-5 lonsdale st)
-- street types (I don't think abreviations are defined anywhere, if not we'll have to define them for query expansion)
+- street types (abbreviations in STREET_TYPE_AUT)
 - decide Lucene fields for data (need separate fields for everything to avoid spurious hits)
 - do we need some sort of fuzzy fields (e.g. metaphone; look at what solr provides; lucene has fuzzy/edit distance)
 - decide how to query: step 1) search all lucene fields for each query term; step 2) attempt some segmentation and search each lucene field for a subset of the query terms
