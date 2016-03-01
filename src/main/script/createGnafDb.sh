@@ -24,7 +24,7 @@ progress() {
 
 gnaf="$unzipped/FEB16_GNAF_PipeSeparatedValue_20160222170142/G-NAF"
 progress "modified: $gnaf/Extras/GNAF_TableCreation_Scripts/create_tables_ansi.sql"
-sed 's/DROP TABLE/DROP TABLE IF EXISTS/' "$gnaf/Extras/GNAF_TableCreation_Scripts/create_tables_ansi.sql"
+sed -e 's/DROP TABLE/DROP TABLE IF EXISTS/' -e 's/numeric([0-9])/integer/' "$gnaf/Extras/GNAF_TableCreation_Scripts/create_tables_ansi.sql"
 
 progress "load Authority Code ..."
 while read tbl file

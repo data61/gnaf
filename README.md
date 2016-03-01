@@ -12,7 +12,7 @@ To develop [Scala](http://scala-lang.org/) web services install:
 - the above items (you may prefer to install the full JDK instead of just the JRE but I think the JRE is sufficient);
 - the [Scala IDE](http://scala-ide.org/download/current.html).
 
-Run `sbt update-classifiers` to download dependencies.
+Run `sbt update-classifiers` to download dependencies including the H2 database engine used in the next section.
 
 ## Create Database
 
@@ -53,7 +53,7 @@ On a macbook-pro (with SSD) it takes 26 min to load the data and another 53 min 
     sbt
     > console
     slick.codegen.SourceCodeGenerator.main(
-        Array("slick.driver.H2Driver", "org.h2.Driver", "jdbc:h2:file:~/sw/gnaf/gnaf", "generated", "au.com.data61.gnaf.db")
+        Array("slick.driver.H2Driver", "org.h2.Driver", "jdbc:h2:file:~/sw/gnaf/data/gnaf", "generated", "au.com.data61.gnaf.db")
     )
 
 This generates code in the `generated/au/com/data61/db` directory.
@@ -86,6 +86,8 @@ but at least this is fast:
 
 
 ## To Do
+Add some pointers to H2 doco showing how to start a H2 with a Postgres protocol listener and connect to it with psql Postgres client. That may be a more convenient way to run `createGnafDb.sql`. Note psql cannot connect with blank username and password, so you need to create a user and grant it suitable rights.
+
 Build a webapp using the scala spray async framework
 Look at slick async usage (and later how to do lucene async)
 

@@ -135,15 +135,15 @@ trait Tables {
   lazy val AddressDefaultGeocode = new TableQuery(tag => new AddressDefaultGeocode(tag))
 
   /** Row type of table AddressDetail */
-  type AddressDetailRow = HCons[String,HCons[java.sql.Date,HCons[Option[java.sql.Date],HCons[Option[java.sql.Date],HCons[Option[String],HCons[Option[String],HCons[Option[String],HCons[Option[String],HCons[Option[String],HCons[Option[String],HCons[Option[scala.math.BigDecimal],HCons[Option[String],HCons[Option[String],HCons[Option[String],HCons[Option[scala.math.BigDecimal],HCons[Option[String],HCons[Option[String],HCons[Option[scala.math.BigDecimal],HCons[Option[String],HCons[Option[String],HCons[Option[scala.math.BigDecimal],HCons[Option[String],HCons[Option[String],HCons[Option[String],HCons[String,HCons[Option[Char],HCons[Option[String],HCons[Option[String],HCons[Option[String],HCons[Option[scala.math.BigDecimal],HCons[String,HCons[scala.math.BigDecimal,HCons[Option[String],HCons[Option[String],HCons[Option[Char],HNil]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+  type AddressDetailRow = HCons[String,HCons[java.sql.Date,HCons[Option[java.sql.Date],HCons[Option[java.sql.Date],HCons[Option[String],HCons[Option[String],HCons[Option[String],HCons[Option[String],HCons[Option[String],HCons[Option[String],HCons[Option[Int],HCons[Option[String],HCons[Option[String],HCons[Option[String],HCons[Option[Int],HCons[Option[String],HCons[Option[String],HCons[Option[Int],HCons[Option[String],HCons[Option[String],HCons[Option[Int],HCons[Option[String],HCons[Option[String],HCons[Option[String],HCons[String,HCons[Option[Char],HCons[Option[String],HCons[Option[String],HCons[Option[String],HCons[Option[Int],HCons[String,HCons[Int,HCons[Option[String],HCons[Option[String],HCons[Option[Char],HNil]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
   /** Constructor for AddressDetailRow providing default values if available in the database schema. */
-  def AddressDetailRow(addressDetailPid: String, dateCreated: java.sql.Date, dateLastModified: Option[java.sql.Date], dateRetired: Option[java.sql.Date], buildingName: Option[String], lotNumberPrefix: Option[String], lotNumber: Option[String], lotNumberSuffix: Option[String], flatTypeCode: Option[String], flatNumberPrefix: Option[String], flatNumber: Option[scala.math.BigDecimal], flatNumberSuffix: Option[String], levelTypeCode: Option[String], levelNumberPrefix: Option[String], levelNumber: Option[scala.math.BigDecimal], levelNumberSuffix: Option[String], numberFirstPrefix: Option[String], numberFirst: Option[scala.math.BigDecimal], numberFirstSuffix: Option[String], numberLastPrefix: Option[String], numberLast: Option[scala.math.BigDecimal], numberLastSuffix: Option[String], streetLocalityPid: Option[String], locationDescription: Option[String], localityPid: String, aliasPrincipal: Option[Char], postcode: Option[String], privateStreet: Option[String], legalParcelId: Option[String], confidence: Option[scala.math.BigDecimal], addressSitePid: String, levelGeocodedCode: scala.math.BigDecimal, propertyPid: Option[String], gnafPropertyPid: Option[String], primarySecondary: Option[Char]): AddressDetailRow = {
+  def AddressDetailRow(addressDetailPid: String, dateCreated: java.sql.Date, dateLastModified: Option[java.sql.Date], dateRetired: Option[java.sql.Date], buildingName: Option[String], lotNumberPrefix: Option[String], lotNumber: Option[String], lotNumberSuffix: Option[String], flatTypeCode: Option[String], flatNumberPrefix: Option[String], flatNumber: Option[Int], flatNumberSuffix: Option[String], levelTypeCode: Option[String], levelNumberPrefix: Option[String], levelNumber: Option[Int], levelNumberSuffix: Option[String], numberFirstPrefix: Option[String], numberFirst: Option[Int], numberFirstSuffix: Option[String], numberLastPrefix: Option[String], numberLast: Option[Int], numberLastSuffix: Option[String], streetLocalityPid: Option[String], locationDescription: Option[String], localityPid: String, aliasPrincipal: Option[Char], postcode: Option[String], privateStreet: Option[String], legalParcelId: Option[String], confidence: Option[Int], addressSitePid: String, levelGeocodedCode: Int, propertyPid: Option[String], gnafPropertyPid: Option[String], primarySecondary: Option[Char]): AddressDetailRow = {
     addressDetailPid :: dateCreated :: dateLastModified :: dateRetired :: buildingName :: lotNumberPrefix :: lotNumber :: lotNumberSuffix :: flatTypeCode :: flatNumberPrefix :: flatNumber :: flatNumberSuffix :: levelTypeCode :: levelNumberPrefix :: levelNumber :: levelNumberSuffix :: numberFirstPrefix :: numberFirst :: numberFirstSuffix :: numberLastPrefix :: numberLast :: numberLastSuffix :: streetLocalityPid :: locationDescription :: localityPid :: aliasPrincipal :: postcode :: privateStreet :: legalParcelId :: confidence :: addressSitePid :: levelGeocodedCode :: propertyPid :: gnafPropertyPid :: primarySecondary :: HNil
   }
   /** GetResult implicit for fetching AddressDetailRow objects using plain SQL queries */
-  implicit def GetResultAddressDetailRow(implicit e0: GR[String], e1: GR[java.sql.Date], e2: GR[Option[java.sql.Date]], e3: GR[Option[String]], e4: GR[Option[scala.math.BigDecimal]], e5: GR[Option[Char]], e6: GR[scala.math.BigDecimal]): GR[AddressDetailRow] = GR{
+  implicit def GetResultAddressDetailRow(implicit e0: GR[String], e1: GR[java.sql.Date], e2: GR[Option[java.sql.Date]], e3: GR[Option[String]], e4: GR[Option[Int]], e5: GR[Option[Char]], e6: GR[Int]): GR[AddressDetailRow] = GR{
     prs => import prs._
-    <<[String] :: <<[java.sql.Date] :: <<?[java.sql.Date] :: <<?[java.sql.Date] :: <<?[String] :: <<?[String] :: <<?[String] :: <<?[String] :: <<?[String] :: <<?[String] :: <<?[scala.math.BigDecimal] :: <<?[String] :: <<?[String] :: <<?[String] :: <<?[scala.math.BigDecimal] :: <<?[String] :: <<?[String] :: <<?[scala.math.BigDecimal] :: <<?[String] :: <<?[String] :: <<?[scala.math.BigDecimal] :: <<?[String] :: <<?[String] :: <<?[String] :: <<[String] :: <<?[Char] :: <<?[String] :: <<?[String] :: <<?[String] :: <<?[scala.math.BigDecimal] :: <<[String] :: <<[scala.math.BigDecimal] :: <<?[String] :: <<?[String] :: <<?[Char] :: HNil
+    <<[String] :: <<[java.sql.Date] :: <<?[java.sql.Date] :: <<?[java.sql.Date] :: <<?[String] :: <<?[String] :: <<?[String] :: <<?[String] :: <<?[String] :: <<?[String] :: <<?[Int] :: <<?[String] :: <<?[String] :: <<?[String] :: <<?[Int] :: <<?[String] :: <<?[String] :: <<?[Int] :: <<?[String] :: <<?[String] :: <<?[Int] :: <<?[String] :: <<?[String] :: <<?[String] :: <<[String] :: <<?[Char] :: <<?[String] :: <<?[String] :: <<?[String] :: <<?[Int] :: <<[String] :: <<[Int] :: <<?[String] :: <<?[String] :: <<?[Char] :: HNil
   }
   /** Table description of table ADDRESS_DETAIL. Objects of this class serve as prototypes for rows in queries. */
   class AddressDetail(_tableTag: Tag) extends Table[AddressDetailRow](_tableTag, "ADDRESS_DETAIL") {
@@ -169,28 +169,28 @@ trait Tables {
     val flatTypeCode: Rep[Option[String]] = column[Option[String]]("FLAT_TYPE_CODE", O.Length(7,varying=true))
     /** Database column FLAT_NUMBER_PREFIX SqlType(VARCHAR), Length(2,true) */
     val flatNumberPrefix: Rep[Option[String]] = column[Option[String]]("FLAT_NUMBER_PREFIX", O.Length(2,varying=true))
-    /** Database column FLAT_NUMBER SqlType(DECIMAL) */
-    val flatNumber: Rep[Option[scala.math.BigDecimal]] = column[Option[scala.math.BigDecimal]]("FLAT_NUMBER")
+    /** Database column FLAT_NUMBER SqlType(INTEGER) */
+    val flatNumber: Rep[Option[Int]] = column[Option[Int]]("FLAT_NUMBER")
     /** Database column FLAT_NUMBER_SUFFIX SqlType(VARCHAR), Length(2,true) */
     val flatNumberSuffix: Rep[Option[String]] = column[Option[String]]("FLAT_NUMBER_SUFFIX", O.Length(2,varying=true))
     /** Database column LEVEL_TYPE_CODE SqlType(VARCHAR), Length(4,true) */
     val levelTypeCode: Rep[Option[String]] = column[Option[String]]("LEVEL_TYPE_CODE", O.Length(4,varying=true))
     /** Database column LEVEL_NUMBER_PREFIX SqlType(VARCHAR), Length(2,true) */
     val levelNumberPrefix: Rep[Option[String]] = column[Option[String]]("LEVEL_NUMBER_PREFIX", O.Length(2,varying=true))
-    /** Database column LEVEL_NUMBER SqlType(DECIMAL) */
-    val levelNumber: Rep[Option[scala.math.BigDecimal]] = column[Option[scala.math.BigDecimal]]("LEVEL_NUMBER")
+    /** Database column LEVEL_NUMBER SqlType(INTEGER) */
+    val levelNumber: Rep[Option[Int]] = column[Option[Int]]("LEVEL_NUMBER")
     /** Database column LEVEL_NUMBER_SUFFIX SqlType(VARCHAR), Length(2,true) */
     val levelNumberSuffix: Rep[Option[String]] = column[Option[String]]("LEVEL_NUMBER_SUFFIX", O.Length(2,varying=true))
     /** Database column NUMBER_FIRST_PREFIX SqlType(VARCHAR), Length(3,true) */
     val numberFirstPrefix: Rep[Option[String]] = column[Option[String]]("NUMBER_FIRST_PREFIX", O.Length(3,varying=true))
-    /** Database column NUMBER_FIRST SqlType(DECIMAL) */
-    val numberFirst: Rep[Option[scala.math.BigDecimal]] = column[Option[scala.math.BigDecimal]]("NUMBER_FIRST")
+    /** Database column NUMBER_FIRST SqlType(INTEGER) */
+    val numberFirst: Rep[Option[Int]] = column[Option[Int]]("NUMBER_FIRST")
     /** Database column NUMBER_FIRST_SUFFIX SqlType(VARCHAR), Length(2,true) */
     val numberFirstSuffix: Rep[Option[String]] = column[Option[String]]("NUMBER_FIRST_SUFFIX", O.Length(2,varying=true))
     /** Database column NUMBER_LAST_PREFIX SqlType(VARCHAR), Length(3,true) */
     val numberLastPrefix: Rep[Option[String]] = column[Option[String]]("NUMBER_LAST_PREFIX", O.Length(3,varying=true))
-    /** Database column NUMBER_LAST SqlType(DECIMAL) */
-    val numberLast: Rep[Option[scala.math.BigDecimal]] = column[Option[scala.math.BigDecimal]]("NUMBER_LAST")
+    /** Database column NUMBER_LAST SqlType(INTEGER) */
+    val numberLast: Rep[Option[Int]] = column[Option[Int]]("NUMBER_LAST")
     /** Database column NUMBER_LAST_SUFFIX SqlType(VARCHAR), Length(2,true) */
     val numberLastSuffix: Rep[Option[String]] = column[Option[String]]("NUMBER_LAST_SUFFIX", O.Length(2,varying=true))
     /** Database column STREET_LOCALITY_PID SqlType(VARCHAR), Length(15,true) */
@@ -207,12 +207,12 @@ trait Tables {
     val privateStreet: Rep[Option[String]] = column[Option[String]]("PRIVATE_STREET", O.Length(75,varying=true))
     /** Database column LEGAL_PARCEL_ID SqlType(VARCHAR), Length(20,true) */
     val legalParcelId: Rep[Option[String]] = column[Option[String]]("LEGAL_PARCEL_ID", O.Length(20,varying=true))
-    /** Database column CONFIDENCE SqlType(DECIMAL) */
-    val confidence: Rep[Option[scala.math.BigDecimal]] = column[Option[scala.math.BigDecimal]]("CONFIDENCE")
+    /** Database column CONFIDENCE SqlType(INTEGER) */
+    val confidence: Rep[Option[Int]] = column[Option[Int]]("CONFIDENCE")
     /** Database column ADDRESS_SITE_PID SqlType(VARCHAR), Length(15,true) */
     val addressSitePid: Rep[String] = column[String]("ADDRESS_SITE_PID", O.Length(15,varying=true))
-    /** Database column LEVEL_GEOCODED_CODE SqlType(DECIMAL) */
-    val levelGeocodedCode: Rep[scala.math.BigDecimal] = column[scala.math.BigDecimal]("LEVEL_GEOCODED_CODE")
+    /** Database column LEVEL_GEOCODED_CODE SqlType(INTEGER) */
+    val levelGeocodedCode: Rep[Int] = column[Int]("LEVEL_GEOCODED_CODE")
     /** Database column PROPERTY_PID SqlType(VARCHAR), Length(15,true) */
     val propertyPid: Rep[Option[String]] = column[Option[String]]("PROPERTY_PID", O.Length(15,varying=true))
     /** Database column GNAF_PROPERTY_PID SqlType(VARCHAR), Length(15,true) */
@@ -321,17 +321,17 @@ trait Tables {
    *  @param geocodeSiteName Database column GEOCODE_SITE_NAME SqlType(VARCHAR), Length(46,true)
    *  @param geocodeSiteDescription Database column GEOCODE_SITE_DESCRIPTION SqlType(VARCHAR), Length(45,true)
    *  @param geocodeTypeCode Database column GEOCODE_TYPE_CODE SqlType(VARCHAR), Length(4,true)
-   *  @param reliabilityCode Database column RELIABILITY_CODE SqlType(DECIMAL)
-   *  @param boundaryExtent Database column BOUNDARY_EXTENT SqlType(DECIMAL)
+   *  @param reliabilityCode Database column RELIABILITY_CODE SqlType(INTEGER)
+   *  @param boundaryExtent Database column BOUNDARY_EXTENT SqlType(INTEGER)
    *  @param planimetricAccuracy Database column PLANIMETRIC_ACCURACY SqlType(DECIMAL)
-   *  @param elevation Database column ELEVATION SqlType(DECIMAL)
+   *  @param elevation Database column ELEVATION SqlType(INTEGER)
    *  @param longitude Database column LONGITUDE SqlType(DECIMAL)
    *  @param latitude Database column LATITUDE SqlType(DECIMAL) */
-  case class AddressSiteGeocodeRow(addressSiteGeocodePid: String, dateCreated: java.sql.Date, dateRetired: Option[java.sql.Date], addressSitePid: Option[String], geocodeSiteName: Option[String], geocodeSiteDescription: Option[String], geocodeTypeCode: Option[String], reliabilityCode: scala.math.BigDecimal, boundaryExtent: Option[scala.math.BigDecimal], planimetricAccuracy: Option[scala.math.BigDecimal], elevation: Option[scala.math.BigDecimal], longitude: Option[scala.math.BigDecimal], latitude: Option[scala.math.BigDecimal])
+  case class AddressSiteGeocodeRow(addressSiteGeocodePid: String, dateCreated: java.sql.Date, dateRetired: Option[java.sql.Date], addressSitePid: Option[String], geocodeSiteName: Option[String], geocodeSiteDescription: Option[String], geocodeTypeCode: Option[String], reliabilityCode: Int, boundaryExtent: Option[Int], planimetricAccuracy: Option[scala.math.BigDecimal], elevation: Option[Int], longitude: Option[scala.math.BigDecimal], latitude: Option[scala.math.BigDecimal])
   /** GetResult implicit for fetching AddressSiteGeocodeRow objects using plain SQL queries */
-  implicit def GetResultAddressSiteGeocodeRow(implicit e0: GR[String], e1: GR[java.sql.Date], e2: GR[Option[java.sql.Date]], e3: GR[Option[String]], e4: GR[scala.math.BigDecimal], e5: GR[Option[scala.math.BigDecimal]]): GR[AddressSiteGeocodeRow] = GR{
+  implicit def GetResultAddressSiteGeocodeRow(implicit e0: GR[String], e1: GR[java.sql.Date], e2: GR[Option[java.sql.Date]], e3: GR[Option[String]], e4: GR[Int], e5: GR[Option[Int]], e6: GR[Option[scala.math.BigDecimal]]): GR[AddressSiteGeocodeRow] = GR{
     prs => import prs._
-    AddressSiteGeocodeRow.tupled((<<[String], <<[java.sql.Date], <<?[java.sql.Date], <<?[String], <<?[String], <<?[String], <<?[String], <<[scala.math.BigDecimal], <<?[scala.math.BigDecimal], <<?[scala.math.BigDecimal], <<?[scala.math.BigDecimal], <<?[scala.math.BigDecimal], <<?[scala.math.BigDecimal]))
+    AddressSiteGeocodeRow.tupled((<<[String], <<[java.sql.Date], <<?[java.sql.Date], <<?[String], <<?[String], <<?[String], <<?[String], <<[Int], <<?[Int], <<?[scala.math.BigDecimal], <<?[Int], <<?[scala.math.BigDecimal], <<?[scala.math.BigDecimal]))
   }
   /** Table description of table ADDRESS_SITE_GEOCODE. Objects of this class serve as prototypes for rows in queries. */
   class AddressSiteGeocode(_tableTag: Tag) extends Table[AddressSiteGeocodeRow](_tableTag, "ADDRESS_SITE_GEOCODE") {
@@ -353,14 +353,14 @@ trait Tables {
     val geocodeSiteDescription: Rep[Option[String]] = column[Option[String]]("GEOCODE_SITE_DESCRIPTION", O.Length(45,varying=true))
     /** Database column GEOCODE_TYPE_CODE SqlType(VARCHAR), Length(4,true) */
     val geocodeTypeCode: Rep[Option[String]] = column[Option[String]]("GEOCODE_TYPE_CODE", O.Length(4,varying=true))
-    /** Database column RELIABILITY_CODE SqlType(DECIMAL) */
-    val reliabilityCode: Rep[scala.math.BigDecimal] = column[scala.math.BigDecimal]("RELIABILITY_CODE")
-    /** Database column BOUNDARY_EXTENT SqlType(DECIMAL) */
-    val boundaryExtent: Rep[Option[scala.math.BigDecimal]] = column[Option[scala.math.BigDecimal]]("BOUNDARY_EXTENT")
+    /** Database column RELIABILITY_CODE SqlType(INTEGER) */
+    val reliabilityCode: Rep[Int] = column[Int]("RELIABILITY_CODE")
+    /** Database column BOUNDARY_EXTENT SqlType(INTEGER) */
+    val boundaryExtent: Rep[Option[Int]] = column[Option[Int]]("BOUNDARY_EXTENT")
     /** Database column PLANIMETRIC_ACCURACY SqlType(DECIMAL) */
     val planimetricAccuracy: Rep[Option[scala.math.BigDecimal]] = column[Option[scala.math.BigDecimal]]("PLANIMETRIC_ACCURACY")
-    /** Database column ELEVATION SqlType(DECIMAL) */
-    val elevation: Rep[Option[scala.math.BigDecimal]] = column[Option[scala.math.BigDecimal]]("ELEVATION")
+    /** Database column ELEVATION SqlType(INTEGER) */
+    val elevation: Rep[Option[Int]] = column[Option[Int]]("ELEVATION")
     /** Database column LONGITUDE SqlType(DECIMAL) */
     val longitude: Rep[Option[scala.math.BigDecimal]] = column[Option[scala.math.BigDecimal]]("LONGITUDE")
     /** Database column LATITUDE SqlType(DECIMAL) */
@@ -403,15 +403,15 @@ trait Tables {
   lazy val AddressTypeAut = new TableQuery(tag => new AddressTypeAut(tag))
 
   /** Row type of table AddressView */
-  type AddressViewRow = HCons[Option[String],HCons[Option[String],HCons[Option[String],HCons[Option[String],HCons[Option[String],HCons[Option[String],HCons[Option[String],HCons[Option[String],HCons[Option[String],HCons[Option[scala.math.BigDecimal],HCons[Option[String],HCons[Option[String],HCons[Option[String],HCons[Option[scala.math.BigDecimal],HCons[Option[String],HCons[Option[String],HCons[Option[scala.math.BigDecimal],HCons[Option[String],HCons[Option[String],HCons[Option[scala.math.BigDecimal],HCons[Option[String],HCons[Option[String],HCons[Option[Char],HCons[Option[String],HCons[Option[String],HCons[Option[String],HCons[Option[String],HCons[Option[String],HCons[Option[String],HCons[Option[String],HCons[Option[scala.math.BigDecimal],HCons[Option[scala.math.BigDecimal],HCons[Option[String],HCons[Option[scala.math.BigDecimal],HCons[Option[Char],HCons[Option[Char],HCons[Option[String],HCons[Option[java.sql.Date],HNil]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+  type AddressViewRow = HCons[Option[String],HCons[Option[String],HCons[Option[String],HCons[Option[String],HCons[Option[String],HCons[Option[String],HCons[Option[String],HCons[Option[String],HCons[Option[String],HCons[Option[Int],HCons[Option[String],HCons[Option[String],HCons[Option[String],HCons[Option[Int],HCons[Option[String],HCons[Option[String],HCons[Option[Int],HCons[Option[String],HCons[Option[String],HCons[Option[Int],HCons[Option[String],HCons[Option[String],HCons[Option[Char],HCons[Option[String],HCons[Option[String],HCons[Option[String],HCons[Option[String],HCons[Option[String],HCons[Option[String],HCons[Option[String],HCons[Option[scala.math.BigDecimal],HCons[Option[scala.math.BigDecimal],HCons[Option[String],HCons[Option[Int],HCons[Option[Char],HCons[Option[Char],HCons[Option[String],HCons[Option[java.sql.Date],HNil]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
   /** Constructor for AddressViewRow providing default values if available in the database schema. */
-  def AddressViewRow(addressDetailPid: Option[String], streetLocalityPid: Option[String], localityPid: Option[String], buildingName: Option[String], lotNumberPrefix: Option[String], lotNumber: Option[String], lotNumberSuffix: Option[String], flatType: Option[String], flatNumberPrefix: Option[String], flatNumber: Option[scala.math.BigDecimal], flatNumberSuffix: Option[String], levelType: Option[String], levelNumberPrefix: Option[String], levelNumber: Option[scala.math.BigDecimal], levelNumberSuffix: Option[String], numberFirstPrefix: Option[String], numberFirst: Option[scala.math.BigDecimal], numberFirstSuffix: Option[String], numberLastPrefix: Option[String], numberLast: Option[scala.math.BigDecimal], numberLastSuffix: Option[String], streetName: Option[String], streetClassCode: Option[Char], streetClassType: Option[String], streetTypeCode: Option[String], streetSuffixCode: Option[String], streetSuffixType: Option[String], localityName: Option[String], stateAbbreviation: Option[String], postcode: Option[String], latitude: Option[scala.math.BigDecimal], longitude: Option[scala.math.BigDecimal], geocodeType: Option[String], confidence: Option[scala.math.BigDecimal], aliasPrincipal: Option[Char], primarySecondary: Option[Char], legalParcelId: Option[String], dateCreated: Option[java.sql.Date]): AddressViewRow = {
+  def AddressViewRow(addressDetailPid: Option[String], streetLocalityPid: Option[String], localityPid: Option[String], buildingName: Option[String], lotNumberPrefix: Option[String], lotNumber: Option[String], lotNumberSuffix: Option[String], flatType: Option[String], flatNumberPrefix: Option[String], flatNumber: Option[Int], flatNumberSuffix: Option[String], levelType: Option[String], levelNumberPrefix: Option[String], levelNumber: Option[Int], levelNumberSuffix: Option[String], numberFirstPrefix: Option[String], numberFirst: Option[Int], numberFirstSuffix: Option[String], numberLastPrefix: Option[String], numberLast: Option[Int], numberLastSuffix: Option[String], streetName: Option[String], streetClassCode: Option[Char], streetClassType: Option[String], streetTypeCode: Option[String], streetSuffixCode: Option[String], streetSuffixType: Option[String], localityName: Option[String], stateAbbreviation: Option[String], postcode: Option[String], latitude: Option[scala.math.BigDecimal], longitude: Option[scala.math.BigDecimal], geocodeType: Option[String], confidence: Option[Int], aliasPrincipal: Option[Char], primarySecondary: Option[Char], legalParcelId: Option[String], dateCreated: Option[java.sql.Date]): AddressViewRow = {
     addressDetailPid :: streetLocalityPid :: localityPid :: buildingName :: lotNumberPrefix :: lotNumber :: lotNumberSuffix :: flatType :: flatNumberPrefix :: flatNumber :: flatNumberSuffix :: levelType :: levelNumberPrefix :: levelNumber :: levelNumberSuffix :: numberFirstPrefix :: numberFirst :: numberFirstSuffix :: numberLastPrefix :: numberLast :: numberLastSuffix :: streetName :: streetClassCode :: streetClassType :: streetTypeCode :: streetSuffixCode :: streetSuffixType :: localityName :: stateAbbreviation :: postcode :: latitude :: longitude :: geocodeType :: confidence :: aliasPrincipal :: primarySecondary :: legalParcelId :: dateCreated :: HNil
   }
   /** GetResult implicit for fetching AddressViewRow objects using plain SQL queries */
-  implicit def GetResultAddressViewRow(implicit e0: GR[Option[String]], e1: GR[Option[scala.math.BigDecimal]], e2: GR[Option[Char]], e3: GR[Option[java.sql.Date]]): GR[AddressViewRow] = GR{
+  implicit def GetResultAddressViewRow(implicit e0: GR[Option[String]], e1: GR[Option[Int]], e2: GR[Option[Char]], e3: GR[Option[scala.math.BigDecimal]], e4: GR[Option[java.sql.Date]]): GR[AddressViewRow] = GR{
     prs => import prs._
-    <<?[String] :: <<?[String] :: <<?[String] :: <<?[String] :: <<?[String] :: <<?[String] :: <<?[String] :: <<?[String] :: <<?[String] :: <<?[scala.math.BigDecimal] :: <<?[String] :: <<?[String] :: <<?[String] :: <<?[scala.math.BigDecimal] :: <<?[String] :: <<?[String] :: <<?[scala.math.BigDecimal] :: <<?[String] :: <<?[String] :: <<?[scala.math.BigDecimal] :: <<?[String] :: <<?[String] :: <<?[Char] :: <<?[String] :: <<?[String] :: <<?[String] :: <<?[String] :: <<?[String] :: <<?[String] :: <<?[String] :: <<?[scala.math.BigDecimal] :: <<?[scala.math.BigDecimal] :: <<?[String] :: <<?[scala.math.BigDecimal] :: <<?[Char] :: <<?[Char] :: <<?[String] :: <<?[java.sql.Date] :: HNil
+    <<?[String] :: <<?[String] :: <<?[String] :: <<?[String] :: <<?[String] :: <<?[String] :: <<?[String] :: <<?[String] :: <<?[String] :: <<?[Int] :: <<?[String] :: <<?[String] :: <<?[String] :: <<?[Int] :: <<?[String] :: <<?[String] :: <<?[Int] :: <<?[String] :: <<?[String] :: <<?[Int] :: <<?[String] :: <<?[String] :: <<?[Char] :: <<?[String] :: <<?[String] :: <<?[String] :: <<?[String] :: <<?[String] :: <<?[String] :: <<?[String] :: <<?[scala.math.BigDecimal] :: <<?[scala.math.BigDecimal] :: <<?[String] :: <<?[Int] :: <<?[Char] :: <<?[Char] :: <<?[String] :: <<?[java.sql.Date] :: HNil
   }
   /** Table description of table ADDRESS_VIEW. Objects of this class serve as prototypes for rows in queries. */
   class AddressView(_tableTag: Tag) extends Table[AddressViewRow](_tableTag, "ADDRESS_VIEW") {
@@ -435,28 +435,28 @@ trait Tables {
     val flatType: Rep[Option[String]] = column[Option[String]]("FLAT_TYPE", O.Length(50,varying=true))
     /** Database column FLAT_NUMBER_PREFIX SqlType(VARCHAR), Length(2,true) */
     val flatNumberPrefix: Rep[Option[String]] = column[Option[String]]("FLAT_NUMBER_PREFIX", O.Length(2,varying=true))
-    /** Database column FLAT_NUMBER SqlType(DECIMAL) */
-    val flatNumber: Rep[Option[scala.math.BigDecimal]] = column[Option[scala.math.BigDecimal]]("FLAT_NUMBER")
+    /** Database column FLAT_NUMBER SqlType(INTEGER) */
+    val flatNumber: Rep[Option[Int]] = column[Option[Int]]("FLAT_NUMBER")
     /** Database column FLAT_NUMBER_SUFFIX SqlType(VARCHAR), Length(2,true) */
     val flatNumberSuffix: Rep[Option[String]] = column[Option[String]]("FLAT_NUMBER_SUFFIX", O.Length(2,varying=true))
     /** Database column LEVEL_TYPE SqlType(VARCHAR), Length(50,true) */
     val levelType: Rep[Option[String]] = column[Option[String]]("LEVEL_TYPE", O.Length(50,varying=true))
     /** Database column LEVEL_NUMBER_PREFIX SqlType(VARCHAR), Length(2,true) */
     val levelNumberPrefix: Rep[Option[String]] = column[Option[String]]("LEVEL_NUMBER_PREFIX", O.Length(2,varying=true))
-    /** Database column LEVEL_NUMBER SqlType(DECIMAL) */
-    val levelNumber: Rep[Option[scala.math.BigDecimal]] = column[Option[scala.math.BigDecimal]]("LEVEL_NUMBER")
+    /** Database column LEVEL_NUMBER SqlType(INTEGER) */
+    val levelNumber: Rep[Option[Int]] = column[Option[Int]]("LEVEL_NUMBER")
     /** Database column LEVEL_NUMBER_SUFFIX SqlType(VARCHAR), Length(2,true) */
     val levelNumberSuffix: Rep[Option[String]] = column[Option[String]]("LEVEL_NUMBER_SUFFIX", O.Length(2,varying=true))
     /** Database column NUMBER_FIRST_PREFIX SqlType(VARCHAR), Length(3,true) */
     val numberFirstPrefix: Rep[Option[String]] = column[Option[String]]("NUMBER_FIRST_PREFIX", O.Length(3,varying=true))
-    /** Database column NUMBER_FIRST SqlType(DECIMAL) */
-    val numberFirst: Rep[Option[scala.math.BigDecimal]] = column[Option[scala.math.BigDecimal]]("NUMBER_FIRST")
+    /** Database column NUMBER_FIRST SqlType(INTEGER) */
+    val numberFirst: Rep[Option[Int]] = column[Option[Int]]("NUMBER_FIRST")
     /** Database column NUMBER_FIRST_SUFFIX SqlType(VARCHAR), Length(2,true) */
     val numberFirstSuffix: Rep[Option[String]] = column[Option[String]]("NUMBER_FIRST_SUFFIX", O.Length(2,varying=true))
     /** Database column NUMBER_LAST_PREFIX SqlType(VARCHAR), Length(3,true) */
     val numberLastPrefix: Rep[Option[String]] = column[Option[String]]("NUMBER_LAST_PREFIX", O.Length(3,varying=true))
-    /** Database column NUMBER_LAST SqlType(DECIMAL) */
-    val numberLast: Rep[Option[scala.math.BigDecimal]] = column[Option[scala.math.BigDecimal]]("NUMBER_LAST")
+    /** Database column NUMBER_LAST SqlType(INTEGER) */
+    val numberLast: Rep[Option[Int]] = column[Option[Int]]("NUMBER_LAST")
     /** Database column NUMBER_LAST_SUFFIX SqlType(VARCHAR), Length(2,true) */
     val numberLastSuffix: Rep[Option[String]] = column[Option[String]]("NUMBER_LAST_SUFFIX", O.Length(2,varying=true))
     /** Database column STREET_NAME SqlType(VARCHAR), Length(100,true) */
@@ -483,8 +483,8 @@ trait Tables {
     val longitude: Rep[Option[scala.math.BigDecimal]] = column[Option[scala.math.BigDecimal]]("LONGITUDE")
     /** Database column GEOCODE_TYPE SqlType(VARCHAR), Length(50,true) */
     val geocodeType: Rep[Option[String]] = column[Option[String]]("GEOCODE_TYPE", O.Length(50,varying=true))
-    /** Database column CONFIDENCE SqlType(DECIMAL) */
-    val confidence: Rep[Option[scala.math.BigDecimal]] = column[Option[scala.math.BigDecimal]]("CONFIDENCE")
+    /** Database column CONFIDENCE SqlType(INTEGER) */
+    val confidence: Rep[Option[Int]] = column[Option[Int]]("CONFIDENCE")
     /** Database column ALIAS_PRINCIPAL SqlType(CHAR) */
     val aliasPrincipal: Rep[Option[Char]] = column[Option[Char]]("ALIAS_PRINCIPAL")
     /** Database column PRIMARY_SECONDARY SqlType(VARCHAR) */
@@ -524,14 +524,14 @@ trait Tables {
   lazy val FlatTypeAut = new TableQuery(tag => new FlatTypeAut(tag))
 
   /** Entity class storing rows of table GeocodedLevelTypeAut
-   *  @param code Database column CODE SqlType(DECIMAL), PrimaryKey
+   *  @param code Database column CODE SqlType(INTEGER), PrimaryKey
    *  @param name Database column NAME SqlType(VARCHAR), Length(50,true)
    *  @param description Database column DESCRIPTION SqlType(VARCHAR), Length(70,true) */
-  case class GeocodedLevelTypeAutRow(code: scala.math.BigDecimal, name: String, description: Option[String])
+  case class GeocodedLevelTypeAutRow(code: Int, name: String, description: Option[String])
   /** GetResult implicit for fetching GeocodedLevelTypeAutRow objects using plain SQL queries */
-  implicit def GetResultGeocodedLevelTypeAutRow(implicit e0: GR[scala.math.BigDecimal], e1: GR[String], e2: GR[Option[String]]): GR[GeocodedLevelTypeAutRow] = GR{
+  implicit def GetResultGeocodedLevelTypeAutRow(implicit e0: GR[Int], e1: GR[String], e2: GR[Option[String]]): GR[GeocodedLevelTypeAutRow] = GR{
     prs => import prs._
-    GeocodedLevelTypeAutRow.tupled((<<[scala.math.BigDecimal], <<[String], <<?[String]))
+    GeocodedLevelTypeAutRow.tupled((<<[Int], <<[String], <<?[String]))
   }
   /** Table description of table GEOCODED_LEVEL_TYPE_AUT. Objects of this class serve as prototypes for rows in queries. */
   class GeocodedLevelTypeAut(_tableTag: Tag) extends Table[GeocodedLevelTypeAutRow](_tableTag, "GEOCODED_LEVEL_TYPE_AUT") {
@@ -539,8 +539,8 @@ trait Tables {
     /** Maps whole row to an option. Useful for outer joins. */
     def ? = (Rep.Some(code), Rep.Some(name), description).shaped.<>({r=>import r._; _1.map(_=> GeocodedLevelTypeAutRow.tupled((_1.get, _2.get, _3)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
 
-    /** Database column CODE SqlType(DECIMAL), PrimaryKey */
-    val code: Rep[scala.math.BigDecimal] = column[scala.math.BigDecimal]("CODE", O.PrimaryKey)
+    /** Database column CODE SqlType(INTEGER), PrimaryKey */
+    val code: Rep[Int] = column[Int]("CODE", O.PrimaryKey)
     /** Database column NAME SqlType(VARCHAR), Length(50,true) */
     val name: Rep[String] = column[String]("NAME", O.Length(50,varying=true))
     /** Database column DESCRIPTION SqlType(VARCHAR), Length(70,true) */
@@ -550,14 +550,14 @@ trait Tables {
   lazy val GeocodedLevelTypeAut = new TableQuery(tag => new GeocodedLevelTypeAut(tag))
 
   /** Entity class storing rows of table GeocodeReliabilityAut
-   *  @param code Database column CODE SqlType(DECIMAL), PrimaryKey
+   *  @param code Database column CODE SqlType(INTEGER), PrimaryKey
    *  @param name Database column NAME SqlType(VARCHAR), Length(50,true)
    *  @param description Database column DESCRIPTION SqlType(VARCHAR), Length(100,true) */
-  case class GeocodeReliabilityAutRow(code: scala.math.BigDecimal, name: String, description: Option[String])
+  case class GeocodeReliabilityAutRow(code: Int, name: String, description: Option[String])
   /** GetResult implicit for fetching GeocodeReliabilityAutRow objects using plain SQL queries */
-  implicit def GetResultGeocodeReliabilityAutRow(implicit e0: GR[scala.math.BigDecimal], e1: GR[String], e2: GR[Option[String]]): GR[GeocodeReliabilityAutRow] = GR{
+  implicit def GetResultGeocodeReliabilityAutRow(implicit e0: GR[Int], e1: GR[String], e2: GR[Option[String]]): GR[GeocodeReliabilityAutRow] = GR{
     prs => import prs._
-    GeocodeReliabilityAutRow.tupled((<<[scala.math.BigDecimal], <<[String], <<?[String]))
+    GeocodeReliabilityAutRow.tupled((<<[Int], <<[String], <<?[String]))
   }
   /** Table description of table GEOCODE_RELIABILITY_AUT. Objects of this class serve as prototypes for rows in queries. */
   class GeocodeReliabilityAut(_tableTag: Tag) extends Table[GeocodeReliabilityAutRow](_tableTag, "GEOCODE_RELIABILITY_AUT") {
@@ -565,8 +565,8 @@ trait Tables {
     /** Maps whole row to an option. Useful for outer joins. */
     def ? = (Rep.Some(code), Rep.Some(name), description).shaped.<>({r=>import r._; _1.map(_=> GeocodeReliabilityAutRow.tupled((_1.get, _2.get, _3)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
 
-    /** Database column CODE SqlType(DECIMAL), PrimaryKey */
-    val code: Rep[scala.math.BigDecimal] = column[scala.math.BigDecimal]("CODE", O.PrimaryKey)
+    /** Database column CODE SqlType(INTEGER), PrimaryKey */
+    val code: Rep[Int] = column[Int]("CODE", O.PrimaryKey)
     /** Database column NAME SqlType(VARCHAR), Length(50,true) */
     val name: Rep[String] = column[String]("NAME", O.Length(50,varying=true))
     /** Database column DESCRIPTION SqlType(VARCHAR), Length(100,true) */
@@ -636,12 +636,12 @@ trait Tables {
    *  @param localityClassCode Database column LOCALITY_CLASS_CODE SqlType(CHAR)
    *  @param statePid Database column STATE_PID SqlType(VARCHAR), Length(15,true)
    *  @param gnafLocalityPid Database column GNAF_LOCALITY_PID SqlType(VARCHAR), Length(15,true)
-   *  @param gnafReliabilityCode Database column GNAF_RELIABILITY_CODE SqlType(DECIMAL) */
-  case class LocalityRow(localityPid: String, dateCreated: java.sql.Date, dateRetired: Option[java.sql.Date], localityName: String, primaryPostcode: Option[String], localityClassCode: Char, statePid: String, gnafLocalityPid: Option[String], gnafReliabilityCode: scala.math.BigDecimal)
+   *  @param gnafReliabilityCode Database column GNAF_RELIABILITY_CODE SqlType(INTEGER) */
+  case class LocalityRow(localityPid: String, dateCreated: java.sql.Date, dateRetired: Option[java.sql.Date], localityName: String, primaryPostcode: Option[String], localityClassCode: Char, statePid: String, gnafLocalityPid: Option[String], gnafReliabilityCode: Int)
   /** GetResult implicit for fetching LocalityRow objects using plain SQL queries */
-  implicit def GetResultLocalityRow(implicit e0: GR[String], e1: GR[java.sql.Date], e2: GR[Option[java.sql.Date]], e3: GR[Option[String]], e4: GR[Char], e5: GR[scala.math.BigDecimal]): GR[LocalityRow] = GR{
+  implicit def GetResultLocalityRow(implicit e0: GR[String], e1: GR[java.sql.Date], e2: GR[Option[java.sql.Date]], e3: GR[Option[String]], e4: GR[Char], e5: GR[Int]): GR[LocalityRow] = GR{
     prs => import prs._
-    LocalityRow.tupled((<<[String], <<[java.sql.Date], <<?[java.sql.Date], <<[String], <<?[String], <<[Char], <<[String], <<?[String], <<[scala.math.BigDecimal]))
+    LocalityRow.tupled((<<[String], <<[java.sql.Date], <<?[java.sql.Date], <<[String], <<?[String], <<[Char], <<[String], <<?[String], <<[Int]))
   }
   /** Table description of table LOCALITY. Objects of this class serve as prototypes for rows in queries. */
   class Locality(_tableTag: Tag) extends Table[LocalityRow](_tableTag, "LOCALITY") {
@@ -665,8 +665,8 @@ trait Tables {
     val statePid: Rep[String] = column[String]("STATE_PID", O.Length(15,varying=true))
     /** Database column GNAF_LOCALITY_PID SqlType(VARCHAR), Length(15,true) */
     val gnafLocalityPid: Rep[Option[String]] = column[Option[String]]("GNAF_LOCALITY_PID", O.Length(15,varying=true))
-    /** Database column GNAF_RELIABILITY_CODE SqlType(DECIMAL) */
-    val gnafReliabilityCode: Rep[scala.math.BigDecimal] = column[scala.math.BigDecimal]("GNAF_RELIABILITY_CODE")
+    /** Database column GNAF_RELIABILITY_CODE SqlType(INTEGER) */
+    val gnafReliabilityCode: Rep[Int] = column[Int]("GNAF_RELIABILITY_CODE")
 
     /** Foreign key referencing GeocodeReliabilityAut (database name LOCALITY_FK1) */
     lazy val geocodeReliabilityAutFk = foreignKey("LOCALITY_FK1", gnafReliabilityCode, GeocodeReliabilityAut)(r => r.code, onUpdate=ForeignKeyAction.Restrict, onDelete=ForeignKeyAction.Restrict)
@@ -915,13 +915,13 @@ trait Tables {
    *  @param secondaryPid Database column SECONDARY_PID SqlType(VARCHAR), Length(15,true)
    *  @param dateCreated Database column DATE_CREATED SqlType(DATE)
    *  @param dateRetired Database column DATE_RETIRED SqlType(DATE)
-   *  @param psJoinTypeCode Database column PS_JOIN_TYPE_CODE SqlType(DECIMAL)
+   *  @param psJoinTypeCode Database column PS_JOIN_TYPE_CODE SqlType(INTEGER)
    *  @param psJoinComment Database column PS_JOIN_COMMENT SqlType(VARCHAR), Length(500,true) */
-  case class PrimarySecondaryRow(primarySecondaryPid: String, primaryPid: String, secondaryPid: String, dateCreated: java.sql.Date, dateRetired: Option[java.sql.Date], psJoinTypeCode: scala.math.BigDecimal, psJoinComment: Option[String])
+  case class PrimarySecondaryRow(primarySecondaryPid: String, primaryPid: String, secondaryPid: String, dateCreated: java.sql.Date, dateRetired: Option[java.sql.Date], psJoinTypeCode: Int, psJoinComment: Option[String])
   /** GetResult implicit for fetching PrimarySecondaryRow objects using plain SQL queries */
-  implicit def GetResultPrimarySecondaryRow(implicit e0: GR[String], e1: GR[java.sql.Date], e2: GR[Option[java.sql.Date]], e3: GR[scala.math.BigDecimal], e4: GR[Option[String]]): GR[PrimarySecondaryRow] = GR{
+  implicit def GetResultPrimarySecondaryRow(implicit e0: GR[String], e1: GR[java.sql.Date], e2: GR[Option[java.sql.Date]], e3: GR[Int], e4: GR[Option[String]]): GR[PrimarySecondaryRow] = GR{
     prs => import prs._
-    PrimarySecondaryRow.tupled((<<[String], <<[String], <<[String], <<[java.sql.Date], <<?[java.sql.Date], <<[scala.math.BigDecimal], <<?[String]))
+    PrimarySecondaryRow.tupled((<<[String], <<[String], <<[String], <<[java.sql.Date], <<?[java.sql.Date], <<[Int], <<?[String]))
   }
   /** Table description of table PRIMARY_SECONDARY. Objects of this class serve as prototypes for rows in queries. */
   class PrimarySecondary(_tableTag: Tag) extends Table[PrimarySecondaryRow](_tableTag, "PRIMARY_SECONDARY") {
@@ -939,8 +939,8 @@ trait Tables {
     val dateCreated: Rep[java.sql.Date] = column[java.sql.Date]("DATE_CREATED")
     /** Database column DATE_RETIRED SqlType(DATE) */
     val dateRetired: Rep[Option[java.sql.Date]] = column[Option[java.sql.Date]]("DATE_RETIRED")
-    /** Database column PS_JOIN_TYPE_CODE SqlType(DECIMAL) */
-    val psJoinTypeCode: Rep[scala.math.BigDecimal] = column[scala.math.BigDecimal]("PS_JOIN_TYPE_CODE")
+    /** Database column PS_JOIN_TYPE_CODE SqlType(INTEGER) */
+    val psJoinTypeCode: Rep[Int] = column[Int]("PS_JOIN_TYPE_CODE")
     /** Database column PS_JOIN_COMMENT SqlType(VARCHAR), Length(500,true) */
     val psJoinComment: Rep[Option[String]] = column[Option[String]]("PS_JOIN_COMMENT", O.Length(500,varying=true))
 
@@ -955,14 +955,14 @@ trait Tables {
   lazy val PrimarySecondary = new TableQuery(tag => new PrimarySecondary(tag))
 
   /** Entity class storing rows of table PsJoinTypeAut
-   *  @param code Database column CODE SqlType(DECIMAL), PrimaryKey
+   *  @param code Database column CODE SqlType(INTEGER), PrimaryKey
    *  @param name Database column NAME SqlType(VARCHAR), Length(50,true)
    *  @param description Database column DESCRIPTION SqlType(VARCHAR), Length(500,true) */
-  case class PsJoinTypeAutRow(code: scala.math.BigDecimal, name: String, description: Option[String])
+  case class PsJoinTypeAutRow(code: Int, name: String, description: Option[String])
   /** GetResult implicit for fetching PsJoinTypeAutRow objects using plain SQL queries */
-  implicit def GetResultPsJoinTypeAutRow(implicit e0: GR[scala.math.BigDecimal], e1: GR[String], e2: GR[Option[String]]): GR[PsJoinTypeAutRow] = GR{
+  implicit def GetResultPsJoinTypeAutRow(implicit e0: GR[Int], e1: GR[String], e2: GR[Option[String]]): GR[PsJoinTypeAutRow] = GR{
     prs => import prs._
-    PsJoinTypeAutRow.tupled((<<[scala.math.BigDecimal], <<[String], <<?[String]))
+    PsJoinTypeAutRow.tupled((<<[Int], <<[String], <<?[String]))
   }
   /** Table description of table PS_JOIN_TYPE_AUT. Objects of this class serve as prototypes for rows in queries. */
   class PsJoinTypeAut(_tableTag: Tag) extends Table[PsJoinTypeAutRow](_tableTag, "PS_JOIN_TYPE_AUT") {
@@ -970,8 +970,8 @@ trait Tables {
     /** Maps whole row to an option. Useful for outer joins. */
     def ? = (Rep.Some(code), Rep.Some(name), description).shaped.<>({r=>import r._; _1.map(_=> PsJoinTypeAutRow.tupled((_1.get, _2.get, _3)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
 
-    /** Database column CODE SqlType(DECIMAL), PrimaryKey */
-    val code: Rep[scala.math.BigDecimal] = column[scala.math.BigDecimal]("CODE", O.PrimaryKey)
+    /** Database column CODE SqlType(INTEGER), PrimaryKey */
+    val code: Rep[Int] = column[Int]("CODE", O.PrimaryKey)
     /** Database column NAME SqlType(VARCHAR), Length(50,true) */
     val name: Rep[String] = column[String]("NAME", O.Length(50,varying=true))
     /** Database column DESCRIPTION SqlType(VARCHAR), Length(500,true) */
@@ -1048,13 +1048,13 @@ trait Tables {
    *  @param streetSuffixCode Database column STREET_SUFFIX_CODE SqlType(VARCHAR), Length(15,true)
    *  @param localityPid Database column LOCALITY_PID SqlType(VARCHAR), Length(15,true)
    *  @param gnafStreetPid Database column GNAF_STREET_PID SqlType(VARCHAR), Length(15,true)
-   *  @param gnafStreetConfidence Database column GNAF_STREET_CONFIDENCE SqlType(DECIMAL)
-   *  @param gnafReliabilityCode Database column GNAF_RELIABILITY_CODE SqlType(DECIMAL) */
-  case class StreetLocalityRow(streetLocalityPid: String, dateCreated: java.sql.Date, dateRetired: Option[java.sql.Date], streetClassCode: Char, streetName: String, streetTypeCode: Option[String], streetSuffixCode: Option[String], localityPid: String, gnafStreetPid: Option[String], gnafStreetConfidence: Option[scala.math.BigDecimal], gnafReliabilityCode: scala.math.BigDecimal)
+   *  @param gnafStreetConfidence Database column GNAF_STREET_CONFIDENCE SqlType(INTEGER)
+   *  @param gnafReliabilityCode Database column GNAF_RELIABILITY_CODE SqlType(INTEGER) */
+  case class StreetLocalityRow(streetLocalityPid: String, dateCreated: java.sql.Date, dateRetired: Option[java.sql.Date], streetClassCode: Char, streetName: String, streetTypeCode: Option[String], streetSuffixCode: Option[String], localityPid: String, gnafStreetPid: Option[String], gnafStreetConfidence: Option[Int], gnafReliabilityCode: Int)
   /** GetResult implicit for fetching StreetLocalityRow objects using plain SQL queries */
-  implicit def GetResultStreetLocalityRow(implicit e0: GR[String], e1: GR[java.sql.Date], e2: GR[Option[java.sql.Date]], e3: GR[Char], e4: GR[Option[String]], e5: GR[Option[scala.math.BigDecimal]], e6: GR[scala.math.BigDecimal]): GR[StreetLocalityRow] = GR{
+  implicit def GetResultStreetLocalityRow(implicit e0: GR[String], e1: GR[java.sql.Date], e2: GR[Option[java.sql.Date]], e3: GR[Char], e4: GR[Option[String]], e5: GR[Option[Int]], e6: GR[Int]): GR[StreetLocalityRow] = GR{
     prs => import prs._
-    StreetLocalityRow.tupled((<<[String], <<[java.sql.Date], <<?[java.sql.Date], <<[Char], <<[String], <<?[String], <<?[String], <<[String], <<?[String], <<?[scala.math.BigDecimal], <<[scala.math.BigDecimal]))
+    StreetLocalityRow.tupled((<<[String], <<[java.sql.Date], <<?[java.sql.Date], <<[Char], <<[String], <<?[String], <<?[String], <<[String], <<?[String], <<?[Int], <<[Int]))
   }
   /** Table description of table STREET_LOCALITY. Objects of this class serve as prototypes for rows in queries. */
   class StreetLocality(_tableTag: Tag) extends Table[StreetLocalityRow](_tableTag, "STREET_LOCALITY") {
@@ -1080,10 +1080,10 @@ trait Tables {
     val localityPid: Rep[String] = column[String]("LOCALITY_PID", O.Length(15,varying=true))
     /** Database column GNAF_STREET_PID SqlType(VARCHAR), Length(15,true) */
     val gnafStreetPid: Rep[Option[String]] = column[Option[String]]("GNAF_STREET_PID", O.Length(15,varying=true))
-    /** Database column GNAF_STREET_CONFIDENCE SqlType(DECIMAL) */
-    val gnafStreetConfidence: Rep[Option[scala.math.BigDecimal]] = column[Option[scala.math.BigDecimal]]("GNAF_STREET_CONFIDENCE")
-    /** Database column GNAF_RELIABILITY_CODE SqlType(DECIMAL) */
-    val gnafReliabilityCode: Rep[scala.math.BigDecimal] = column[scala.math.BigDecimal]("GNAF_RELIABILITY_CODE")
+    /** Database column GNAF_STREET_CONFIDENCE SqlType(INTEGER) */
+    val gnafStreetConfidence: Rep[Option[Int]] = column[Option[Int]]("GNAF_STREET_CONFIDENCE")
+    /** Database column GNAF_RELIABILITY_CODE SqlType(INTEGER) */
+    val gnafReliabilityCode: Rep[Int] = column[Int]("GNAF_RELIABILITY_CODE")
 
     /** Foreign key referencing GeocodeReliabilityAut (database name STREET_LOCALITY_FK1) */
     lazy val geocodeReliabilityAutFk = foreignKey("STREET_LOCALITY_FK1", gnafReliabilityCode, GeocodeReliabilityAut)(r => r.code, onUpdate=ForeignKeyAction.Restrict, onDelete=ForeignKeyAction.Restrict)
@@ -1183,15 +1183,15 @@ trait Tables {
    *  @param dateCreated Database column DATE_CREATED SqlType(DATE)
    *  @param dateRetired Database column DATE_RETIRED SqlType(DATE)
    *  @param streetLocalityPid Database column STREET_LOCALITY_PID SqlType(VARCHAR), Length(15,true)
-   *  @param boundaryExtent Database column BOUNDARY_EXTENT SqlType(DECIMAL)
+   *  @param boundaryExtent Database column BOUNDARY_EXTENT SqlType(INTEGER)
    *  @param planimetricAccuracy Database column PLANIMETRIC_ACCURACY SqlType(DECIMAL)
    *  @param longitude Database column LONGITUDE SqlType(DECIMAL)
    *  @param latitude Database column LATITUDE SqlType(DECIMAL) */
-  case class StreetLocalityPointRow(streetLocalityPointPid: String, dateCreated: java.sql.Date, dateRetired: Option[java.sql.Date], streetLocalityPid: String, boundaryExtent: Option[scala.math.BigDecimal], planimetricAccuracy: Option[scala.math.BigDecimal], longitude: Option[scala.math.BigDecimal], latitude: Option[scala.math.BigDecimal])
+  case class StreetLocalityPointRow(streetLocalityPointPid: String, dateCreated: java.sql.Date, dateRetired: Option[java.sql.Date], streetLocalityPid: String, boundaryExtent: Option[Int], planimetricAccuracy: Option[scala.math.BigDecimal], longitude: Option[scala.math.BigDecimal], latitude: Option[scala.math.BigDecimal])
   /** GetResult implicit for fetching StreetLocalityPointRow objects using plain SQL queries */
-  implicit def GetResultStreetLocalityPointRow(implicit e0: GR[String], e1: GR[java.sql.Date], e2: GR[Option[java.sql.Date]], e3: GR[Option[scala.math.BigDecimal]]): GR[StreetLocalityPointRow] = GR{
+  implicit def GetResultStreetLocalityPointRow(implicit e0: GR[String], e1: GR[java.sql.Date], e2: GR[Option[java.sql.Date]], e3: GR[Option[Int]], e4: GR[Option[scala.math.BigDecimal]]): GR[StreetLocalityPointRow] = GR{
     prs => import prs._
-    StreetLocalityPointRow.tupled((<<[String], <<[java.sql.Date], <<?[java.sql.Date], <<[String], <<?[scala.math.BigDecimal], <<?[scala.math.BigDecimal], <<?[scala.math.BigDecimal], <<?[scala.math.BigDecimal]))
+    StreetLocalityPointRow.tupled((<<[String], <<[java.sql.Date], <<?[java.sql.Date], <<[String], <<?[Int], <<?[scala.math.BigDecimal], <<?[scala.math.BigDecimal], <<?[scala.math.BigDecimal]))
   }
   /** Table description of table STREET_LOCALITY_POINT. Objects of this class serve as prototypes for rows in queries. */
   class StreetLocalityPoint(_tableTag: Tag) extends Table[StreetLocalityPointRow](_tableTag, "STREET_LOCALITY_POINT") {
@@ -1207,8 +1207,8 @@ trait Tables {
     val dateRetired: Rep[Option[java.sql.Date]] = column[Option[java.sql.Date]]("DATE_RETIRED")
     /** Database column STREET_LOCALITY_PID SqlType(VARCHAR), Length(15,true) */
     val streetLocalityPid: Rep[String] = column[String]("STREET_LOCALITY_PID", O.Length(15,varying=true))
-    /** Database column BOUNDARY_EXTENT SqlType(DECIMAL) */
-    val boundaryExtent: Rep[Option[scala.math.BigDecimal]] = column[Option[scala.math.BigDecimal]]("BOUNDARY_EXTENT")
+    /** Database column BOUNDARY_EXTENT SqlType(INTEGER) */
+    val boundaryExtent: Rep[Option[Int]] = column[Option[Int]]("BOUNDARY_EXTENT")
     /** Database column PLANIMETRIC_ACCURACY SqlType(DECIMAL) */
     val planimetricAccuracy: Rep[Option[scala.math.BigDecimal]] = column[Option[scala.math.BigDecimal]]("PLANIMETRIC_ACCURACY")
     /** Database column LONGITUDE SqlType(DECIMAL) */

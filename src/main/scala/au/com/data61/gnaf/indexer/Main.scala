@@ -31,7 +31,7 @@ object Main {
       // i think this choice is made by H2
       // TODO: maybe we should change the table creation SQL to use the H2 type INT, INTEGER, INT4 for numeric(x) x <= 9.
       val q = for {
-        (ad, lta) <- AddressDetail joinLeft LevelTypeAut on (_.levelTypeCode === _.code) if (ad.numberFirst === BigDecimal(14) && ad.confidence > BigDecimal(-1))
+        (ad, lta) <- AddressDetail joinLeft LevelTypeAut on (_.levelTypeCode === _.code) if (ad.numberFirst === 14 && ad.confidence > -1)
         sl <- ad.streetLocalityFk if sl.streetName === "TYTHERLEIGH"
         loc <- sl.localityFk
         st <- loc.stateFk
