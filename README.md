@@ -17,6 +17,7 @@ Run `sbt update-classifiers` to download dependencies including the H2 database 
 ## Create Database
 
 The scripts described here automate the procedure described in the [getting started guide](https://www.psma.com.au/sites/default/files/g-naf_-_getting_started_guide.pdf).
+See also https://github.com/minus34/gnaf-loader as an alternative which makes some updates to the data.
 
 ### Download data, Unpack & Generate SQL
 Running:
@@ -33,12 +34,17 @@ The H2 database engine is started with:
 	java -jar ~/.ivy2/cache/com.h2database/h2/jars/h2-1.4.191.jar
 
 (the H2 jar file was put here by `sbt update-classifiers`, alternatively download the jar from the H2 web site and run it as above).
-This should open the SQL client at http://127.0.1.1:8082/login.jsp in a web browser.
+This:
+- starts a web server on port 8082 serving the SQL client application, it should also open http://127.0.1.1:8082/login.jsp in a web browser;
+- starts a tcp/jdbc server on port 9092; and
+- starts a postgres protocol server on port 5435 (note this is different from the default port used by Postgres).
 
 The database engine is stopped with `Ctrl-C` (but not yet as it's needed for the next step).
 
 ### Run SQL
-In the SQL client, enter JDBC URL: `jdbc:h2:file:~/sw/gnaf/data/gnaf` (leaving the User name and Password fields blank) and click `Connect` to create an empty database at this location. This is a single file, zero-admin database. It can me moved/renamed simply by moving/renaming the `gnaf.mv.db` file.
+In the SQL client, enter JDBC URL: `jdbc:h2:file:~/sw/gnaf/data/gnaf`, User name: `gnaf` and Password: `gnaf`) and click `Connect` to create an empty database at this location.
+This is a single file, zero-admin database. It can me moved/renamed simply by moving/renaming the `gnaf.mv.db` file.
+
 
 Run the SQL commands either by:
 - entering: `RUNSCRIPT FROM '~/sw/gnaf/data/createGnafDb.sql'` into the SQL input area (this method displays no indication of progress); or
@@ -84,6 +90,22 @@ but at least this is fast:
     SELECT * FROM ADDRESS_VIEW 
     WHERE ADDRESS_DETAIL_PID = 'GAACT714928273'
 
+This shows some dodgy STREET_LOCALITY_ALIAS records:
+
+	SELECT sl.STREET_NAME, sl.STREET_TYPE_CODE, sl.STREET_SUFFIX_CODE,
+	  sla.STREET_NAME, sla.STREET_TYPE_CODE , sla.STREET_SUFFIX_CODE 
+	FROM STREET_LOCALITY_ALIAS sla, STREET_LOCALITY sl
+	WHERE sla.STREET_LOCALITY_PID = sl.STREET_LOCALITY_PID
+	AND sl.STREET_NAME = 'REED'
+	
+	STREET_NAME     STREET_TYPE_CODE    STREET_SUFFIX_CODE      STREET_NAME     STREET_TYPE_CODE    STREET_SUFFIX_CODE  
+	REED            STREET              S                       REED STREET     SOUTH               null
+	REED            STREET              N                       REED STREET     NORTH               null
+
+## Data License
+
+Incorporates or developed using G-NAF ©PSMA Australia Limited licensed by the Commonwealth of Australia under the
+[http://data.gov.au/dataset/19432f89-dc3a-4ef3-b943-5326ef1dbecc/resource/09f74802-08b1-4214-a6ea-3591b2753d30/download/20160226---EULA---Open-G-NAF.pdf](Open Geo-coded National Address File (G-NAF) End User Licence Agreement).
 
 ## To Do
 Add some pointers to H2 doco showing how to start a H2 with a Postgres protocol listener and connect to it with psql Postgres client. That may be a more convenient way to run `createGnafDb.sql`. Note psql cannot connect with blank username and password, so you need to create a user and grant it suitable rights.
