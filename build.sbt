@@ -46,7 +46,8 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-actor" % "2.4.2",
   "com.github.scopt" %% "scopt" % "3.3.0",
   "com.jsuereth" %% "scala-arm" % "2.0.0-M1",
-  "com.h2database" % "h2" % "1.4.191",
+  // "com.zaxxer" % "HikariCP" % "2.4.3" % "runtime",
+  "com.h2database" % "h2" % "1.4.191" % "runtime",
   "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.7.2",
   "com.fasterxml.jackson.core" % "jackson-annotations" % "2.7.2",
   "org.slf4j" % "slf4j-api" % "1.7.12",
@@ -56,7 +57,8 @@ libraryDependencies ++= Seq(
 
 libraryDependencies ++= Seq(
   "slick-codegen",
-  "slick"
+  "slick",
+  "slick-hikaricp"
 ) map ("com.typesafe.slick" %% _ % "3.1.1")
  
 //  libraryDependencies ++= Seq(
