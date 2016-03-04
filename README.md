@@ -1,6 +1,6 @@
 # gnaf
 
-Seeing what we can do with the [G-NAF data set](http://www.data.gov.au/dataset/geocoded-national-address-file-g-naf).
+Load [G-NAF data set](http://www.data.gov.au/dataset/geocoded-national-address-file-g-naf) into a database and [Elasticsearch](https://www.elastic.co/).
 
 ## Install Tools
 
@@ -142,12 +142,21 @@ then sent for indexing with:
 	
 ### Searching
 
+Search for an exact match:
+
 	$ curl -XPOST 'localhost:9200/gnaf/_search?pretty' -d '
 	{
 	  "query": { "match": { "street.name": "CURRONG" } },
 	  "size": 5
 	}' 
+
+Search for a fuzzy match (use `_all` instead of `street.name` to search all fields):
 	
+	$ curl -XPOST 'localhost:9200/gnafdummy/_search?pretty' -d '
+	{
+	  "query": { "match": { "street.name": { "query": "CURRONGT",  "fuzziness": 2, "prefix_length": 2 } } },
+	  "size": 5
+	}' 
 
 ## Data License
 
