@@ -166,3 +166,4 @@ Incorporates or developed using G-NAF ©PSMA Australia Limited licensed by the C
 ## To Do
 Add some pointers to H2 doco showing how to start a H2 with a Postgres protocol listener and connect to it with psql Postgres client. That may be a more convenient way to run `createGnafDb.sql`. Note psql cannot connect with blank username and password, so you need to create a user and grant it suitable rights.
 
+Add ADDRESS_DEFAULT_GEOCODE.{ LATITUDE, LONGITUDE }
