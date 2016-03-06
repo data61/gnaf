@@ -136,9 +136,14 @@ using the JSON transformation tool [jq](https://stedolan.github.io/jq/):
 	user   8m35.252s
 	sys    0m13.560s
 
-then sent for indexing with:
+then split into chunks and sent for indexing with:
 
-	curl -s -XPOST localhost:9200/_bulk --data-binary @bulk
+	split -l10000 -a3 bulk
+	for i in x*
+	do
+	  echo $i
+	  curl -s -XPOST localhost:9200/_bulk --data-binary @$i
+	done
 	
 ### Searching
 

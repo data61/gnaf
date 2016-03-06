@@ -63,7 +63,7 @@ object Main {
       levelName: Option[String], level: PreNumSuf,
       numberFirst: PreNumSuf, numberLast: PreNumSuf,
       street: Option[Street], localityName: String, stateAbbreviation: String, stateName: String, postcode: Option[String],
-      streetVariants: Seq[Street], localityVariants: Seq[String])
+      latitude: Option[scala.math.BigDecimal], longitude: Option[scala.math.BigDecimal], streetVariants: Seq[Street], localityVariants: Seq[String])
   
   val qAddressDetail = {
     def q(localityPid: Rep[String]) = for (ad <- AddressDetail if ad.localityPid === localityPid) yield ad
@@ -120,6 +120,13 @@ object Main {
       db.run(qStreetLocalityAlias(pid).result).map(_.map(sla => Street(sla.streetName, sla.streetTypeCode, sla.streetSuffixCode)))     
     }.getOrElse(Future(Seq.empty))
   }
+  
+  val qAddressDefaultGeocode = {
+    def q(addressDetailPid: Rep[String]) = for (adg <- AddressDefaultGeocode if adg.addressDetailPid === addressDetailPid) yield adg
+    Compiled(q _)
+  }
+  def addressDefaultGeocode(addressDetailPid: String)(implicit db: Database): Future[Option[AddressDefaultGeocodeRow]] =
+    db.run(qAddressDefaultGeocode(addressDetailPid).result).map(_.headOption)
       
   def run(c: Config) = {
     for (database <- managed(Database.forConfig("gnafDb"))) {
@@ -174,13 +181,14 @@ object Main {
               state <- state(statePid)
               localityAliasName <- localityAliasName(localityPid)
               streetAlias <- streetAlias(streetLocalityPid)
+              adg <- addressDefaultGeocode(addressDetailPid)
             } yield Address(
                 addressDetailPid, addressSiteName, buildingName,
                 flatTypeCode, PreNumSuf(flatNumberPrefix, flatNumber, flatNumberSuffix),
                 levelName, PreNumSuf(levelNumberPrefix, levelNumber, levelNumberSuffix), 
                 PreNumSuf(numberFirstPrefix, numberFirst, numberFirstSuffix),
                 PreNumSuf(numberLastPrefix, numberLast, numberLastSuffix),
-                street, localityName, state.stateAbbreviation, state.stateName, postcode, streetAlias, localityAliasName)
+                street, localityName, state.stateAbbreviation, state.stateName, postcode, adg.flatMap(_.latitude), adg.flatMap(_.longitude), streetAlias, localityAliasName)
           }
             
         }
