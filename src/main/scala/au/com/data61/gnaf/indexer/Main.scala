@@ -17,6 +17,7 @@ import slick.backend.DatabasePublisher
 import scala.concurrent.ExecutionContext
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import scala.math.BigDecimal
 
 // Organize Imports deletes this, so make it easy to restore ...
 // import slick.collection.heterogeneous.syntax.::
@@ -58,12 +59,14 @@ object Main {
 
   case class PreNumSuf(prefix: Option[String], number: Option[Int], suffix: Option[String])
   case class Street(name: String, typeCode: Option[String], suffixCode: Option[String])
+  case class LocalityVariant(localityName: String)
+  case class Location(lat: BigDecimal, lon: BigDecimal)
   case class Address(addressDetailPid: String, addressSiteName: Option[String], buildingName: Option[String],
       flatTypeCode: Option[String], flat: PreNumSuf, 
       levelName: Option[String], level: PreNumSuf,
       numberFirst: PreNumSuf, numberLast: PreNumSuf,
       street: Option[Street], localityName: String, stateAbbreviation: String, stateName: String, postcode: Option[String],
-      latitude: Option[scala.math.BigDecimal], longitude: Option[scala.math.BigDecimal], streetVariants: Seq[Street], localityVariants: Seq[String])
+      location: Option[Location], streetVariant: Seq[Street], localityVariant: Seq[LocalityVariant])
   
   val qAddressDetail = {
     def q(localityPid: Rep[String]) = for (ad <- AddressDetail if ad.localityPid === localityPid) yield ad
@@ -108,8 +111,8 @@ object Main {
     def q(localityPid: Rep[String]) = for (la <- LocalityAlias if la.localityPid === localityPid) yield la.name
     Compiled(q _)
   }
-  def localityAliasName(localityPid: String)(implicit db: Database): Future[Seq[String]] =
-    db.run(qLocalityAliasName(localityPid).result)
+  def localityVariant(localityPid: String)(implicit db: Database): Future[Seq[LocalityVariant]] =
+    db.run(qLocalityAliasName(localityPid).result).map(_.map(name => LocalityVariant(name)))
     
   val qStreetLocalityAlias = {
     def q(streetLocalityPid: Rep[String]) = StreetLocalityAlias.filter(_.streetLocalityPid === streetLocalityPid)
@@ -122,11 +125,14 @@ object Main {
   }
   
   val qAddressDefaultGeocode = {
-    def q(addressDetailPid: Rep[String]) = for (adg <- AddressDefaultGeocode if adg.addressDetailPid === addressDetailPid) yield adg
+    def q(addressDetailPid: Rep[String]) = for (adg <- AddressDefaultGeocode if adg.addressDetailPid === addressDetailPid) yield (adg.latitude, adg.longitude)
     Compiled(q _)
   }
-  def addressDefaultGeocode(addressDetailPid: String)(implicit db: Database): Future[Option[AddressDefaultGeocodeRow]] =
-    db.run(qAddressDefaultGeocode(addressDetailPid).result).map(_.headOption)
+  def location(addressDetailPid: String)(implicit db: Database): Future[Option[Location]] =
+    db.run(qAddressDefaultGeocode(addressDetailPid).result).map {
+      case Seq((Some(lat), Some(lon))) => Some(Location(lat, lon))
+      case _ => None
+    }
       
   def run(c: Config) = {
     for (database <- managed(Database.forConfig("gnafDb"))) {
@@ -179,16 +185,16 @@ object Main {
               addressSiteName <- addressSiteName(addressSitePid)
               street <- street(streetLocalityPid)
               state <- state(statePid)
-              localityAliasName <- localityAliasName(localityPid)
+              localityVariant <- localityVariant(localityPid)
               streetAlias <- streetAlias(streetLocalityPid)
-              adg <- addressDefaultGeocode(addressDetailPid)
+              location <- location(addressDetailPid)
             } yield Address(
                 addressDetailPid, addressSiteName, buildingName,
                 flatTypeCode, PreNumSuf(flatNumberPrefix, flatNumber, flatNumberSuffix),
                 levelName, PreNumSuf(levelNumberPrefix, levelNumber, levelNumberSuffix), 
                 PreNumSuf(numberFirstPrefix, numberFirst, numberFirstSuffix),
                 PreNumSuf(numberLastPrefix, numberLast, numberLastSuffix),
-                street, localityName, state.stateAbbreviation, state.stateName, postcode, adg.flatMap(_.latitude), adg.flatMap(_.longitude), streetAlias, localityAliasName)
+                street, localityName, state.stateAbbreviation, state.stateName, postcode, location, streetAlias, localityVariant)
           }
             
         }

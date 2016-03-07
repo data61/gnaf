@@ -1,0 +1,45 @@
+{ "mappings" : { "gnaf" : { "properties" : {
+  "addressDetailPid" : { "type" : "string", "index" : "not_analyzed" },
+  "addressSiteName" : { "type" : "string", "analyzer" : "whitespace" },
+  "buildingName" : { "type" : "string", "analyzer" : "whitespace" },
+  "flatTypeCode" : { "type" : "string", "index" : "not_analyzed" },
+  "flat" : { "type": "object", "properties": {
+    "prefix" : { "type" : "string", "index" : "not_analyzed" },
+    "number" : { "type" : "long" },
+    "suffix" : { "type" : "string", "index" : "not_analyzed" }
+  } },
+  "levelName" : { "type" : "string", "analyzer" : "whitespace" }, // UPPER GROUND FLOOR
+  "level" : { "type": "object", "properties": {
+    "prefix" : { "type" : "string", "index" : "not_analyzed" },
+    "number" : { "type" : "long" },
+    "suffix" : { "type" : "string", "index" : "not_analyzed" }
+  } },
+  "numberFirst" : { "type": "object", "properties": {
+    "prefix" : { "type" : "string", "index" : "not_analyzed" },
+    "number" : { "type" : "long" },
+    "suffix" : { "type" : "string", "index" : "not_analyzed" }
+  } },
+  "numberLast" : { "type": "object", "properties": {
+    "prefix" : { "type" : "string", "index" : "not_analyzed" },
+    "number" : { "type" : "long" },
+    "suffix" : { "type" : "string", "index" : "not_analyzed" }
+  } },
+  "street" : { "type": "object", "properties": {
+    "name" : { "type": "string", "analyzer" : "whitespace" },
+    "typeCode" : { "type": "string", "index" : "not_analyzed" },
+    "suffixCode":{"type": "string", "index" : "not_analyzed" }
+  } },
+  "localityName": { "type": "string", "analyzer" : "whitespace" },
+  "stateAbbreviation": { "type": "string", "index" : "not_analyzed" },
+  "stateName": { "type" : "string", "analyzer" : "whitespace" },
+  "postcode": { "type" : "long" },
+  "location": { "type": "geo_point" },
+  "streetVariant": { "type": "nested", "properties": {
+    "name" : { "type": "string", "analyzer" : "whitespace" },
+    "typeCode" : { "type": "string", "index" : "not_analyzed" },
+    "suffixCode":{"type": "string", "index" : "not_analyzed" }
+  } },
+  "localityVariant": { "type": "nested", "properties": {
+    "localityName": { "type": "string", "analyzer" : "whitespace" }
+  } }
+} } } }

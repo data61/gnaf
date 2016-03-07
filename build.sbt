@@ -46,7 +46,6 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-actor" % "2.4.2",
   "com.github.scopt" %% "scopt" % "3.3.0",
   "com.jsuereth" %% "scala-arm" % "2.0.0-M1",
-  // "com.zaxxer" % "HikariCP" % "2.4.3" % "runtime",
   "com.h2database" % "h2" % "1.4.191" % "runtime",
   "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.7.2",
   "com.fasterxml.jackson.core" % "jackson-annotations" % "2.7.2",
@@ -61,16 +60,3 @@ libraryDependencies ++= Seq(
   "slick-hikaricp"
 ) map ("com.typesafe.slick" %% _ % "3.1.1")
  
-//  libraryDependencies ++= Seq(
-//    "spray-can",
-//    "spray-routing"
-//  ) map ("io.spray" %% _ % "1.3.3")
- 
-//  libraryDependencies ++= Seq(
-//    "lucene-core",
-//    "lucene-queryparser",
-//    "lucene-analyzers-common"
-//  "lucene-facet",
-//  "lucene-highlighter",
-//  "lucene-suggest"
-//    ) map ("org.apache.lucene" % _ % "5.5.0")
