@@ -129,13 +129,13 @@ Before adding the geocode location it was much faster:
 	user   47m27.900s
 	sys    14m30.308s
 	
-writes one line of JSON to the file `out` for each GNAF `ADDRESS_DETAIL` row with CONFIDENCE > -1. Logging is written to gnaf.log.
+This writes one line of JSON to the file `out` for each GNAF `ADDRESS_DETAIL` row with CONFIDENCE > -1. Logging is written to gnaf.log.
 
 If an H2 result set contains more than
 [MAX_MEMORY_ROWS](http://www.h2database.com/html/grammar.html?highlight=max_memory_rows&search=MAX_MEMORY_ROWS#set_max_memory_rows),
 it is spooled to disk before the first row is provided to the client.
 The default is 40000 per GB of available RAM and setting a non-default value requires database admin rights (which we prefer to avoid using).
-Analysis in comments in `Main.scala` show that we need to handle result sets up to 95,004 rows, so allocating up to 3GB of heap should avoid spooling.
+Analysis in comments in `Main.scala` show that we need to handle result sets up to 95,004 rows, so allocating up to 3GB of heap (with `-Xmx3G`) should avoid spooling.
 
 ## Elastic Search
 
@@ -154,7 +154,7 @@ An old index is deleted with:
 
 	curl -XDELETE 'localhost:9200/gnaf/'
 	
-The index is created with a custom mapping:
+The index is created with a custom mapping with:
 
 	curl -XPUT 'localhost:9200/gnaf/' --data-binary @src/main/resources/gnafMapping.json
 	
@@ -167,7 +167,6 @@ The data is split into chunks and sent for indexing with:
 	  curl -s -XPOST localhost:9200/_bulk --data-binary @$i
 	done
 	
-
 ### Searching
 
 Search for an exact match:
@@ -178,13 +177,27 @@ Search for an exact match:
 	  "size": 5
 	}' 
 
-Search for a fuzzy match (use `_all` instead of `street.name` to search all fields):
+Search for a fuzzy match against all fields:
 	
-	$ curl -XPOST 'localhost:9200/gnafdummy/_search?pretty' -d '
+	$ curl -XPOST 'localhost:9200/gnaf/_search?pretty' -d '
 	{
-	  "query": { "match": { "street.name": { "query": "CURRONGT",  "fuzziness": 2, "prefix_length": 2 } } },
+	  "query": { "match": { "_all": { "query": "CURRONGT",  "fuzziness": 1, "prefix_length": 2 } } },
 	  "size": 5
 	}' 
+
+## Webapp
+
+### Elasticsearch CORS Support
+
+Access by the webapp requires [CORS](https://en.wikipedia.org/wiki/Cross-origin_resource_sharing) to be configured in Elasticsearch.
+Append to `config/elasticsearch.yml`:
+
+	http.cors.enabled: true
+	http.cors.allow-origin: "*"
+	
+### Webapp
+
+Open the file `src/main/webapp/index.html` in your web browser.
 
 ## Data License
 

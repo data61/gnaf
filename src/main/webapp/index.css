@@ -1,0 +1,48 @@
+body {
+  font-family: verdana, helvetica, arial, sans-serif;
+  font-size: 14px;
+  color: #404040;
+}
+
+h1, h2, h3, h4 {
+  color: #98bf21;
+}
+
+#search {
+  margin-left: 10px;
+}
+
+#searchForm button {
+  margin-top: 30px;
+}
+
+#searchResult {
+  margin-top: 10px;
+}
+
+.label, label {
+  color: #98bf21;
+  font-weight: bold;
+}
+
+.error {
+  color: red;
+  margin-top: 15px;
+  font-family: monospace;
+  white-space: pre;
+}
+
+button {
+  color: white;
+  background-color: #98bf21;
+  border: 1px outset #98bf21;
+  margin-top: 10px;
+  font-weight: bold;
+}
+
+#searchForm textarea {
+  width: 800px;
+  height: 4em;
+  padding: 2px;
+  display: block;
+}
