@@ -8,7 +8,7 @@ To run the code install:
 - a JRE e.g. from openjdk-7 or 8;
 - the build tool [sbt](http://www.scala-sbt.org/).
 
-To develop [Scala](http://scala-lang.org/) web services install:
+To develop [Scala](http://scala-lang.org/) code install:
 - the above items (you may prefer to install the full JDK instead of just the JRE but I think the JRE is sufficient);
 - the [Scala IDE](http://scala-ide.org/download/current.html).
 
@@ -19,14 +19,14 @@ Run `sbt update-classifiers` to download dependencies including the H2 database 
 The scripts described here automate the procedure described in the [getting started guide](https://www.psma.com.au/sites/default/files/g-naf_-_getting_started_guide.pdf).
 See also https://github.com/minus34/gnaf-loader as an alternative which makes some updates to the data.
 
-### Download data, Unpack & Generate SQL
+### Download, Unpack & Generate SQL
 Running:
 
 	src/main/script/createGnafDb.sh
 
 - downloads the G-NAF zip file to `data/` (if not found);
 - unzips to `data/unzipped/` (if not found); and
-- writes SQL to create the H2 database to `data/createGnafDb.sql` (`createGnafDb.sh` may require adaptation for other databases).
+- writes SQL to create the H2 database to `data/createGnafDb.sql` (`createGnafDb.sh` would require adaptation for other databases).
 
 ### Start Database Engine & SQL Client
 The H2 database engine is started with:
@@ -35,9 +35,9 @@ The H2 database engine is started with:
 
 (the H2 jar file was put here by `sbt update-classifiers`, alternatively download the jar from the H2 web site and run it as above).
 This:
-- starts a web server on port 8082 serving the SQL client application, it should also open http://127.0.1.1:8082/login.jsp in a web browser;
+- starts a web server on port 8082 serving the SQL client application (it should also open http://127.0.1.1:8082/login.jsp in a web browser);
 - starts a tcp/jdbc server on port 9092; and
-- starts a postgres protocol server on port 5435 (note this is different from the default port used by Postgres).
+- starts a postgres protocol server on port 5435 (note this is different from the default port used by Postgres 5432).
 
 The database engine is stopped with `Ctrl-C` (but not yet as it's needed for the next step).
 
@@ -50,14 +50,10 @@ Run the SQL commands either by:
 - entering: `RUNSCRIPT FROM '~/sw/gnaf/data/createGnafDb.sql'` into the SQL input area (this method displays no indication of progress); or
 - pasting the content of this file into the SQL input area (this method displays what is going on).
 
-On a macbook-pro (with SSD) it takes 26 min to load the data and another 53 min to create the indexes. 
+On a macbook-pro (with SSD) it takes 26 min to load the data and another 53 min to create the indexes.
+The script creates a user `READONLY` with password `READONLY` that has only the `SELECT` right. This user should be used for read-only access.
 
 ## Example Queries
-Create a read only user:
-
-    CREATE USER READONLY PASSWORD 'READONLY'
-    GRANT SELECT ON SCHEMA PUBLIC TO READONLY
-
 Find me (fast):
 
     SELECT SL.*, AD.*
@@ -119,15 +115,9 @@ builds the uber-jar `target/scala-2.11/gnaf_2.11-0.1-SNAPSHOT-one-jar.jar` conta
 ## Run
 
 	$ time java -Xmx3G -jar target/scala-2.11/gnaf_2.11-0.1-SNAPSHOT-one-jar.jar > out
-	real    40m36.031s
-	user    71m37.444s
-	sys     25m02.920s
-
-Before adding the geocode location it was much faster:
-	
-	real   24m52.579s
-	user   47m27.900s
-	sys    14m30.308s
+	real   30m51.880s
+	user   32m38.932s
+	sys     6m43.484s
 	
 This writes one line of JSON to the file `out` for each GNAF `ADDRESS_DETAIL` row with CONFIDENCE > -1. Logging is written to gnaf.log.
 
@@ -135,7 +125,7 @@ If an H2 result set contains more than
 [MAX_MEMORY_ROWS](http://www.h2database.com/html/grammar.html?highlight=max_memory_rows&search=MAX_MEMORY_ROWS#set_max_memory_rows),
 it is spooled to disk before the first row is provided to the client.
 The default is 40000 per GB of available RAM and setting a non-default value requires database admin rights (which we prefer to avoid using).
-Analysis in comments in `Main.scala` show that we need to handle result sets up to 95,004 rows, so allocating up to 3GB of heap (with `-Xmx3G`) should avoid spooling.
+Analysis in comments in `Main.scala` shows that we need to handle result sets up to 95,004 rows, so allocating up to 3GB of heap (with `-Xmx3G`) should avoid spooling.
 
 ## Elastic Search
 
@@ -161,7 +151,7 @@ The index is created with a custom mapping with:
 The data is split into chunks and sent for indexing with:
 
 	split -l10000 -a3 bulk
-	for i in x*
+	for i in x???
 	do
 	  echo $i
 	  curl -s -XPOST localhost:9200/_bulk --data-binary @$i
@@ -207,10 +197,79 @@ Incorporates or developed using G-NAF ©PSMA Australia Limited licensed by the C
 ## To Do
 Add some pointers to H2 doco showing how to start a H2 with a Postgres protocol listener and connect to it with psql Postgres client. That may be a more convenient way to run `createGnafDb.sql`. Note psql cannot connect with blank username and password, so you need to create a user and grant it suitable rights.
 
-Add (in-memory) lookup from flatTypeCode CODE -> FLAT_TYPE_AUT.NAME
-UNIT -> UNIT
-BTSD -> BOATSHED (only one word so whitespace not really needed, but use it anyway e.g. needed for following case:
-and streetSuffixCode CODE -> STREET_SUFFIX_AUT.NAME
-DE -> DEVIATION
-EX -> EXTENSION
-NE -> NORTH EAST
+Don't use fuzzy for numbers!
+
+ADDRESS_DETAIL has ALIAS_PRINCIPAL and PRIMARY_SECONDARY
+
+SELECT * FROM PS_JOIN_TYPE_AUT;
+CODE  	NAME  	DESCRIPTION  
+1	AUTO	AUTOMATICALLY MATCHED PRIMARY AND SECONDARY, BOTH PARENT AND CHILD HAVE THE SAME ROOT ADDRESS
+2	MANUAL	MANUALLY GENERATED LINK, MAY OR MAY NOT HAVE THE SAME ROOT ADDRESS
+
+SELECT * FROM ADDRESS_DETAIL where ADDRESS_SITE_PID = '711272121';
+ADDRESS_DETAIL_PID  	DATE_CREATED  	DATE_LAST_MODIFIED  	DATE_RETIRED  	BUILDING_NAME  	LOT_NUMBER_PREFIX  	LOT_NUMBER  	LOT_NUMBER_SUFFIX  	FLAT_TYPE_CODE  	FLAT_NUMBER_PREFIX  	FLAT_NUMBER  	FLAT_NUMBER_SUFFIX  	LEVEL_TYPE_CODE  	LEVEL_NUMBER_PREFIX  	LEVEL_NUMBER  	LEVEL_NUMBER_SUFFIX  	NUMBER_FIRST_PREFIX  	NUMBER_FIRST  	NUMBER_FIRST_SUFFIX  	NUMBER_LAST_PREFIX  	NUMBER_LAST  	NUMBER_LAST_SUFFIX  	STREET_LOCALITY_PID  	LOCATION_DESCRIPTION  	LOCALITY_PID  	ALIAS_PRINCIPAL  	POSTCODE  	PRIVATE_STREET  	LEGAL_PARCEL_ID  	CONFIDENCE  	ADDRESS_SITE_PID  	LEVEL_GEOCODED_CODE  	PROPERTY_PID  	GNAF_PROPERTY_PID  	PRIMARY_SECONDARY  
+GAACT715707856	2004-07-14	2015-11-13	null	null	null	null	null	null	null	null	null	null	null	null	null	null	15	null	null	21	null	ACT38	null	ACT101	A	2602	null	CANB/LYNE/40/31/	0	711272121	7	null	null	null
+
+SELECT * FROM ADDRESS_DETAIL where NUMBER_FIRST = 15 and STREET_LOCALITY_PID ='ACT38';
+ADDRESS_DETAIL_PID  	DATE_CREATED  	DATE_LAST_MODIFIED  	DATE_RETIRED  	BUILDING_NAME  	LOT_NUMBER_PREFIX  	LOT_NUMBER  	LOT_NUMBER_SUFFIX  	FLAT_TYPE_CODE  	FLAT_NUMBER_PREFIX  	FLAT_NUMBER  	FLAT_NUMBER_SUFFIX  	LEVEL_TYPE_CODE  	LEVEL_NUMBER_PREFIX  	LEVEL_NUMBER  	LEVEL_NUMBER_SUFFIX  	NUMBER_FIRST_PREFIX  	NUMBER_FIRST  	NUMBER_FIRST_SUFFIX  	NUMBER_LAST_PREFIX  	NUMBER_LAST  	NUMBER_LAST_SUFFIX  	STREET_LOCALITY_PID  	LOCATION_DESCRIPTION  	LOCALITY_PID  	ALIAS_PRINCIPAL  	POSTCODE  	PRIVATE_STREET  	LEGAL_PARCEL_ID  	CONFIDENCE  	ADDRESS_SITE_PID  	LEVEL_GEOCODED_CODE  	PROPERTY_PID  	GNAF_PROPERTY_PID  	PRIMARY_SECONDARY  
+GAACT715707856	2004-07-14	2015-11-13	null	null	null	null	null	null	null	null	null	null	null	null	null	null	15	null	null	21	null	ACT38	null	ACT101	A	2602	null	CANB/LYNE/40/31/	0	711272121	7	null	null	null
+GAACT716910847	2006-04-21	2015-11-13	null	null	null	null	null	null	null	null	null	null	null	null	null	null	15	B	null	null	null	ACT38	null	ACT101	P	2602	null	null	-1	712335825	7	null	null	null
+GAACT714963691	2012-10-25	2015-11-13	null	null	null	null	null	null	null	null	null	null	null	null	null	null	15	null	null	null	null	ACT38	null	ACT101	P	2602	null	CANB/LYNE/40/31/	1	710563964	7	null	null	P
+GAACT718669833	2014-04-21	2015-11-13	null	null	null	null	null	UNIT	null	1	null	null	null	null	null	null	15	null	null	null	null	ACT38	null	ACT101	P	2602	null	null	0	714053980	7	null	null	S
+GAACT718669835	2014-04-21	2015-11-13	null	null	null	null	null	UNIT	null	3	null	null	null	null	null	null	15	null	null	null	null	ACT38	null	ACT101	P	2602	null	null	0	714053982	7	null	null	S
+GAACT718669836	2014-04-21	2015-11-13	null	null	null	null	null	UNIT	null	4	null	null	null	null	null	null	15	null	null	null	null	ACT38	null	ACT101	P	2602	null	null	0	714053983	7	null	null	S
+GAACT718669834	2014-04-21	2015-11-13	null	null	null	null	null	UNIT	null	2	null	null	null	null	null	null	15	null	null	null	null	ACT38	null	ACT101	P	2602	null	null	0	714053981	7	null	null	S
+So:
+Principle 15B (first/firstSuffix) has Alias 15-21 (first-last) (both with Primary_Secondary = null)
+Then there is another set of Principals:
+Plain 15 (first) with Primary_Secondary = P
+And UNIT 1,2,3,4; 15 (first) with Primary_Secondary = S
+
+adding query term: ALIAS_PRINCIPAL = P will prefer the 15B and the plain 15 to 15-21 (ALIAS_PRINCIPAL is nullable but has no null values)
+adding query term: Primary_Secondary = P will prefer plain 15 with no UNITs (this is the block of units to unit relationship)
+if we want the 15B to come out on top we need to prefer Primary_Secondary = null over P
+Ranking:
+- First on Primary_Secondary: null, P, S
+- Second on ALIAS_PRINCIPAL = P, S
+
+SELECT PRIMARY_SECONDARY, count(*)  FROM ADDRESS_DETAIL group by PRIMARY_SECONDARY;
+PRIMARY_SECONDARY  	COUNT(*)  
+P	494939
+S	3922824
+null	9708280
+
+We can't search on null (because its not in the index), so we'll have to:
+a) substitute some value like 'GNAF_NO_VALUE' that we can search for; or
+b) penalize S most, and P a bit, so null comes out on top using [Boosting Query](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-boosting-query.html)
+
+
+
+Add (in-memory) lookup from `flatTypeCode`: `FLAT_TYPE_AUT: CODE -> NAME`
+
+    UNIT -> UNIT
+    BTSD -> BOATSHED
+Values are all only one word so the mapping type `"index" : "not_analyzed"` would suffice, but it might be safer to use `"analyzer" : "whitespace"`.
+
+Likewise lookup from `streetSuffixCode`: `STREET_SUFFIX_AUT: CODE -> NAME`
+
+    DE -> DEVIATION
+    EX -> EXTENSION
+    NE -> NORTH EAST
+ Some values have spaces so `"analyzer" : "whitespace"` is required.
+ 
+The default Elasticsearch [search_type](https://www.elastic.co/guide/en/elasticsearch/reference/current/search-request-search-type.html) is `query_then_fetch`
+which scores hits on the term frequencies of each shard independently, rather than the joint term frequencies used by the slower `dfs_query_then_fetch`.
+
+	curl -XGET 'http://localhost:9200/gnaf'
+	
+shows that my current index has 5 shards (and 1 replica). Try changing the search type on queries that appear to have poor ranking.
+
+How can we penalize matches with fields set that are not in the query like UNIT 37?
+
+Try `"multi_match` with [cross_fields](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-multi-match-query.html#type-cross-fields).
+ 
+Maybe:
+- initially search the essential fields: street, locality, postcode, state
+- use highlighter to locate query terms that matched these fields
+- make a new query for these terms against only the fields they matched and the remaining terms against all other fields unit, level, site name etc.
+-

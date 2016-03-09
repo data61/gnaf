@@ -58,55 +58,37 @@ object Main {
   }
 
   case class PreNumSuf(prefix: Option[String], number: Option[Int], suffix: Option[String])
-  case class Street(name: String, typeCode: Option[String], suffixCode: Option[String])
+  case class Street(name: String, typeCode: Option[String], typeName: Option[String], suffixCode: Option[String], suffixName: Option[String])
   case class LocalityVariant(localityName: String)
   case class Location(lat: BigDecimal, lon: BigDecimal)
   case class Address(addressDetailPid: String, addressSiteName: Option[String], buildingName: Option[String],
-      flatTypeCode: Option[String], flat: PreNumSuf, 
-      levelName: Option[String], level: PreNumSuf,
+      flatTypeCode: Option[String], flatTypeName: Option[String], flat: PreNumSuf, 
+      levelTypeCode: Option[String], levelTypeName: Option[String], level: PreNumSuf,
       numberFirst: PreNumSuf, numberLast: PreNumSuf,
       street: Option[Street], localityName: String, stateAbbreviation: String, stateName: String, postcode: Option[String],
+      aliasPrincipal: Option[Char], primarySecondary: Option[Char],
       location: Option[Location], streetVariant: Seq[Street], localityVariant: Seq[LocalityVariant])
   
   val qAddressDetail = {
-    def q(localityPid: Rep[String]) = for (ad <- AddressDetail if ad.localityPid === localityPid) yield ad
+    def q(localityPid: Rep[String]) = for {
+      ((((ad, lta), as), sl), adg) <- AddressDetail joinLeft 
+        LevelTypeAut on (_.levelTypeCode === _.code) joinLeft
+        AddressSite on (_._1.addressSitePid === _.addressSitePid) joinLeft
+        StreetLocality on (_._1._1.streetLocalityPid === _.streetLocalityPid) joinLeft
+        AddressDefaultGeocode on (_._1._1._1.addressDetailPid === _.addressDetailPid)
+      if ad.localityPid === localityPid
+    } yield (
+      ad, 
+      lta.map(_.name), 
+      as.map(_.addressSiteName), 
+      sl.map(sl => (sl.streetName, sl.streetTypeCode, sl.streetSuffixCode)), 
+      adg.map(adg => (adg.latitude, adg.longitude))
+    )
     Compiled(q _)
   }
+      
+  // 1 to 0..1 handled above in qAddressDetail, 1 to 0..n handled below 
   
-  val qLevelName = {
-    def q(code: Rep[String]) = for (lta <- LevelTypeAut if lta.code === code) yield lta.name
-    Compiled(q _)
-  }
-  def levelName(code: Option[String])(implicit db: Database): Future[Option[String]] =
-    code.map(c => db.run(qLevelName(c).result).map(_.headOption)).getOrElse(Future(None))
-  
-  val qAddressSiteName = {
-    def q(addressSitePid: Rep[String]) = for (as <- AddressSite if as.addressSitePid === addressSitePid) yield as.addressSiteName
-    Compiled(q _)
-  }
-  def addressSiteName(addressSitePid: String)(implicit db: Database): Future[Option[String]] =
-    db.run(qAddressSiteName(addressSitePid).result).map(_.headOption.flatten)
-    
-  val qStreetLocality = {
-    def q(streetLocalityPid: Rep[String]) = StreetLocality.filter(_.streetLocalityPid === streetLocalityPid)
-    Compiled(q _)
-  }
-  def street(streetLocalityPid: Option[String])(implicit db: Database): Future[Option[Street]] = {
-    streetLocalityPid.map { pid => 
-      db.run(qStreetLocality(pid).result).map(seq => {
-        val sl = seq.head
-        Some(Street(sl.streetName, sl.streetTypeCode, sl.streetSuffixCode))
-      })
-    }.getOrElse(Future(None))
-  }
-    
-  val qState = {
-    def q(statePid: Rep[String]) = State.filter(_.statePid === statePid)
-    Compiled(q _)
-  }
-  def state(statePid: String)(implicit db: Database): Future[StateRow] = 
-    db.run(qState(statePid).result).map(_.head)   
-    
   val qLocalityAliasName = {
     def q(localityPid: Rep[String]) = for (la <- LocalityAlias if la.localityPid === localityPid) yield la.name
     Compiled(q _)
@@ -115,28 +97,24 @@ object Main {
     db.run(qLocalityAliasName(localityPid).result).map(_.map(name => LocalityVariant(name)))
     
   val qStreetLocalityAlias = {
-    def q(streetLocalityPid: Rep[String]) = StreetLocalityAlias.filter(_.streetLocalityPid === streetLocalityPid)
+    def q(streetLocalityPid: Rep[String]) = for (sla <- StreetLocalityAlias if sla.streetLocalityPid === streetLocalityPid) yield (sla.streetName, sla.streetTypeCode, sla.streetSuffixCode)
     Compiled(q _)
   }
-  def streetAlias(streetLocalityPid: Option[String])(implicit db: Database): Future[Seq[Street]] = {
+  def streetLocalityAlias(streetLocalityPid: Option[String])(implicit db: Database): Future[Seq[(String, Option[String], Option[String])]] = {
     streetLocalityPid.map { pid => 
-      db.run(qStreetLocalityAlias(pid).result).map(_.map(sla => Street(sla.streetName, sla.streetTypeCode, sla.streetSuffixCode)))     
+      db.run(qStreetLocalityAlias(pid).result) 
     }.getOrElse(Future(Seq.empty))
   }
-  
-  val qAddressDefaultGeocode = {
-    def q(addressDetailPid: Rep[String]) = for (adg <- AddressDefaultGeocode if adg.addressDetailPid === addressDetailPid) yield (adg.latitude, adg.longitude)
-    Compiled(q _)
-  }
-  def location(addressDetailPid: String)(implicit db: Database): Future[Option[Location]] =
-    db.run(qAddressDefaultGeocode(addressDetailPid).result).map {
-      case Seq((Some(lat), Some(lon))) => Some(Location(lat, lon))
-      case _ => None
-    }
-      
+        
   def run(c: Config) = {
     for (database <- managed(Database.forConfig("gnafDb"))) {
       implicit val db = database
+      
+      val stateMap = db.run((for (s <- State) yield s.statePid -> (s.stateAbbreviation, s.stateName)).result).map(_.toMap)
+      val flatTypeMap = db.run((for (f <- FlatTypeAut) yield f.code -> f.name).result).map(_.toMap)
+      val streetTypeMap = db.run((for (s <- StreetTypeAut) yield s.code -> s.name).result).map(_.toMap)
+      val streetSuffixMap = db.run((for (s <- StreetSuffixAut) yield s.code -> s.name).result).map(_.toMap)
+      
       
       // when I try to stream all AddressDetail rows, I don't get any rows in a reasonable time (seems to hang but CPU is busy).
       /*
@@ -170,34 +148,47 @@ object Main {
         There are 16398 LOCALITY rows.
        */
       val locDone = db.stream((for (loc <- Locality) yield (loc.localityPid, loc.localityName, loc.statePid)).result).foreach { case (localityPid, localityName, statePid) =>
-        val adStream = db.stream(qAddressDetail(localityPid).result).mapResult {
+        val state = stateMap.map(_.apply(statePid))
+        val locVariant = localityVariant(localityPid)
+        
+        val adStream = db.stream(qAddressDetail(localityPid).result).mapResult { case (
           // copied from AddressDetail.*
-          case addressDetailPid :: dateCreated :: dateLastModified :: dateRetired :: buildingName :: lotNumberPrefix :: lotNumber :: lotNumberSuffix :: 
-            flatTypeCode :: flatNumberPrefix :: flatNumber :: flatNumberSuffix :: 
-            levelTypeCode :: levelNumberPrefix :: levelNumber :: levelNumberSuffix :: 
-            numberFirstPrefix :: numberFirst :: numberFirstSuffix :: 
-            numberLastPrefix :: numberLast :: numberLastSuffix :: 
-            streetLocalityPid :: locationDescription :: localityPid :: aliasPrincipal :: postcode :: privateStreet :: legalParcelId :: confidence :: 
-            addressSitePid :: levelGeocodedCode :: propertyPid :: gnafPropertyPid :: primarySecondary :: HNil => {
-              
-            for {
-              levelName <- levelName(levelTypeCode)
-              addressSiteName <- addressSiteName(addressSitePid)
-              street <- street(streetLocalityPid)
-              state <- state(statePid)
-              localityVariant <- localityVariant(localityPid)
-              streetAlias <- streetAlias(streetLocalityPid)
-              location <- location(addressDetailPid)
-            } yield Address(
-                addressDetailPid, addressSiteName, buildingName,
-                flatTypeCode, PreNumSuf(flatNumberPrefix, flatNumber, flatNumberSuffix),
-                levelName, PreNumSuf(levelNumberPrefix, levelNumber, levelNumberSuffix), 
-                PreNumSuf(numberFirstPrefix, numberFirst, numberFirstSuffix),
-                PreNumSuf(numberLastPrefix, numberLast, numberLastSuffix),
-                street, localityName, state.stateAbbreviation, state.stateName, postcode, location, streetAlias, localityVariant)
-          }
-            
+          addressDetailPid :: dateCreated :: dateLastModified :: dateRetired :: buildingName :: lotNumberPrefix :: lotNumber :: lotNumberSuffix :: 
+          flatTypeCode :: flatNumberPrefix :: flatNumber :: flatNumberSuffix :: 
+          levelTypeCode :: levelNumberPrefix :: levelNumber :: levelNumberSuffix :: 
+          numberFirstPrefix :: numberFirst :: numberFirstSuffix :: 
+          numberLastPrefix :: numberLast :: numberLastSuffix :: 
+          streetLocalityPid :: locationDescription :: localityPid :: aliasPrincipal :: postcode :: privateStreet :: legalParcelId :: confidence :: 
+          addressSitePid :: levelGeocodedCode :: propertyPid :: gnafPropertyPid :: primarySecondary :: HNil,
+          levelTypeName,
+          addressSiteName,
+          street,
+          location
+          ) =>
+          for {
+            (stateAbbreviation, stateName) <- state
+            ftm <- flatTypeMap
+            stm <- streetTypeMap
+            ssm <- streetSuffixMap
+            locVar <- locVariant
+            sla <- streetLocalityAlias(streetLocalityPid)
+         } yield Address(
+           addressDetailPid, addressSiteName.flatten, buildingName,
+           flatTypeCode, flatTypeCode.map(ftm), PreNumSuf(flatNumberPrefix, flatNumber, flatNumberSuffix),
+           levelTypeCode, levelTypeName, PreNumSuf(levelNumberPrefix, levelNumber, levelNumberSuffix), 
+           PreNumSuf(numberFirstPrefix, numberFirst, numberFirstSuffix),
+           PreNumSuf(numberLastPrefix, numberLast, numberLastSuffix),
+           street.map(s => Street(s._1, s._2, s._2.map(stm), s._3, s._3.map(ssm))),
+           localityName, stateAbbreviation, stateName, postcode,
+           aliasPrincipal, primarySecondary,
+           location.flatMap {
+             case (Some(lat), Some(lon)) => Some(Location(lat, lon))
+             case _ => None
+           },
+           sla.map(s => Street(s._1, s._2, s._2.map(stm), s._3, s._3.map(ssm))),
+           locVar)
         }
+        
         val adDone = adStream.foreach(_.onComplete {
           case Success(a) => println(mapper.writeValueAsString(a))
           case Failure(e) => log.error("future failed", e)

@@ -1,3 +1,5 @@
+$(document).ready(init);
+
 function init() {
   // initBaseUrl();
   $('#searchForm button').on('click', search);
@@ -18,7 +20,7 @@ function search() {
   try {
     elem.empty();
     addSpinner(elem);
-    var params = searchQuery($('#query').val());
+    var params = searchQuery($('#query').val(), $('#heuristics').is(':checked'));
     $.ajax({
       type: 'POST',
       url: url,
@@ -48,10 +50,41 @@ function search() {
   }
 }
 
-function searchQuery(s) {
-  debug('searchQuery: s = ', s)
+// Address formats: although anything goes, Australian addresses often end with: Locality, State, PostCode
+// Last two should be pretty easy to find
+
+/** Find postCode as last 4 digit word with no subsequent digits.
+  * returns { str: `s with postCode removed`, postCode: 1234 ], or if postCode not found { str: s, postCode: null }.
+  */
+function extractPostcode(s) {
+  var re = /\b(\d{4})\b[^\d]*$/;
+  var idx = s.search(re);
+  return idx === -1 ? { str: s, postCode: null } : { str: s.slice(0, idx) + s.slice(idx + 4), postCode: s.slice(idx, idx + 4) };
+}
+
+/** Find last state.
+  * returns { str: `s with state removed`, state: 'ACT' ], or if state not found { str: s, state: null }.
+  */
+function extractState(s) {
+  var re = /\b(AUSTRALIAN\s+CAPITAL\s+TERRITORY|ACT|NEW\s+SOUTH\s+WALES|NSW|NORTHERN\s+TERRITORY|NT|OTHER\s+TERRITORIES|OT|QUEENSLAND|QLD|SOUTH\s+AUSTRALIA|SA|TASMANIA|TAS|VICTORIA|VIC|WESTERN\s+AUSTRALIA|WA)\b/ig;
+  var arr = null;
+  var x;
+  while (null != (x = re.exec(s))) arr = x;
+  return arr === null ? { str: s, state: null } : { str: s.slice(0, arr.index) + s.slice(arr.index + arr[0].length), state: arr[0] }
+}
+
+function searchQuery(query, heuristics) {
+//  debug('searchQuery: query = ', query, 'heuristics = ', heuristics);
+//  if (heuristics) {
+//    var reRange = /(\d+)\s*-\s*(\d+)/;
+//    var arr = reLastNumber.exec(query);
+//    if (arr != null && arr.length > 0 && arr[1].length == 4) {
+//      var postcode = arr[1];
+//    }
+//  }
+  
   return {
-    query: { match: { "_all": { query: s, fuzziness: 1, prefix_length: 2 } } },
+    query: { match: { "_all": { query: query, fuzziness: 1, prefix_length: 2 } } },
     size: 10
   };
 }

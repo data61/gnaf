@@ -4,8 +4,7 @@
   <meta charset="UTF-8">
   <title>G-NAF Search</title>
   <link rel="icon" type="image/ico" href="nicta-favicon.ico" />
-  <script type="text/javascript" src="https://code.jquery.com/jquery-2.2.1.min.js"></script>
-  <script type="text/javascript" src="index.js"></script>
+  <link href="index.css" rel="stylesheet" type="text/css">
 </head>
 <body>
   <h1>G-NAF Search</h1>
@@ -16,13 +15,14 @@
         <label for="query">query</label>
         <span class="example">e.g. 7 London Cct, ACT 2601</span>
         <textarea id="query" name="query"></textarea>
+        <div><label for="heuristics">heuristics</label><input type="checkbox" id="heuristics" name="heuristics" value="true" checked></div>
         <button type="button">Search</button>
       </form>
     </div>
     <div id="searchResult"></div>
   </div>
-  
-  <script>$(document).ready(init);</script> <!-- how can I load scripts async and do this? --> 
+  <script type="text/javascript" src="https://code.jquery.com/jquery-2.2.1.min.js"></script>
+  <script type="text/javascript" src="index.js"></script>
 </body>
 </html>
 
