@@ -21,6 +21,7 @@ function search() {
     elem.empty();
     addSpinner(elem);
     var params = searchQuery($('#query').val(), $('#heuristics').is(':checked'));
+    debug('search:', 'url', url, 'params', params, 'stringified', JSON.stringify(params));
     $.ajax({
       type: 'POST',
       url: url,
@@ -28,11 +29,11 @@ function search() {
       dataType: 'json',
       success: function(data, textStatus, jqXHR) {
         try {
-          debug('search success:', 'url', url, 'params', params, 'data', data, 'textStatus', textStatus, 'jqXHR', jqXHR);
+          debug('search success: data', data, 'textStatus', textStatus, 'jqXHR', jqXHR);
           elem.empty();
           elem.append(searchResult(data));
         } catch (e) {
-          debug('search success error: url = ', url, 'e = ', e);
+          debug('search success error: e = ', e);
           elem.empty();
           showError(elem, e.message);
         }
@@ -73,15 +74,54 @@ function extractState(s) {
   return arr === null ? { str: s, state: null } : { str: s.slice(0, arr.index) + s.slice(arr.index + arr[0].length), state: arr[0] }
 }
 
+/** Find numbers (later add number ranges like 5 - 7).
+  * returns { str: `s with numbers removed`, numbers: ['12, '14'] ], or if numbers not found { str: s, numbers: [] }.
+  */
+function extractNumbers(s) {
+ var re = /\b\d+\b/g;
+ var arr = [];
+ var x;
+ while (null != (x = re.exec(s))) arr.push({ str: x[0], idx: x.index });
+ for (var i = arr.length - 1; i >= 0; --i) {
+   var a = arr[i];
+   s = s.slice(0, a.idx) + s.slice(a.idx + a.str.length)
+ }
+ return { str: s, numbers: arr.map(a => a.str) };
+}
+
 function searchQuery(query, heuristics) {
-//  debug('searchQuery: query = ', query, 'heuristics = ', heuristics);
-//  if (heuristics) {
-//    var reRange = /(\d+)\s*-\s*(\d+)/;
-//    var arr = reLastNumber.exec(query);
-//    if (arr != null && arr.length > 0 && arr[1].length == 4) {
-//      var postcode = arr[1];
-//    }
-//  }
+  debug('searchQuery: query = ', query, 'heuristics = ', heuristics);
+  var boost1 = { boosting: {
+    positive: { term: { aliasPrincipal: 'P' } },
+    negative: { term: { primarySecondary: 'S' } },
+    negative_boost: 0.2 // penalize 'S' most
+  } };
+  var boost2 = { boosting: {
+    positive: { term: { aliasPrincipal: 'P' } },
+    negative: { term: { primarySecondary: 'P' } },
+    negative_boost: 0.2 // penalize 'P' a bit (so null is preferred)
+  } };
+  if (heuristics) {
+    var must = [ boost1, boost2 ];
+    var q2 = extractState(query);
+    if (q2.state !== null) must.push(
+      q2.state.length <= 3 ? { term: { "stateAbbreviation": q2.state } } : { match: { "stateName": { query: q2.state } } }
+    );
+    var q3 = extractPostcode(q2.str);
+    if (q3.postCode !== null) must.push( { term: { "postcode": q3.postCode } } );
+    var q4 = extractNumbers(q3.str);
+    if (q4.numbers.length > 0) must.push( {
+      multi_match: { 
+        query: q4.numbers.join(' '),
+        fields: [ 'flat.number', 'level.number', 'numberFirst.number^3', 'numberLast.number' ]
+      }
+    } );
+    if (q4.str.trim().length > 0) must.push( { match: { "_all": { query: q4.str, fuzziness: 1, prefix_length: 2 } } } );
+    return {
+      query: { bool: { should: must, minimum_should_match: 3, boost: 1.0 } },
+      size: 10
+    };
+  }
   
   return {
     query: { match: { "_all": { query: query, fuzziness: 1, prefix_length: 2 } } },

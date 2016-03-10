@@ -115,9 +115,9 @@ builds the uber-jar `target/scala-2.11/gnaf_2.11-0.1-SNAPSHOT-one-jar.jar` conta
 ## Run
 
 	$ time java -Xmx3G -jar target/scala-2.11/gnaf_2.11-0.1-SNAPSHOT-one-jar.jar > out
-	real   30m51.880s
-	user   32m38.932s
-	sys     6m43.484s
+	real   25m21.947s
+	user   29m57.056s
+	sys     6m33.596s
 	
 This writes one line of JSON to the file `out` for each GNAF `ADDRESS_DETAIL` row with CONFIDENCE > -1. Logging is written to gnaf.log.
 
@@ -242,7 +242,7 @@ We can't search on null (because its not in the index), so we'll have to:
 a) substitute some value like 'GNAF_NO_VALUE' that we can search for; or
 b) penalize S most, and P a bit, so null comes out on top using [Boosting Query](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-boosting-query.html)
 
-
+That seems to work, so can we similarly penalize non-null prefix/suffix?
 
 Add (in-memory) lookup from `flatTypeCode`: `FLAT_TYPE_AUT: CODE -> NAME`
 

@@ -1,8 +1,17 @@
 package au.com.data61.gnaf.indexer
 
-import scala.concurrent.{ Future, Await }
+import java.util.concurrent.{ ConcurrentLinkedQueue, Executors, TimeUnit }
+
+import scala.collection.JavaConversions.collectionAsScalaIterable
+import scala.concurrent.{ Await, ExecutionContext, Future }
 import scala.concurrent.duration.DurationInt
+import scala.math.BigDecimal
 import scala.util.{ Failure, Success }
+
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.module.scala.DefaultScalaModule
+import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
+
 import au.com.data61.gnaf.db.Tables._
 import au.com.data61.gnaf.util.Logging
 import resource.managed
@@ -10,14 +19,7 @@ import slick.collection.heterogeneous.HNil
 import slick.collection.heterogeneous.syntax.::
 import slick.driver.H2Driver.api._
 import slick.driver.H2Driver.backend
-import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.module.scala.DefaultScalaModule
-import slick.backend.DatabasePublisher
-import scala.concurrent.ExecutionContext
-import java.util.concurrent.Executors
-import java.util.concurrent.TimeUnit
-import scala.math.BigDecimal
+
 
 // Organize Imports deletes this, so make it easy to restore ...
 // import slick.collection.heterogeneous.syntax.::
@@ -25,11 +27,26 @@ import scala.math.BigDecimal
 object Main {
   val log = Logging.getLogger(getClass)
 
-  object MyExecutionContext {
-    private val noOfThread = Runtime.getRuntime.availableProcessors * 3
-    implicit val ioThreadPool = ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(noOfThread), e => log.error("ThreadPool", e))
-  }
-  import MyExecutionContext.ioThreadPool
+  // use a bounded blocking queue
+  // http://blog.quantifind.com/instantiations-of-scala-futures
+  // I unsuccessfully tried a small queue to limit concurrent locations and a larger queue for everything else
+  
+//  def pool(queueCapacity: Int) = {
+//    val numWorkers = sys.runtime.availableProcessors
+//    val p = new ThreadPoolExecutor(numWorkers, numWorkers, 0L, TimeUnit.SECONDS, new ArrayBlockingQueue[Runnable](queueCapacity) {
+//      override def offer(e: Runnable) = {
+//        put(e) // may block until queue has space
+//        true
+//      }
+//    } )
+//    (p, ExecutionContext.fromExecutorService(p))
+//  }
+  
+  // warning against even trying!
+  // https://github.com/alexandru/scala-best-practices/blob/master/sections/4-concurrency-parallelism.md
+  
+  // with an unbounded queue
+  implicit val pool = ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(4), e => log.error("ThreadPool", e))
 
   // using Jackson for simpler JSON than scala-pickle (which adds type info required for unpickling)
   val mapper = {
@@ -52,8 +69,8 @@ object Main {
     }
     parser.parse(args, Config()) foreach run
 
-    ioThreadPool.shutdown
-    ioThreadPool.awaitTermination(5, TimeUnit.SECONDS)
+    pool.shutdown
+    pool.awaitTermination(5, TimeUnit.SECONDS)
     log.info("thread pool terminated")
   }
 
@@ -62,12 +79,12 @@ object Main {
   case class LocalityVariant(localityName: String)
   case class Location(lat: BigDecimal, lon: BigDecimal)
   case class Address(addressDetailPid: String, addressSiteName: Option[String], buildingName: Option[String],
-    flatTypeCode: Option[String], flatTypeName: Option[String], flat: PreNumSuf,
-    levelTypeCode: Option[String], levelTypeName: Option[String], level: PreNumSuf,
-    numberFirst: PreNumSuf, numberLast: PreNumSuf,
-    street: Option[Street], localityName: String, stateAbbreviation: String, stateName: String, postcode: Option[String],
-    aliasPrincipal: Option[Char], primarySecondary: Option[Char],
-    location: Option[Location], streetVariant: Seq[Street], localityVariant: Seq[LocalityVariant])
+                     flatTypeCode: Option[String], flatTypeName: Option[String], flat: PreNumSuf,
+                     levelTypeCode: Option[String], levelTypeName: Option[String], level: PreNumSuf,
+                     numberFirst: PreNumSuf, numberLast: PreNumSuf,
+                     street: Option[Street], localityName: String, stateAbbreviation: String, stateName: String, postcode: Option[String],
+                     aliasPrincipal: Option[Char], primarySecondary: Option[Char],
+                     location: Option[Location], streetVariant: Seq[Street], localityVariant: Seq[LocalityVariant])
 
   val qAddressDetail = {
     def q(localityPid: Rep[String]) = for {
@@ -85,9 +102,7 @@ object Main {
       adg.map(adg => (adg.latitude, adg.longitude)))
     Compiled(q _)
   }
-
-  // 1 to 0..1 handled above in qAddressDetail, 1 to 0..n handled below 
-
+  
   val qLocalityAliasName = {
     def q(localityPid: Rep[String]) = for (la <- LocalityAlias if la.localityPid === localityPid) yield la.name
     Compiled(q _)
@@ -106,12 +121,10 @@ object Main {
   }
 
   def run(c: Config) = {
-    for (database <- managed(Database.forConfig("gnafDb"))) {
-      doAll()(database)
+    for (db <- managed(Database.forConfig("gnafDb"))) {
+      doAll()(db)
     }
   }
-
-  type FutStrMap = Future[Map[String, String]]
 
   /*
   When I try to stream all AddressDetail rows, I don't get any rows in a reasonable time (seems to hang but CPU is busy).
@@ -131,14 +144,16 @@ object Main {
   
   So if we set -Xmx3G  and partition by LOCALITY_PID we should be OK:
   There are 16398 LOCALITY rows and max ADDRESS_DETAILs for a LOCALITY is 95004.
-  
+  execut
   SELECT LOCALITY_PID , count(*) cnt FROM ADDRESS_DETAIL group by LOCALITY_PID order by cnt desc limit 3;
   LOCALITY_PID    CNT  
   VIC1634 95004
   NSW3749 44656
   QLD2772 34712
  */
-  
+
+  type FutStrMap = Future[Map[String, String]]
+
   def doAll()(implicit db: Database) = {
     // These code -> name mappings are all small enough to keep in memory
     val stateMap: Future[Map[String, (String, String)]] = db.run((for (s <- State) yield s.statePid -> (s.stateAbbreviation, s.stateName)).result).map(_.toMap)
@@ -146,23 +161,36 @@ object Main {
     val streetTypeMap: FutStrMap = db.run((for (s <- StreetTypeAut) yield s.code -> s.name).result).map(_.toMap)
     val streetSuffixMap: FutStrMap = db.run((for (s <- StreetSuffixAut) yield s.code -> s.name).result).map(_.toMap)
 
-    val allDone = db.stream((for (loc <- Locality) yield (loc.localityPid, loc.localityName, loc.statePid)).result).foreach {
-      case (localityPid, localityName, statePid) => doLocation(localityPid, localityName, statePid, stateMap, flatTypeMap, streetTypeMap, streetSuffixMap)
+    val futures = new ConcurrentLinkedQueue[Future[Unit]]
+    val localitiesDone = db.stream((for (loc <- Locality) yield (loc.localityPid, loc.localityName, loc.statePid)).result).foreach {
+      case (localityPid, localityName, statePid) =>
+        log info s"Running locality $localityName ..."
+        val locDone = doLocation(localityPid, localityName, statePid, stateMap, flatTypeMap, streetTypeMap, streetSuffixMap)
+        locDone.onComplete {
+          case Success(a) => log info s"locality $localityName done."
+          case Failure(e) => log.error(s"future for locality $localityName failed", e)
+        }
+        futures add locDone
+        Await.result(locDone, 2.minute) // shouldn't be needed, but localities stream is filling up the queue so 
     }
-    Await.result(allDone, 2.hour)
-    log.info("all done")
-    Thread.sleep(1000) // getting 3-5 address lines printed after "all done", so Await.result isn't quite working
+    localitiesDone.onComplete {
+      case Success(a) => log info "all localities stream complete"
+      case Failure(e) => log.error(s"future for all localities failed", e)
+    }
+    futures add localitiesDone
+    Await.result(Future.sequence(collectionAsScalaIterable(futures)), 2.hour)
+    log info "all done"
+    Thread sleep 1000 // getting 3-5 address lines printed after "all done", so Await.result isn't quite working
   }
 
   def doLocation(localityPid: String, localityName: String, statePid: String,
-    stateMap: Future[Map[String, (String, String)]],
-    flatTypeMap: FutStrMap,
-    streetTypeMap: FutStrMap,
-    streetSuffixMap: FutStrMap)(implicit db: Database) = {
+                 stateMap: Future[Map[String, (String, String)]],
+                 flatTypeMap: FutStrMap,
+                 streetTypeMap: FutStrMap,
+                 streetSuffixMap: FutStrMap)(implicit db: Database) = {
     val state = stateMap.map(_.apply(statePid))
-
     val locVariant = localityVariant(localityPid)
-
+    
     db.stream(qAddressDetail(localityPid).result).foreach {
 
       case (
@@ -198,7 +226,7 @@ object Main {
           aliasPrincipal, primarySecondary,
           location.flatMap {
             case (Some(lat), Some(lon)) => Some(Location(lat, lon))
-            case _ => None
+            case _                      => None
           },
           sla.map(s => Street(s._1, s._2, s._2.map(stm), s._3, s._3.map(ssm))),
           locVar)
