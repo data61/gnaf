@@ -70,55 +70,100 @@ function extractState(s) {
   var re = /\b(AUSTRALIAN\s+CAPITAL\s+TERRITORY|ACT|NEW\s+SOUTH\s+WALES|NSW|NORTHERN\s+TERRITORY|NT|OTHER\s+TERRITORIES|OT|QUEENSLAND|QLD|SOUTH\s+AUSTRALIA|SA|TASMANIA|TAS|VICTORIA|VIC|WESTERN\s+AUSTRALIA|WA)\b/ig;
   var arr = null;
   var x;
-  while (null != (x = re.exec(s))) arr = x;
+  while (null !== (x = re.exec(s))) arr = x;
   return arr === null ? { str: s, state: null } : { str: s.slice(0, arr.index) + s.slice(arr.index + arr[0].length), state: arr[0] }
 }
 
-/** Find numbers (later add number ranges like 5 - 7).
-  * returns { str: `s with numbers removed`, numbers: ['12, '14'] ], or if numbers not found { str: s, numbers: [] }.
-  */
-function extractNumbers(s) {
- var re = /\b\d+\b/g;
- var arr = [];
- var x;
- while (null != (x = re.exec(s))) arr.push({ str: x[0], idx: x.index });
- for (var i = arr.length - 1; i >= 0; --i) {
-   var a = arr[i];
-   s = s.slice(0, a.idx) + s.slice(a.idx + a.str.length)
- }
- return { str: s, numbers: arr.map(a => a.str) };
+/**
+ * Examples in the wild:
+ */
+var d = [
+  'UNIT 1215 NO 700-710',
+  'Unit 7 35 - 39',
+  'UNIT 4-6 / 246',
+  '26-30',
+  '16-18/424-426',
+  '18/424-426',
+  '33 EDWARD ST-UNIT6',
+  'FLAT 18C  131 CURRUMBURRA ROAD'
+  ];
+
+/** Find flat/unit number.
+ *  returns { str: `s with flat/unit number removed`, flatNumberFirst: num, flatNumberLast: num }
+ */
+function extractFlat(s) {
+  var re1 = /\b(?:UNIT|FLAT)\s*(\d+)(?:-(\d+))?/i; // 'UNIT 5' or 'UNIT 5 - 7'
+  var re2 = /(\d+)(?:-(\d+))?\s*\//;               // '5 /' or '5 - 7 /'
+  var x = re1.exec(s);
+  if (x === null) x = re2.exec(s);
+  return x === null ? { str: s, flatNumberFirst: null, flatNumberLast: null }
+    : { str: s.slice(0, x.index) + s.slice(x.index + x[0].length), flatNumberFirst: x[1], flatNumberLast: x[2] === undefined ? null : x[2] };
 }
 
+/** Find numbers and ranges like 5 - 7).
+  * returns { str: `s with numbers removed`, numbers: [ { first: 5, last: 7 }, ... ] }, or if numbers not found { str: s, numbers: [] }.
+  */
+function extractNumbers(s) {
+ var re = /(\d+)(?:-(\d+))?/g;
+ var arr = [];
+ var x;
+ while (null !== (x = re.exec(s))) arr.push( { idx: x.index, len: x[0].length, first: x[1], last: x[2] === undefined ? null : x[2] } );
+ for (var i = arr.length - 1; i >= 0; --i) {
+   var a = arr[i];
+   s = s.slice(0, a.idx) + s.slice(a.idx + a.len);
+ }
+ return { str: s, numbers: arr.map(a => ({ first: a.first, last: a.last }) ) };
+}
+
+/**
+ * Returns query body for Elasticsearch.
+ * @param query string purporting to be an address
+ * @param heuristics whether to attempt to extract state, postcode and other numbers from the query for a more targeted search
+ */
 function searchQuery(query, heuristics) {
   debug('searchQuery: query = ', query, 'heuristics = ', heuristics);
-  var boost1 = { boosting: {
-    positive: { term: { aliasPrincipal: 'P' } },
-    negative: { term: { primarySecondary: 'S' } },
-    negative_boost: 0.2 // penalize 'S' most
-  } };
-  var boost2 = { boosting: {
-    positive: { term: { aliasPrincipal: 'P' } },
-    negative: { term: { primarySecondary: 'P' } },
-    negative_boost: 0.2 // penalize 'P' a bit (so null is preferred)
-  } };
   if (heuristics) {
-    var must = [ boost1, boost2 ];
+    var terms = [ {
+      bool: { should: [
+        { term: { "primarySecondary": "0" }},
+        { term: { "primarySecondary": "P" }}, 
+        { term: { "aliasPrincipal": "P" }}
+      ] }
+    } ];
     var q2 = extractState(query);
-    if (q2.state !== null) must.push(
+    if (q2.state !== null) terms.push(
       q2.state.length <= 3 ? { term: { "stateAbbreviation": q2.state } } : { match: { "stateName": { query: q2.state } } }
     );
     var q3 = extractPostcode(q2.str);
-    if (q3.postCode !== null) must.push( { term: { "postcode": q3.postCode } } );
-    var q4 = extractNumbers(q3.str);
-    if (q4.numbers.length > 0) must.push( {
-      multi_match: { 
-        query: q4.numbers.join(' '),
-        fields: [ 'flat.number', 'level.number', 'numberFirst.number^3', 'numberLast.number' ]
-      }
-    } );
-    if (q4.str.trim().length > 0) must.push( { match: { "_all": { query: q4.str, fuzziness: 1, prefix_length: 2 } } } );
+    if (q3.postCode !== null) terms.push( { term: { "postcode": q3.postCode } } );
+    var q4 = extractFlat(q3.str);
+    if (q4.flatNumberFirst !== null) terms.push( { term: { "flat.number": q4.flatNumberFirst } } ); // ignore flatNumberLast - not in GNAF
+    var q4 = extractNumbers(q4.str);
+    if (q4.numbers.length > 0) {
+      var idx = q4.numbers.findIndex(a => a.last !== null);
+      if (idx === -1) {
+        
+      } else {
+        var num = q4.numbers[idx];
+        q4.numbers.splice(idx, 1);
+        terms.push({ term: { "numberFirst.number": num.first }}); // TODO: check first < last
+        terms.push({ term: { "numberLast.number": num.last }});
+        terms.push( {
+          multi_match: { 
+            query: q4.numbers.map(a => a.first).join(' '),
+            fields: [ 'level.number', 'numberFirst.number^3', 'numberLast.number' ]
+          }
+        } );      }
+      terms.push( {
+        multi_match: { 
+          query: q4.numbers.join(' '),
+          fields: [ 'level.number', 'numberFirst.number^3', 'numberLast.number' ]
+        }
+      } );
+    }
+    if (q4.str.trim().length > 0) terms.push( { match: { "_all": { query: q4.str, fuzziness: 1, prefix_length: 2 } } } );
     return {
-      query: { bool: { should: must, minimum_should_match: 3, boost: 1.0 } },
+      query: { bool: { should: terms, minimum_should_match: 3 } },
       size: 10
     };
   }

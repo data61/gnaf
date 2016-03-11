@@ -199,74 +199,44 @@ Add some pointers to H2 doco showing how to start a H2 with a Postgres protocol 
 
 Don't use fuzzy for numbers!
 
-ADDRESS_DETAIL has ALIAS_PRINCIPAL and PRIMARY_SECONDARY
-
-SELECT * FROM PS_JOIN_TYPE_AUT;
-CODE  	NAME  	DESCRIPTION  
-1	AUTO	AUTOMATICALLY MATCHED PRIMARY AND SECONDARY, BOTH PARENT AND CHILD HAVE THE SAME ROOT ADDRESS
-2	MANUAL	MANUALLY GENERATED LINK, MAY OR MAY NOT HAVE THE SAME ROOT ADDRESS
-
-SELECT * FROM ADDRESS_DETAIL where ADDRESS_SITE_PID = '711272121';
-ADDRESS_DETAIL_PID  	DATE_CREATED  	DATE_LAST_MODIFIED  	DATE_RETIRED  	BUILDING_NAME  	LOT_NUMBER_PREFIX  	LOT_NUMBER  	LOT_NUMBER_SUFFIX  	FLAT_TYPE_CODE  	FLAT_NUMBER_PREFIX  	FLAT_NUMBER  	FLAT_NUMBER_SUFFIX  	LEVEL_TYPE_CODE  	LEVEL_NUMBER_PREFIX  	LEVEL_NUMBER  	LEVEL_NUMBER_SUFFIX  	NUMBER_FIRST_PREFIX  	NUMBER_FIRST  	NUMBER_FIRST_SUFFIX  	NUMBER_LAST_PREFIX  	NUMBER_LAST  	NUMBER_LAST_SUFFIX  	STREET_LOCALITY_PID  	LOCATION_DESCRIPTION  	LOCALITY_PID  	ALIAS_PRINCIPAL  	POSTCODE  	PRIVATE_STREET  	LEGAL_PARCEL_ID  	CONFIDENCE  	ADDRESS_SITE_PID  	LEVEL_GEOCODED_CODE  	PROPERTY_PID  	GNAF_PROPERTY_PID  	PRIMARY_SECONDARY  
-GAACT715707856	2004-07-14	2015-11-13	null	null	null	null	null	null	null	null	null	null	null	null	null	null	15	null	null	21	null	ACT38	null	ACT101	A	2602	null	CANB/LYNE/40/31/	0	711272121	7	null	null	null
-
-SELECT * FROM ADDRESS_DETAIL where NUMBER_FIRST = 15 and STREET_LOCALITY_PID ='ACT38';
-ADDRESS_DETAIL_PID  	DATE_CREATED  	DATE_LAST_MODIFIED  	DATE_RETIRED  	BUILDING_NAME  	LOT_NUMBER_PREFIX  	LOT_NUMBER  	LOT_NUMBER_SUFFIX  	FLAT_TYPE_CODE  	FLAT_NUMBER_PREFIX  	FLAT_NUMBER  	FLAT_NUMBER_SUFFIX  	LEVEL_TYPE_CODE  	LEVEL_NUMBER_PREFIX  	LEVEL_NUMBER  	LEVEL_NUMBER_SUFFIX  	NUMBER_FIRST_PREFIX  	NUMBER_FIRST  	NUMBER_FIRST_SUFFIX  	NUMBER_LAST_PREFIX  	NUMBER_LAST  	NUMBER_LAST_SUFFIX  	STREET_LOCALITY_PID  	LOCATION_DESCRIPTION  	LOCALITY_PID  	ALIAS_PRINCIPAL  	POSTCODE  	PRIVATE_STREET  	LEGAL_PARCEL_ID  	CONFIDENCE  	ADDRESS_SITE_PID  	LEVEL_GEOCODED_CODE  	PROPERTY_PID  	GNAF_PROPERTY_PID  	PRIMARY_SECONDARY  
-GAACT715707856	2004-07-14	2015-11-13	null	null	null	null	null	null	null	null	null	null	null	null	null	null	15	null	null	21	null	ACT38	null	ACT101	A	2602	null	CANB/LYNE/40/31/	0	711272121	7	null	null	null
-GAACT716910847	2006-04-21	2015-11-13	null	null	null	null	null	null	null	null	null	null	null	null	null	null	15	B	null	null	null	ACT38	null	ACT101	P	2602	null	null	-1	712335825	7	null	null	null
-GAACT714963691	2012-10-25	2015-11-13	null	null	null	null	null	null	null	null	null	null	null	null	null	null	15	null	null	null	null	ACT38	null	ACT101	P	2602	null	CANB/LYNE/40/31/	1	710563964	7	null	null	P
-GAACT718669833	2014-04-21	2015-11-13	null	null	null	null	null	UNIT	null	1	null	null	null	null	null	null	15	null	null	null	null	ACT38	null	ACT101	P	2602	null	null	0	714053980	7	null	null	S
-GAACT718669835	2014-04-21	2015-11-13	null	null	null	null	null	UNIT	null	3	null	null	null	null	null	null	15	null	null	null	null	ACT38	null	ACT101	P	2602	null	null	0	714053982	7	null	null	S
-GAACT718669836	2014-04-21	2015-11-13	null	null	null	null	null	UNIT	null	4	null	null	null	null	null	null	15	null	null	null	null	ACT38	null	ACT101	P	2602	null	null	0	714053983	7	null	null	S
-GAACT718669834	2014-04-21	2015-11-13	null	null	null	null	null	UNIT	null	2	null	null	null	null	null	null	15	null	null	null	null	ACT38	null	ACT101	P	2602	null	null	0	714053981	7	null	null	S
-So:
-Principle 15B (first/firstSuffix) has Alias 15-21 (first-last) (both with Primary_Secondary = null)
-Then there is another set of Principals:
-Plain 15 (first) with Primary_Secondary = P
-And UNIT 1,2,3,4; 15 (first) with Primary_Secondary = S
-
-adding query term: ALIAS_PRINCIPAL = P will prefer the 15B and the plain 15 to 15-21 (ALIAS_PRINCIPAL is nullable but has no null values)
-adding query term: Primary_Secondary = P will prefer plain 15 with no UNITs (this is the block of units to unit relationship)
-if we want the 15B to come out on top we need to prefer Primary_Secondary = null over P
-Ranking:
-- First on Primary_Secondary: null, P, S
-- Second on ALIAS_PRINCIPAL = P, S
-
-SELECT PRIMARY_SECONDARY, count(*)  FROM ADDRESS_DETAIL group by PRIMARY_SECONDARY;
-PRIMARY_SECONDARY  	COUNT(*)  
-P	494939
-S	3922824
-null	9708280
+ADDRESS_DETAIL has:
+- ALIAS_PRINCIPAL = A|P nullable but has no null values, mostly P
+- PRIMARY_SECONDARY = null|P|S this is the flat to block of flats relationship, mostly null
+So we want to rank on PRIMARY_SECONDARY = null, then P and lastly S, and then on ALIAS_PRINCIPAL P first then A
 
 We can't search on null (because its not in the index), so we'll have to:
-a) substitute some value like 'GNAF_NO_VALUE' that we can search for; or
-b) penalize S most, and P a bit, so null comes out on top using [Boosting Query](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-boosting-query.html)
+1. substitute some value like 'D61_NULL' for strings, or '0' for chars that we can search for; or
+2. penalize S most, and P a bit, so null comes out on top using [Boosting Query](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-boosting-query.html)
 
-That seems to work, so can we similarly penalize non-null prefix/suffix?
+1 seems to work ok, but no fixed penalty is likely to be generally appropriate,
+so trying 2 with added query terms: PRIMARY_SECONDARY = '0' || 'P', ALIAS_PRINCIPAL = P.
 
-Add (in-memory) lookup from `flatTypeCode`: `FLAT_TYPE_AUT: CODE -> NAME`
+non null numberLast: 1,121,843 out of 14,126,043
 
-    UNIT -> UNIT
-    BTSD -> BOATSHED
-Values are all only one word so the mapping type `"index" : "not_analyzed"` would suffice, but it might be safer to use `"analyzer" : "whitespace"`.
+Examples in the wild:
+- UNIT 1215 NO 700-710
+- Unit 7 35 - 39
+- UNIT 4-6 / 246
+- 26-30
+- 18/424-426
+- 33 EDWARD ST-UNIT6
+- FLAT 18C  131 CURRUMBURRA ROAD
 
-Likewise lookup from `streetSuffixCode`: `STREET_SUFFIX_AUT: CODE -> NAME`
+Prefix and suffix fields:
+- flatNumber prefix length 2, 14,099,611 nulls; suffix length 2, 4,017,287 nulls, both with lots of letter and number combinations
+- level prefix length 2, 14,123,096 nulls; suffix length 2, 14,125,593 nulls
+- numberFirst prefix length 3, 14,122,945 nulls; suffix length 2, 13,493,586 nulls
+- numberLast 3/2
 
-    DE -> DEVIATION
-    EX -> EXTENSION
-    NE -> NORTH EAST
- Some values have spaces so `"analyzer" : "whitespace"` is required.
- 
+Doesn't seem worth much trouble except maybe for flatNumberSuffix given the paucity of non-null values.
+
 The default Elasticsearch [search_type](https://www.elastic.co/guide/en/elasticsearch/reference/current/search-request-search-type.html) is `query_then_fetch`
 which scores hits on the term frequencies of each shard independently, rather than the joint term frequencies used by the slower `dfs_query_then_fetch`.
+This is probably fine for our purposes, but we could compare.
 
 	curl -XGET 'http://localhost:9200/gnaf'
 	
 shows that my current index has 5 shards (and 1 replica). Try changing the search type on queries that appear to have poor ranking.
-
-How can we penalize matches with fields set that are not in the query like UNIT 37?
-
-Try `"multi_match` with [cross_fields](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-multi-match-query.html#type-cross-fields).
  
 Maybe:
 - initially search the essential fields: street, locality, postcode, state
