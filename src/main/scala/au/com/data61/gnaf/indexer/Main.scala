@@ -205,6 +205,7 @@ object Main {
   }
   implicit def d61NullStr(s: Option[String]) = new D61Null(s, "D61_NULL")
   implicit def d61NullChr(s: Option[Char]) = new D61Null(s, '0')
+  implicit def d61NullInt(s: Option[Int]) = new D61Null(s, -1)
   
   def doLocality(
     localityPid: String, localityName: String, statePid: String,
@@ -242,12 +243,12 @@ object Main {
             sla <- streetLocalityAlias(streetLocalityPid)
           } yield Address(
             addressDetailPid, addressSiteName.flatten, buildingName,
-            flatTypeCode.d61null, flatTypeCode.map(ftm).d61null, PreNumSuf(flatNumberPrefix.d61null, flatNumber, flatNumberSuffix.d61null),
-            levelTypeCode.d61null, levelTypeName.d61null, PreNumSuf(levelNumberPrefix.d61null, levelNumber, levelNumberSuffix.d61null),
-            PreNumSuf(numberFirstPrefix.d61null, numberFirst, numberFirstSuffix.d61null),
-            PreNumSuf(numberLastPrefix.d61null, numberLast, numberLastSuffix.d61null),
+            flatTypeCode.d61null, flatTypeCode.map(ftm).d61null, PreNumSuf(flatNumberPrefix.d61null, flatNumber.d61null, flatNumberSuffix.d61null),
+            levelTypeCode.d61null, levelTypeName.d61null, PreNumSuf(levelNumberPrefix.d61null, levelNumber.d61null, levelNumberSuffix.d61null),
+            PreNumSuf(numberFirstPrefix.d61null, numberFirst.d61null, numberFirstSuffix.d61null),
+            PreNumSuf(numberLastPrefix.d61null, numberLast.d61null, numberLastSuffix.d61null),
             street.map(s => Street(s._1, s._2.d61null, s._2.map(stm).d61null, s._3.d61null, s._3.map(ssm).d61null)),
-            localityName, stateAbbreviation, stateName, postcode,
+            localityName, stateAbbreviation, stateName, postcode.d61null,
             aliasPrincipal.d61null, primarySecondary.d61null,
             location.flatMap {
               case (Some(lat), Some(lon)) => Some(Location(lat, lon))

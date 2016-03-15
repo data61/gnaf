@@ -1,45 +1,62 @@
 { "mappings" : { "gnaf" : { "properties" : {
+  // comments not normally allowed in JSON, but this doesn't appear to break Elasticsearch
+  
+  // composite for string fields that are mostly null (mapped to "D61_NULL" in the index to make them searchable)
+  "d61NullStr" : { "type" : "string", "analyzer" : "whitespace" },
+  
+  // composite for numeric fields that are mostly null (mapped to -1 in the index to make them searchable)
+  "d61NullInt" : { "type" : "string", "analyzer" : "whitespace" },
+  
   "addressDetailPid" : { "type" : "string", "index" : "not_analyzed" },
   "addressSiteName" : { "type" : "string", "analyzer" : "whitespace" },
   "buildingName" : { "type" : "string", "analyzer" : "whitespace" },
-  "flatTypeCode" : { "type" : "string", "index" : "not_analyzed" },
+  
+  "flatTypeCode" : { "type" : "string", "index" : "not_analyzed", "copy_to": "d61NullStr" },
   "flatTypeName" : { "type" : "string", "analyzer" : "whitespace" },
   "flat" : { "type": "object", "properties": {
-    "prefix" : { "type" : "string", "index" : "not_analyzed" },
-    "number" : { "type" : "long" },
-    "suffix" : { "type" : "string", "index" : "not_analyzed" }
+    "prefix" : { "type" : "string", "index" : "not_analyzed", "copy_to": "d61NullStr" },
+    "number" : { "type" : "integer", "copy_to": "d61NullInt" },
+    "suffix" : { "type" : "string", "index" : "not_analyzed", "copy_to": "d61NullStr" }
   } },
-  "levelTypeCode" : { "type" : "string", "index" : "not_analyzed" },
+  
+  "levelTypeCode" : { "type" : "string", "index" : "not_analyzed", "copy_to": "d61NullStr" },
   "levelTypeName" : { "type" : "string", "analyzer" : "whitespace" }, // UPPER GROUND FLOOR
   "level" : { "type": "object", "properties": {
-    "prefix" : { "type" : "string", "index" : "not_analyzed" },
-    "number" : { "type" : "long" },
-    "suffix" : { "type" : "string", "index" : "not_analyzed" }
+    "prefix" : { "type" : "string", "index" : "not_analyzed", "copy_to": "d61NullStr" },
+    "number" : { "type" : "integer", "copy_to": "d61NullInt" },
+    "suffix" : { "type" : "string", "index" : "not_analyzed", "copy_to": "d61NullStr" }
   } },
-  "numberFirst" : { "type": "object", "properties": {
-    "prefix" : { "type" : "string", "index" : "not_analyzed" },
-    "number" : { "type" : "long" },
-    "suffix" : { "type" : "string", "index" : "not_analyzed" }
+  
+   "numberFirst" : { "type": "object", "properties": {
+    "prefix" : { "type" : "string", "index" : "not_analyzed", "copy_to": "d61NullStr" },
+    "number" : { "type" : "integer" },
+    "suffix" : { "type" : "string", "index" : "not_analyzed", "copy_to": "d61NullStr" }
   } },
+  
   "numberLast" : { "type": "object", "properties": {
-    "prefix" : { "type" : "string", "index" : "not_analyzed" },
-    "number" : { "type" : "long" },
-    "suffix" : { "type" : "string", "index" : "not_analyzed" }
+    "prefix" : { "type" : "string", "index" : "not_analyzed", "copy_to": "d61NullStr" },
+    "number" : { "type" : "integer", "copy_to": "d61NullInt" },
+    "suffix" : { "type" : "string", "index" : "not_analyzed", "copy_to": "d61NullStr" }
   } },
+  
   "street" : { "type": "object", "properties": {
     "name" : { "type": "string", "analyzer" : "whitespace" },
     "typeCode" : { "type": "string", "index" : "not_analyzed" },
     "typeName" : { "type": "string", "analyzer" : "whitespace" },
-    "suffixCode": {"type": "string", "index" : "not_analyzed" },
+    "suffixCode": {"type": "string", "index" : "not_analyzed", "copy_to": "d61NullStr" },
     "suffixName" : { "type": "string", "analyzer" : "whitespace" }
   } },
+  
   "localityName": { "type": "string", "analyzer" : "whitespace" },
   "stateAbbreviation": { "type": "string", "index" : "not_analyzed" },
   "stateName": { "type" : "string", "analyzer" : "whitespace" },
-  "postcode": { "type" : "long" },
+  "postcode": { "type": "string", "index" : "not_analyzed" }, // string in GNAF, not a bad choice as not used as a number
+  
   "aliasPrincipal": { "type": "string", "index" : "not_analyzed" }, 
   "primarySecondary": { "type": "string", "index" : "not_analyzed" },
+  
   "location": { "type": "geo_point" },
+  
   "streetVariant": { "type": "nested", "properties": {
     "name" : { "type": "string", "analyzer" : "whitespace" },
     "typeCode" : { "type": "string", "index" : "not_analyzed" },
@@ -47,6 +64,7 @@
     "suffixCode": {"type": "string", "index" : "not_analyzed" },
     "suffixName" : { "type": "string", "analyzer" : "whitespace" }
   } },
+  
   "localityVariant": { "type": "nested", "properties": {
     "localityName": { "type": "string", "analyzer" : "whitespace" }
   } }
