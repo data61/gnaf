@@ -1,5 +1,6 @@
 # gnaf
 Components of this project:
+
 1. A script loads the [G-NAF data set](http://www.data.gov.au/dataset/geocoded-national-address-file-g-naf) into a relational database.
 2. A [Scala](http://scala-lang.org/) program queries the database to produce JSON to load into a search engine.
 3. A script runs the Scala program, transforms the output to suit [Elasticsearch](https://www.elastic.co/)'s 'bulk' API and loads the data.
@@ -7,7 +8,7 @@ Components of this project:
 
 ## Install Tools
 
-To run the code install:
+To run the Scala code install:
 - a JRE e.g. from openjdk-7 or 8;
 - the build tool [sbt](http://www.scala-sbt.org/).
 
@@ -25,7 +26,7 @@ See also https://github.com/minus34/gnaf-loader as an alternative (which makes s
 ### Download, Unpack & Generate SQL
 Running:
 
-        src/main/script/createGnafDb.sh
+    src/main/script/createGnafDb.sh
 
 - downloads the G-NAF zip file to `data/` (if not found);
 - unzips to `data/unzipped/` (if not found); and
@@ -34,7 +35,7 @@ Running:
 ### Start Database Engine & SQL Client
 The [H2](http://www.h2database.com/) database engine is started with:
 
-        java -jar ~/.ivy2/cache/com.h2database/h2/jars/h2-1.4.191.jar
+    java -jar ~/.ivy2/cache/com.h2database/h2/jars/h2-1.4.191.jar
 
 (the H2 jar file was put here by `sbt update-classifiers`, alternatively download the jar from the H2 web site and run it as above).
 This:
@@ -79,15 +80,15 @@ but at least this is fast:
 
 This shows some dodgy STREET_LOCALITY_ALIAS records:
 
-        SELECT sl.STREET_NAME, sl.STREET_TYPE_CODE, sl.STREET_SUFFIX_CODE,
-          sla.STREET_NAME, sla.STREET_TYPE_CODE , sla.STREET_SUFFIX_CODE 
-        FROM STREET_LOCALITY_ALIAS sla, STREET_LOCALITY sl
-        WHERE sla.STREET_LOCALITY_PID = sl.STREET_LOCALITY_PID
-        AND sl.STREET_NAME = 'REED'
+    SELECT sl.STREET_NAME, sl.STREET_TYPE_CODE, sl.STREET_SUFFIX_CODE,
+      sla.STREET_NAME, sla.STREET_TYPE_CODE , sla.STREET_SUFFIX_CODE 
+    FROM STREET_LOCALITY_ALIAS sla, STREET_LOCALITY sl
+    WHERE sla.STREET_LOCALITY_PID = sl.STREET_LOCALITY_PID
+    AND sl.STREET_NAME = 'REED'
         
-        STREET_NAME     STREET_TYPE_CODE    STREET_SUFFIX_CODE      STREET_NAME     STREET_TYPE_CODE    STREET_SUFFIX_CODE  
-        REED            STREET              S                       REED STREET     SOUTH               null
-        REED            STREET              N                       REED STREET     NORTH               null
+    STREET_NAME     STREET_TYPE_CODE    STREET_SUFFIX_CODE      STREET_NAME     STREET_TYPE_CODE    STREET_SUFFIX_CODE  
+    REED            STREET              S                       REED STREET     SOUTH               null
+    REED            STREET              N                       REED STREET     NORTH               null
 
 ## Generate Slick bindings
 [Slick](http://slick.typesafe.com/) provides "Functional Relational Mapping for Scala".
@@ -122,32 +123,56 @@ builds and runs the Scala program, transforms the output to suit Elasticsearch's
 
 Search for an exact match:
 
-        $ curl -XPOST 'localhost:9200/gnaf/_search?pretty' -d '
-        {
-          "query": { "match": { "street.name": "CURRONG" } },
-          "size": 5
-        }' 
+    $ curl -XPOST 'localhost:9200/gnaf/_search?pretty' -d '
+    {
+      "query": { "match": { "street.name": "CURRONG" } },
+      "size": 5
+    }' 
 
 Search for a fuzzy match against all fields:
         
-        $ curl -XPOST 'localhost:9200/gnaf/_search?pretty' -d '
-        {
-          "query": { "match": { "_all": { "query": "CURRONGT",  "fuzziness": 1, "prefix_length": 2 } } },
-          "size": 5
-        }' 
+    $ curl -XPOST 'localhost:9200/gnaf/_search?pretty' -d '
+    {
+      "query": { "match": { "_all": { "query": "CURRONGT",  "fuzziness": 1, "prefix_length": 2 } } },
+      "size": 5
+    }' 
 
-## Webapp
-The web page `src/main/webapp/index.html` provides a user interface to query the Elasticsearch index.
+## Client Apps
 
 ### Elasticsearch CORS Support
 
-Access by the webapp requires [CORS](https://en.wikipedia.org/wiki/Cross-origin_resource_sharing) to be configured in Elasticsearch.
+Access by the client apps requires [CORS](https://en.wikipedia.org/wiki/Cross-origin_resource_sharing) to be configured in Elasticsearch.
 Append to `config/elasticsearch.yml`:
 
-        http.cors.enabled: true
-        http.cors.allow-origin: "*"
+    http.cors.enabled: true
+    http.cors.allow-origin: "*"
         
 then restart Elasticsearch.
+
+### Web Page
+The web page `src/main/webapp/index.html` provides a user interface to query the Elasticsearch index.
+
+### Command Line
+The [node.js](https://nodejs.org/) command line client require node's `request` module, which is installed with:
+
+    npm install request
+    
+Run the [node.js](https://nodejs.org/) command line client with:
+
+    node src/main/webapp/main.js
+
+It reads lines from stdin purporting to be an address and writes the top Elasticsearch match as JSON to stdout.
+
+Example usage:
+
+This didn't work:
+
+    zcat ../dibpMail/data.tsv.gz | cut -f29-30,32,33  | node src/main/webapp/main.js > dibpMailAddresses
+    Error { [Error: connect EADDRNOTAVAIL 127.0.0.1:9200 - Local (127.0.0.1:0)]
+    
+but this works OK:
+
+    zcat ../dibpMail/data.tsv.gz | cut -f29-30,32,33  | while read a; do echo $a | node src/main/webapp/main.js; done > dibpMailAddresses
 
 ## Notes on the H2 database
 
