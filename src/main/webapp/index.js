@@ -52,7 +52,21 @@ function search() {
 }
 
 // Address formats: although anything goes, Australian addresses often end with: Locality, State, PostCode.
-// Last two should be pretty easy to find
+// Last two should be pretty easy to find.
+
+/* This data was used to test the extract*() functions with node.js:
+var d = [
+  'UNIT 1215 NO 700-710',
+  'Unit 7 35 - 39',
+  'UNIT 4-6 / 246',
+  '26-30',
+  '16-18/424-426',
+  '18/424-426',
+  '33 EDWARD ST-UNIT6',
+  'FLAT 18C  131 CURRUMBURRA ROAD'
+  ];
+ */
+
 
 /**
  * Find postCode as last 4 digit word with no subsequent digits. returns { str: `s with postCode removed`, postCode: 1234 ], or if postCode not found { str: s, postCode: null }.
@@ -73,20 +87,6 @@ function extractState(s) {
   while (null !== (x = re.exec(s))) arr = x;
   return arr === null ? { str: s, state: null } : { str: s.slice(0, arr.index) + s.slice(arr.index + arr[0].length), state: arr[0] }
 }
-
-/**
- * Examples in the wild:
- */
-var d = [
-  'UNIT 1215 NO 700-710',
-  'Unit 7 35 - 39',
-  'UNIT 4-6 / 246',
-  '26-30',
-  '16-18/424-426',
-  '18/424-426',
-  '33 EDWARD ST-UNIT6',
-  'FLAT 18C  131 CURRUMBURRA ROAD'
-  ];
 
 /**
  * Find flat/unit number. returns { str: `s with flat/unit number removed`, flatNumberFirst: num, flatNumberLast: num }
@@ -124,41 +124,41 @@ function extractNumbers(s) {
  *                whether to attempt to extract state, postcode and other numbers from the query for a more targeted search
  */
 function searchQuery(query, heuristics) {
+  query = query.toUpperCase();
   debug('searchQuery: query = ', query, 'heuristics = ', heuristics);
   var terms =
     [
      { constant_score: { 
        filter: { term: { 'primarySecondary': '0' } }, 
-       boost: 1.0 
+       boost: 0.8 
      }}, // no units/flats at this street number
      { constant_score: { 
        filter: { term: { 'primarySecondary': 'P' } }, 
-       boost: 0.8 
+       boost: 1.0 
      }}, // primary address for whole block of units/flats, else 'S'
      // for a unit/flat
      { constant_score: { 
        filter: { term: { 'aliasPrincipal':   'P' } }, 
        boost: 1.0 
      }}, // principal address preferred over an alias
-//     { match: { '_all': 'D61_NULL' }}, // unfortunately this doesn't rank 'simplest' (least spurious fields) first
-     // after re-indexing, try "d61NullStr"
-     { multi_match: { 
-       query: 'D61_NULL',
-       type:  'most_fields',
-       fields: [ 
-         'levelTypeCode', 'level.prefix', 'level.suffix', 
-         'flatTypeCode', 'flat.prefix', 'flat.suffix',
-         'numberFirst.prefix', 'numberFirst.suffix',
-         'numberLast.prefix', 'numberLast.suffix',
-         'street.suffixCode'
-       ] 
-     } }, // null replacement value preferred over any value we did not search for - 'simplest' first, works well but slow!
-     { multi_match: { 
-       query: '-1', 
-       type:  'most_fields',
-       fields: [ 'level.number', 'flat.number', 'numberLast.number' ]
-     } } // null replacement value preferred over any value we did not search for - 'simplest' first
-     // after re-indexing, try "d61NullInt"
+     { match: { 'd61NullStr': 'D61_NULL' }}, // faster than alternative below, seems to work OK
+//     { multi_match: { 
+//       query: 'D61_NULL',
+//       type:  'most_fields',
+//       fields: [ 
+//         'levelTypeCode', 'level.prefix', 'level.suffix', 
+//         'flatTypeCode', 'flat.prefix', 'flat.suffix',
+//         'numberFirst.prefix', 'numberFirst.suffix',
+//         'numberLast.prefix', 'numberLast.suffix',
+//         'street.suffixCode'
+//       ] 
+//     } }, // null replacement value preferred over any value we did not search for - 'simplest' first, works well but slow!
+     { match: { 'd61NullInt': '-1' }} // faster than alternative below, seems to work OK
+//     { multi_match: { 
+//       query: '-1', 
+//       type:  'most_fields',
+//       fields: [ 'level.number', 'flat.number', 'numberLast.number' ]
+//     } } // null replacement value preferred over any value we did not search for - 'simplest' first
    ];
   if (heuristics) {
     var q2 = extractState(query);
@@ -175,26 +175,25 @@ function searchQuery(query, heuristics) {
       if (idx === -1) {
         var num = q5.numbers[q5.numbers.length - 1];
         terms.push({ term: { 'numberFirst.number': num.first }});
-        // finally search for all numbers (including what we think is
-        // 'numberFirst.number' above) in all numeric fields
+        // finally search for all numbers (including what we think is 'numberFirst.number' above) in all numeric fields
         terms.push( { multi_match: {
           query: q5.numbers.map(a => a.first).join(' '), 
-          fields: [ 'level.number^0.1', 'flat.number^0.2', 'numberFirst.number^0.5', 'numberLast.number^0.2', 'postcode' ]
+          fields: [ 'level.number^0.2', 'flat.number^0.4', 'numberFirst.number^0.5', 'numberLast.number^0.3', 'postcode^0.5' ]
         } } ); 
       } else {
         var num = q5.numbers[idx];
         terms.push({ term: { 'numberFirst.number': num.first }});
         terms.push({ term: { 'numberLast.number': num.last }});
-        // finally search for all numbers (including what we think is
-        // 'numberFirst.number' & 'numberLast.number' above) in all numeric
-        // fields
+        // finally search for all numbers (including what we think is 'numberFirst.number' & 'numberLast.number' above) in all numeric fields
         terms.push( { multi_match: { 
           query: q5.numbers.map(a => a.first).push(num.last).join(' '), 
-          fields: [ 'level.number^0.1', 'flat.number^0.2', 'numberFirst.number^0.5', 'numberLast.number^0.2', 'postcode' ]
+          fields: [ 'level.number^0.2', 'flat.number^0.4', 'numberFirst.number^0.5', 'numberLast.number^0.3', 'postcode^0.5' ]
         } } ); 
       }
     }
-    if (q5.str.trim().length > 0) terms.push( { match: { '_all': { query: q5.str, fuzziness: 1, prefix_length: 2 } } } );
+    if (q5.str.trim().length > 0) terms.push( { multi_match: { 
+      query: q5.str, fuzziness: 1, prefix_length: 2, fields: [ '_all^0.5', 'street.name^2.0']
+    } } );
     
   } else {
     terms.push( { match: { '_all': { query: query, fuzziness: 1, prefix_length: 2 } } } );
@@ -217,33 +216,103 @@ function searchQuery(query, heuristics) {
 function replaceNulls(h) {
   for (var p in h) {
     var obj = h[p];
-    if (obj === 'D61_NULL') h[p] = null;
+    if (obj === 'D61_NULL' || obj === -1) h[p] = null;
     else if (typeof obj === 'object' && !Array.isArray(obj)) replaceNulls(obj);
   }
   return h;
 }
 
-/*
- * {"took":49,"timed_out":false,"_shards":{"total":5,"successful":5,"failed":0},"hits":{"total":1214,"max_score":6.0664215,"hits":[{"_index":"gnaf","_type":"gnaf","_id":"GAACT717685921","_score":6.0664215,"_source":{ "addressDetailPid":"GAACT717685921","addressSiteName":null,"buildingName":null, "flatTypeCode":"UNIT","flat":{"prefix":null,"number":16,"suffix":null}, "levelName":null,"level":{"prefix":null,"number":null,"suffix":null}, "numberFirst":{"prefix":null,"number":61,"suffix":null},
- * "numberLast":{"prefix":null,"number":null,"suffix":null}, "street":{"name":"CURRONG","typeCode":"STREET","suffixCode":"N"}, "localityName":"BRADDON","stateAbbreviation":"ACT","stateName":"AUSTRALIAN CAPITAL TERRITORY","postcode":"2612", "location":{"lat":-35.27700812,"lon":149.13506014}, "streetVariant":[{"name":"CURRONG","typeCode":"STREET","suffixCode":null},{"name":"CURRONG STREET","typeCode":"NORTH","suffixCode":null}], "localityVariant":[{"localityName":"CANBERRA CENTRAL"},{"localityName":"CITY"}]}}
- */
 function searchResult(data) {
-  return data.hits.hits.map(hit => {
-    var h = replaceNulls(hit._source);
-    debug('searchResult: hit = ', hit);
-    return $('<div>').text('score: ' + hit._score + '; ' + [
-      h.addressSiteName, h.buildingName,
-      h.flatTypeCode, h.flat.prefix, h.flat.number, h.flat.suffix,
-      h.levelName, h.level.prefix, h.level.number, h.level.suffix,
-      h.numberFirst.prefix, h.numberFirst.number, h.numberFirst.suffix, 
-      h.numberLast.prefix, h.numberLast.number, h.numberLast.suffix, 
-      h.street.name, h.street.typeCode, h.street.suffixCode,
-      h.localityName, h.postcode, h.stateName
-      ].join(' '));
+  var stats = $('<span>').attr('class', 'stats').text(data.hits.hits.length.toLocaleString() + ' of ' + data.hits.total.toLocaleString() + ' hits in ' + (data.took/1000.0).toFixed(3) + ' sec');
+  var hits = data.hits.hits.map(h => {
+    var obj = replaceNulls(h._source);
+    obj.score = h._score;
+    obj.record = obj; // for colHandler to access whole record
+    return obj;
   });
+  var table = genTable(hits, [
+    new Col('Rank', 'score', scoreColHandler),
+    new Col('Site', 'record', siteColHandler),
+    new Col('Unit', 'record', flatColHandler),
+    new Col('Level', 'record', levelColHandler),
+    new Col('Street', 'record', streetColHandler),
+    new Col('Locality', 'localityName'),
+    new Col('Postcode', 'postcode'),
+    new Col('State', 'stateName'),
+    new Col('Location', 'location', locationColHandler)
+  ]);
+  return [ stats, table ];
 }
 
-// debug and error logging
+function siteColHandler(h) {
+  return [ h.addressSiteName, h.buildingName ].join(' ');
+}
+
+function flatColHandler(h) {
+  return [ h.flatTypeCode, h.flat.prefix, h.flat.number, h.flat.suffix ].join(' ');
+}
+
+function levelColHandler(h) {
+  return [ h.levelName, h.level.prefix, h.level.number, h.level.suffix ].join(' ');
+}
+
+function streetColHandler(h) {
+  var first = [ h.numberFirst.prefix, h.numberFirst.number, h.numberFirst.suffix ].join('').trim();
+  var last = [ h.numberLast.prefix, h.numberLast.number, h.numberLast.suffix ].join('').trim();
+  var range = first.length > 0 && last.length > 0 ? first + '-' + last : first + last; 
+  return [ range, h.street.name, h.street.typeCode, h.street.suffixCode ].join(' ');
+}
+
+function locationColHandler(l) {
+  return l.lat + ', ' + l.lon;
+}
+
+// *********************************************************
+// building tables:
+
+/**
+ * Generate Table.
+ * <p>
+ * @param data for table
+ * @param cols array of (column header text, attribute of data row to pass to handler, handler to generate cell content)
+ * @return table element
+ */
+function genTable(data, cols) {
+  var t = $('<table>');
+  var tr = $('<tr>');
+  // column headers from 'labels'
+  t.append(tr);
+  for (var i = 0; i < cols.length; i++) {
+    var col = cols[i];
+    tr.append($('<th>').attr('class', col.tdClass).text(cols[i].label));
+  }
+  // make a row from each element in 'data'
+  // 'fields' gives the properties to use and their order
+  $.each(data, function(index, x) {
+    var tr = $('<tr>');
+    for (var i = 0; i < cols.length; i++) {
+      var col = cols[i];
+      tr.append($('<td>').attr('class', col.tdClass).append(col.handler(x[col.field])));
+    }
+    t.append(tr);
+  });
+  return t;
+}
+
+// what genTable needs to know for each column
+function Col(label, field, handler, tdClass) {
+  this.label = label; // label for header
+  this.field = field; // name of field for data
+  this.handler = typeof handler !== 'undefined' ? handler : defaultColHandler; // a function mapping data item => content of table/tr/td
+  this.tdClass = typeof tdClass !== 'undefined' ? tdClass : field;
+}
+
+// functions you can use for the above Col.handler
+function defaultColHandler(v) { return v; }
+function scoreColHandler(v) { return v === "NaN" ? "" : v.toPrecision(2); }
+
+//*********************************************************
+// debug and error logging:
 
 function debug() {
   console.log(arguments)
@@ -266,10 +335,4 @@ function addSpinner(elem) {
 function showError(elem, error) {
   elem.append($('<div>').attr('class', 'error').text(error));
 }
-
-// 6 hits in 0.0250 sec
-// function stats(data) {
-// return $('<span>').attr('class', 'stats').text(data.totalHits + ' hits in ' +
-// data.elapsedSecs.toFixed(3) + ' sec');
-// }
 

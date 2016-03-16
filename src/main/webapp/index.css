@@ -46,3 +46,30 @@ button {
   padding: 2px;
   display: block;
 }
+
+.stats {
+  font-size: small;
+}
+
+table {
+  border: 1px solid #98bf21;
+  border-collapse: collapse;
+  margin-top: 5px;
+}
+
+tr:nth-child(odd) {
+  background: #EAF2D3;
+}
+
+th {
+  text-align: center;
+  padding: 3px 3px 3px 3px;
+  background-color: #A7C942;
+  color: white;
+}
+
+td {
+  vertical-align: top;
+  border: 1px solid #98bf21;
+  padding: 2px 5px 2px 5px;
+}
