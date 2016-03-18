@@ -167,12 +167,12 @@ Example usage:
 
 This didn't work:
 
-    zcat ../dibpMail/data.tsv.gz | cut -f29-30,32,33  | node src/main/webapp/main.js > dibpMailAddresses
+    zcat ../dibpMail/data.tsv.gz | cut -f29-30,32,33,53  | node src/main/webapp/main.js > dibpMailAddresses
     Error { [Error: connect EADDRNOTAVAIL 127.0.0.1:9200 - Local (127.0.0.1:0)]
     
 but this works OK:
 
-    zcat ../dibpMail/data.tsv.gz | cut -f29-30,32,33  | while read a; do echo $a | node src/main/webapp/main.js; done > dibpMailAddresses
+    zcat ../dibpMail/data.tsv.gz | cut -f29-30,32,33,53  | sed -e '1d' -e 's/\t/~/g' | while read a; do echo $a | node src/main/webapp/main.js; done > dibpMailAddresses
 
 ## Notes on the H2 database
 
@@ -191,6 +191,18 @@ Analysis in comments in `Main.scala` shows that we need to handle result sets up
 
 ## To Do
 Add some pointers to H2 doco showing how to start a H2 with a Postgres protocol listener and connect to it with psql Postgres client. That may be a more convenient way to run `createGnafDb.sql`. Note psql cannot connect with blank username and password, so you need to create a user and grant it suitable rights.
+
+https://www.elastic.co/guide/en/elasticsearch/guide/current/_dealing_with_null_values.html
+The mapping can have a value to substitute for null values, so we can do away with that from the Scala code.
+
+The free text query (with heuristics) takes ~0.07 sec (without heuristics it takes ~1.1 sec):
+
+    "{"query":{"bool":{"should":[{"constant_score":{"filter":{"term":{"primarySecondary":"0"}},"boost":0.8}},{"constant_score":{"filter":{"term":{"primarySecondary":"P"}},"boost":1}},{"constant_score":{"filter":{"term":{"aliasPrincipal":"P"}},"boost":1}},{"match":{"d61NullStr":"D61_NULL"}},{"match":{"d61NullInt":"-1"}},{"term":{"stateAbbreviation":"ACT"}},{"term":{"postcode":"2601"}},{"term":{"numberFirst.number":"7"}},{"multi_match":{"query":"7","fields":["level.number^0.2","flat.number^0.4","numberFirst.number^0.5","numberLast.number^0.3","postcode^0.5"],"type":"most_fields"}},{"match":{"_all":{"query":" LONDON CCT, ","fuzziness":1,"prefix_length":2}}}],"minimum_should_match":"75%"}},"size":10}"
+
+The equivalent fields query takes ~0.03 sec:
+
+    "{"query":{"bool":{"should":[{"term":{"level.number":-1}},{"term":{"flat.number":-1}},{"term":{"numberFirst.prefix":"D61_NULL"}},{"term":{"numberFirst.number":"7"}},{"term":{"numberFirst.suffix":"D61_NULL"}},{"match":{"d61Street":{"query":"LONDON CCT","fuzziness":1,"prefix_length":2}}},{"term":{"postcode":"2601"}},{"term":{"stateAbbreviation":"ACT"}}],"minimum_should_match":"75%"}},"size":10}"
+
 
 ## Data License
 

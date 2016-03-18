@@ -2,7 +2,39 @@ $(document).ready(init);
 
 function init() {
   // initBaseUrl();
-  $('#searchForm button').on('click', search);
+  $('#searchForm button').on('click', stopProp(search));
+  $('#clearFreeText').on('click', stopProp(clearFreeText));
+  $('#clearFields').on('click', stopProp(clearFields));
+}
+
+function stopProp(f) {
+  return function(ev) {
+    ev.stopPropagation();
+    f();
+  };
+}
+
+function clearFreeText() {
+  $('#freeText').val("");
+}
+
+var fields = [ 'site', 'level', 'flat', 'street', 'locality', 'postcode', 'state' ];
+
+function clearFields() {
+  fields.forEach(a => $('#' + a).val(""));
+}
+
+/**
+ * @returns object with a key named after each element in `fields` with trimmed, uppercased value taken from the DOM element with that id. 
+ */
+function getFields() {
+  return fields.reduce(
+    (obj, f) => {
+      obj[f] = $('#' + f).val().trim().toUpperCase();
+      return obj;
+    },
+    ({})
+  );
 }
 
 var baseUrl = 'http://localhost:9200/gnaf/';
@@ -20,7 +52,8 @@ function search() {
   try {
     elem.empty();
     addSpinner(elem);
-    var params = searchQuery($('#query').val(), $('#heuristics').is(':checked'));
+    var freeText = $('#freeText').val().trim();
+    var params = freeText.length > 0 ? searchQuery(freeText, $('#heuristics').is(':checked')) : fieldQuery(getFields());
     params.size = 10;
     debug('search:', 'url', url, 'params', params, 'stringified', JSON.stringify(params));
     $.ajax({
@@ -63,7 +96,7 @@ function searchResult(data) {
   var table = genTable(hits, [
     new Col('Rank', 'score', scoreColHandler),
     new Col('Site', 'record', siteColHandler),
-    new Col('Unit', 'record', flatColHandler),
+    new Col('Flat', 'record', flatColHandler),
     new Col('Level', 'record', levelColHandler),
     new Col('Street', 'record', streetColHandler),
     new Col('Locality', 'localityName'),

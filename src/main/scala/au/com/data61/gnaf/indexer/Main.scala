@@ -198,6 +198,10 @@ object Main {
    * we'd like Elasticsearch results with nulls for these fields to be ranked higher than results with spurious values,
    * be we can't search for nulls because they aren't in the index.
    * So we substitute a value for the nulls. Adding this value to the search will penalize non-null values, but only slightly because there are many null values.
+	 * 
+	 * https://www.elastic.co/guide/en/elasticsearch/guide/current/_dealing_with_null_values.html
+	 * TODO: Mapping has been modified to do this null substitution, so we can do away with this from the Scala code.
+	 * However, it might be handy if we shift from Elasticsearch to raw Lucene.
    */
   import scala.language.implicitConversions
   class D61Null[T](s: Option[T], default: T) {
