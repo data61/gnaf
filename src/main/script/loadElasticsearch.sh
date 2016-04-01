@@ -24,11 +24,11 @@ curl -XPUT 'localhost:9200/gnaf/' --data-binary @src/main/resources/gnafMapping.
   time zcat out.gz | jq -c -f ../src/main/script/loadElasticsearch.jq > bulk
 
   # split 'bulk' file into chunks not too big for a POST request
-  rm -f x???
-  split -l10000 -a3 bulk
+  rm -f chunk-???
+  split -l10000 -a3 bulk chunk-
   
   # load the chunks using the Elasticsearch 'bulk' API 
-  for i in x???
+  for i in chunk-???
   do
     echo $i
     curl -s -XPOST localhost:9200/_bulk --data-binary @$i

@@ -19,6 +19,7 @@ function extractPostcode(s) {
  * Find last state. returns { str: `s with state removed`, state: 'ACT' ], or if state not found { str: s, state: null }.
  */
 function extractState(s) {
+  // TODO: could build this from var states in index.js
   var re = /\b(AUSTRALIAN\s+CAPITAL\s+TERRITORY|ACT|NEW\s+SOUTH\s+WALES|NSW|NORTHERN\s+TERRITORY|NT|OTHER\s+TERRITORIES|OT|QUEENSLAND|QLD|SOUTH\s+AUSTRALIA|SA|TASMANIA|TAS|VICTORIA|VIC|WESTERN\s+AUSTRALIA|WA)\b/ig;
   var arr = null;
   var x;

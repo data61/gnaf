@@ -1,7 +1,24 @@
 $(document).ready(init);
 
+var states = [
+  { code: 'ACT', name: 'AUSTRALIAN CAPITAL TERRITORY' },
+  { code: 'NSW', name: 'NEW SOUTH WALES' },
+  { code: 'NT', name: 'NORTHERN TERRITORY' },
+  { code: 'OT', name: 'OTHER TERRITORIES' },
+  { code: 'QLD', name: 'QUEENSLAND' },
+  { code: 'SA', name: 'SOUTH AUSTRALIA' },
+  { code: 'TAS', name: 'TASMANIA' },
+  { code: 'VIC', name: 'VICTORIA' },
+  { code: 'WA', name: 'WESTERN AUSTRALIA' }
+];
+
 function init() {
   initBaseUrl();
+  $('#state').append(states.map(s => {
+    var opt = $('<option>').val(s.code);
+    opt.text(s.name);
+    return opt;
+  }));
   $('#searchForm button').on('click', stopProp(search));
   $('#clearFreeText').on('click', stopProp(clearFreeText));
   $('#clearFields').on('click', stopProp(clearFields));
@@ -11,15 +28,17 @@ function init() {
     minLength: 2,
     source: suggest,
     select: function(e, selected) {
-      // e.preventDefault(); // override default select
+      e.preventDefault();
       debug('street autocomplete: selected = ', selected);
       elem.val(selected.item.value);
+      $('#locality').val(selected.item.payload.localityName);
+      $('#postcode').val(selected.item.payload.postcode);
+      $('#state').val(selected.item.payload.stateAbbreviation);
     }
   });
   elem.data("ui-autocomplete")._renderItem = function (ul, item) {
       debug('street autocomplete: item', item);
       return $("<li>")
-        .data("item.autocomplete", item)
         .append($('<a>').attr({ class: item.class}).append(item.label))
         .appendTo(ul);
     };  
@@ -66,7 +85,7 @@ function getFields() {
 function suggest(req, resp) {
   try {
     var params = { street: {
-      text: req.term, 
+      text: req.term.trim().toUpperCase(), 
       completion: {
         field: "d61SugStreet",
         size: 10
@@ -80,7 +99,7 @@ function suggest(req, resp) {
       dataType: 'json',
       success: function(data, textStatus, jqXHR) {
         debug('suggest success: data', data, 'textStatus', textStatus, 'jqXHR', jqXHR);
-        resp(data.street[0].options.map(i => i.text));
+        resp(data.street[0].options.map(i => ({ label: i.text + ', ' + i.payload.localityName + ', ' + i.payload.stateAbbreviation + ' ' + i.payload.postcode, value: i.text, payload: i.payload }) ));
       },
       error: function(jqXHR, textStatus, errorThrown) {
         debug('search ajax error jqXHR =', jqXHR, 'textStatus =', textStatus, 'errorThrown =', errorThrown);

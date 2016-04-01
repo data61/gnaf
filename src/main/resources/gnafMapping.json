@@ -15,7 +15,7 @@
   "d61Locality": { "type": "string", "analyzer": "whitespace", "null_value": "D61_NULL" },
   
   // suggesters
-  "d61SugStreet": { "type" : "completion", "analyzer" : "whitespace" }, // default 'simple' analyzer tokenizes letter sequences, omits street number
+  "d61SugStreet": { "type": "completion", "analyzer": "whitespace", "payloads": true }, // default 'simple' analyzer tokenizes letter sequences, omits street number
   
   "addressDetailPid": { "type": "string", "index": "not_analyzed" },
   "addressSiteName": { "type": "string", "analyzer": "whitespace", "null_value": "D61_NULL", "copy_to": [ "d61NullStr", "d61SiteBuilding" ] },
