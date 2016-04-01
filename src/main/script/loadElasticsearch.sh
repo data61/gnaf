@@ -3,13 +3,13 @@
 set -ex
 
 # build Scala program
-sbt oneJar
+#sbt oneJar
 
 # run Scala program, takes about 25min with a SSD
-rm -f gnaf.log
-mkdir -p tmp
-time java -Xmx3G -jar target/scala-2.11/gnaf_2.11-0.1-SNAPSHOT-one-jar.jar > tmp/out
-mv gnaf.log tmp
+#rm -f gnaf.log
+#mkdir -p tmp
+#time java -Xmx3G -jar target/scala-2.11/gnaf_2.11-0.1-SNAPSHOT-one-jar.jar | gzip > tmp/out.gz
+#mv gnaf.log tmp
 
 # delete any old index
 curl -XDELETE 'localhost:9200/gnaf/'
@@ -21,9 +21,7 @@ curl -XPUT 'localhost:9200/gnaf/' --data-binary @src/main/resources/gnafMapping.
   cd tmp
   
   # transform output of Scala program to suit Elasticsearch 'bulk' API, takes about 9min with a SSD
-  time jq -c '
-  { index: { _index: "gnaf", _type: "gnaf", _id: .addressDetailPid } },
-  . ' out > bulk
+  time zcat out.gz | jq -c -f ../src/main/script/loadElasticsearch.jq > bulk
 
   # split 'bulk' file into chunks not too big for a POST request
   rm -f x???

@@ -1,5 +1,5 @@
 function debug() {
-  // console.log(arguments)
+  console.log(arguments)
 }
 
 // Address formats: although anything goes, Australian addresses often end with: Locality, State, PostCode.
@@ -164,12 +164,13 @@ function preNumSuf(s) {
 function fieldQuery(fields) {
   debug('fieldQuery: fields = ', fields);
   
-  var terms = [];
+  var shouldTerms = [];
+  var mustTerms = [];
   
   /**
    * append terms for prefix, number, suffix to `terms`
    */
-  function addPreNumSuf(preNumSuf, field) {
+  function addPreNumSuf(preNumSuf, field, terms) {
     function add(name, value, nullValue) {
       nullValue = typeof nullValue !== 'undefined' ? nullValue : 'D61_NULL'; // Chrome 46.0.2490.86 (64-bit) doesn't appear to support default values yet
       debug('addPreNumSuf.add: name =', name, 'value =', value);
@@ -186,28 +187,32 @@ function fieldQuery(fields) {
   };
   
   var fuzzy = true; // doesn't seem any faster with false
-  function addMatch(field, query) {
+  function addMatch(field, query, terms) {
     if (query) {
       var match = {};
       match[field] = fuzzy ? { query: query, fuzziness: 1, prefix_length: 2 } : query;
-      terms.push( { match: match } ); 
+      terms.push( { match: match } );
     }
   };
   
-  var siteBuildingLevel = fields.site;
+  if (fields.site) {
+    addMatch('d61SiteBuilding', fields.site, shouldTerms);
+  } else {
+    shouldTerms.push( { term: { 'd61SiteBuilding': 'D61_NULL' } } );
+  }
+  
   if (fields.level) {
     var level = fields.level;
     var re = /([A-Z]*\d+[A-Z]*)/g;
     var nums = re.exec(level);
     if (nums !== null) {
-      addPreNumSuf(preNumSuf(nums[1]), 'level');
+      addPreNumSuf(preNumSuf(nums[1]), 'level', shouldTerms);
       level = level.slice(0, nums.index) + level.slice(nums.index + nums[0].length);
     }
-    siteBuildingLevel = (siteBuildingLevel + ' ' + level).trim();
+    addMatch('d61Level', level, shouldTerms);
   } else {
-    terms.push( { term: { 'level.number': -1 } } );
+    shouldTerms.push( { term: { 'level.number': -1 } } );
   }
-  addMatch('d61SiteBuildingLevel', siteBuildingLevel);
   
   if (fields.flat) {
     var flat = fields.flat;
@@ -215,12 +220,12 @@ function fieldQuery(fields) {
     var re = /([A-Z]*\d+[A-Z]*)/g;
     var nums = re.exec(flat);
     if (nums !== null) {
-      addPreNumSuf(preNumSuf(nums[1]), 'flat');
+      addPreNumSuf(preNumSuf(nums[1]), 'flat', shouldTerms);
       flat = (flat.slice(0, nums.index) + ' ' + flat.slice(nums.index + nums[0].length)).trim();
     }
-    addMatch('d61Unit', flat); // TODO: maybe not necessary
+    addMatch('d61Flat', flat, shouldTerms); // TODO: maybe not necessary
   } else {
-    terms.push( { term: { 'flat.number': -1 } } );
+    shouldTerms.push( { term: { 'flat.number': -1 } } );
   }
   
   if (fields.street) {
@@ -229,25 +234,26 @@ function fieldQuery(fields) {
     var re = /([A-Z]*\d+[A-Z]*)(?:-([A-Z]*\d+[A-Z]*))?/g;
     var nums = re.exec(street);
     if (nums !== null) {
-      addPreNumSuf(preNumSuf(nums[1]), 'numberFirst');
-      addPreNumSuf(nums[2] === undefined ? null : preNumSuf(nums[2]), 'numberLast');
+      addPreNumSuf(preNumSuf(nums[1]), 'numberFirst', shouldTerms);
+      addPreNumSuf(nums[2] === undefined ? null : preNumSuf(nums[2]), 'numberLast', shouldTerms);
       street = (street.slice(0, nums.index) + street.slice(nums.index + nums[0].length)).trim();
     }
-    addMatch('d61Street', street);
+    addMatch('street.name', street, mustTerms);
+    addMatch('d61Street', street, shouldTerms);
   }
   
-  addMatch('d61Locality', fields.locality);
+  addMatch('d61Locality', fields.locality, shouldTerms);
   
   if (fields.postcode) {
-    terms.push( { term: { 'postcode': fields.postcode } } );
+    shouldTerms.push( { term: { 'postcode': fields.postcode } } );
   }
   
   if (fields.state) {
-    if (fields.state.length <= 3) terms.push( { term: { 'stateAbbreviation': fields.state } } );
-    else addMatch('stateName', fields.state);
+    if (fields.state.length <= 3) shouldTerms.push( { term: { 'stateAbbreviation': fields.state } } );
+    else addMatch('stateName', fields.state, shouldTerms);
   }
   
-  return { query: { bool: { should: terms, minimum_should_match: '75%' } } };
+  return { query: { bool: { must: mustTerms, should: shouldTerms, minimum_should_match: '75%' } } };
 }
 
 /**

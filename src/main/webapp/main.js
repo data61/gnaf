@@ -13,12 +13,16 @@ function topHit(q) {
       { json: q },
       function (error, response, data) {
         if (!error && response.statusCode == 200) {
-          var h = data.hits.hits[0];
-          var obj = query.replaceNulls(h._source);
-          obj.score = h._score;
-          console.log(JSON.stringify(obj));
+          if (data.hits.hits.length > 0) {
+            var h = data.hits.hits[0];
+            var obj = query.replaceNulls(h._source);
+            obj.score = h._score;
+            console.log(JSON.stringify(obj));
+          } else {
+            console.warn('warn: no hits');
+          }
         } else {
-          console.log('error', error, 'response', response);
+          console.error('error', error, 'response', response);
         }
       }
   );
@@ -31,19 +35,20 @@ function getFields(line) {
   // 0                  1               2               3               4
   // rcp_addr_line0     rcp_addr_line1  rcp_loc_code    rcp_loc_name    rcp_loc_code_class
   var arr = line.split('~');
-  // console.log('getFields: line =', line, 'arr =', arr);
+  // console.warn('getFields: line =', line, 'arr =', arr);
   
   var pc = query.extractPostcode(arr[2]);
-  fields.postcode = pc.postCode
+  fields.postcode = pc.postCode;
   var loc = query.extractPostcode(arr[3]);
+  if (!fields.postcode) fields.postcode = loc.postCode;
   var st = query.extractState(loc.str);
   fields.state = st.state;
   fields.locality = st.str;
   
-  var re = /\d/;
+  var re = /\d.*[A-Z]/;
   var ad = query.extractFlat(re.test(arr[0]) ? arr[0] : arr[1]);
   fields.street = ad.str;
-  // console.log('getFields: line =', line, 'fields =', fields);
+  // console.warn('getFields: line =', line, 'fields =', fields);
   return fields;
 }
 

@@ -143,7 +143,7 @@ object Main {
     val streetTypeMap: FutStrMap = db.run((for (s <- StreetTypeAut) yield s.code -> s.name).result).map(_.toMap)
     val streetSuffixMap: FutStrMap = db.run((for (s <- StreetSuffixAut) yield s.code -> s.name).result).map(_.toMap)
 
-    val localities = db.run((for (loc <- Locality) yield (loc.localityPid, loc.localityName, loc.statePid)).result)
+    val localities: Future[Seq[(String, String, String)]] = db.run((for (loc <- Locality) yield (loc.localityPid, loc.localityName, loc.statePid)).result)
     val done: Future[Unit] = localities.flatMap { seq =>
       log.info("got all localities")
       val seqFut: Seq[Future[Unit]] = seq.map {

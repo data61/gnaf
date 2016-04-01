@@ -78,7 +78,7 @@ but at least this is fast:
     SELECT * FROM ADDRESS_VIEW 
     WHERE ADDRESS_DETAIL_PID = 'GAACT714928273'
 
-This shows some dodgy STREET_LOCALITY_ALIAS records:
+Although data quality is generally very good, this shows some dodgy STREET_LOCALITY_ALIAS records:
 
     SELECT sl.STREET_NAME, sl.STREET_TYPE_CODE, sl.STREET_SUFFIX_CODE,
       sla.STREET_NAME, sla.STREET_TYPE_CODE , sla.STREET_SUFFIX_CODE 
@@ -89,6 +89,84 @@ This shows some dodgy STREET_LOCALITY_ALIAS records:
     STREET_NAME     STREET_TYPE_CODE    STREET_SUFFIX_CODE      STREET_NAME     STREET_TYPE_CODE    STREET_SUFFIX_CODE  
     REED            STREET              S                       REED STREET     SOUTH               null
     REED            STREET              N                       REED STREET     NORTH               null
+
+### Code/name Lookup Tables
+
+For all tables in this section the values in the `DESCRIPTION` and `NAME` columns are the same.
+
+For the tables `FLAT_TYPE_AUT`, `LEVEL_TYPE_AUT` and `STREET_SUFFIX_AUT`:
+- `CODE` is a short abbreviation containing only letters;
+- `NAME` is the full name/description that may contain spaces.
+
+However for `STREET_TYPE_AUT` these roles are reversed:
+- `CODE` is the full name/description: alphabetic only except for "CUL-DE-SAC" and "RIGHT OF WAY";
+- `NAME` is a short abbreviation containing only letters.
+
+One row ( `CODE` = AWLK, `NAME` = AIRWALK ) breaks this rule, with the abbreviation stored in `CODE`. 
+
+The following sections show sample rows from these tables and the number of rows.
+
+#### FLAT_TYPE_AUT
+
+    SELECT * FROM FLAT_TYPE_AUT
+    CODE    NAME                      DESCRIPTION 
+    ATM     AUTOMATED TELLER MACHINE  AUTOMATED TELLER MACHINE
+    APT     APARTMENT                 APARTMENT
+    FLAT    FLAT                      FLAT
+    SE      SUITE                     SUITE
+    STU     STUDIO                    STUDIO
+    UNIT    UNIT                      UNIT
+    ...
+    
+53 rows, many rather obscure.
+
+#### LEVEL_TYPE_AUT
+    
+        SELECT * FROM LEVEL_TYPE_AUT
+        CODE    NAME            DESCRIPTION  
+        B       BASEMENT        BASEMENT
+        FL      FLOOR           FLOOR
+        G       GROUND          GROUND
+        L       LEVEL           LEVEL
+        LB      LOBBY           LOBBY
+        LG      LOWER GROUND FLOOR      LOWER GROUND FLOOR
+        M       MEZZANINE       MEZZANINE
+        ...
+        
+15 rows.
+
+#### STREET_SUFFIX_AUT
+
+        SELECT * FROM STREET_SUFFIX_AUT
+        CODE    NAME    DESCRIPTION  
+        CN      CENTRAL CENTRAL
+        DE      DEVIATION       DEVIATION
+        NE      NORTH EAST      NORTH EAST
+        EX      EXTENSION       EXTENSION
+        LR      LOWER   LOWER
+        ...
+        
+19 rows.
+
+#### STREET_TYPE_AUT
+       
+        SELECT * FROM STREET_TYPE_AUT
+        CODE    NAME    DESCRIPTION  
+        HIKE    HIKE    HIKE
+        AWLK    AIRWALK AIRWALK
+        FLATS   FLTS    FLTS
+        BOARDWALK       BWLK    BWLK
+        BOULEVARD       BVD     BVD
+        BOULEVARDE      BVDE    BVDE
+        CLOSE   CL      CL
+        COURT   CT      CT
+        CUL-DE-SAC      CSAC    CSAC
+        DRIVE   DR      DR
+        STREET  ST      ST
+        ...
+        
+265 rows, many rather obscure. In contrast to all the previous tables, CODE is the full text which can contain spaces and NAME is the short abbreviation.
+        
 
 ## Generate Slick bindings
 [Slick](http://slick.typesafe.com/) provides "Functional Relational Mapping for Scala".
@@ -117,7 +195,7 @@ Running:
 
 builds and runs the Scala program, transforms the output to suit Elasticsearch's 'bulk' API and loads the data to create an Elasticsearch index. Dependencies:
 - Elasticsearch must be running on http://localhost:9200 (that is its default port);
-- the JSON transformation tool [jq](https://stedolan.github.io/jq/) must be installed.
+- the JSON transformation tool [jq](https://stedolan.github.io/jq/).
 
 ## Example Elasticsearch Queries
 
@@ -136,6 +214,14 @@ Search for a fuzzy match against all fields:
       "query": { "match": { "_all": { "query": "CURRONGT",  "fuzziness": 1, "prefix_length": 2 } } },
       "size": 5
     }' 
+
+Get suggestions for completing the street field which match the currently entered prefix:
+
+    $ curl -X POST 'localhost:9200/gnaf/_suggest?pretty' -d '
+    { "responseName": {
+      "text" : "12 TYTHER", 
+      "completion" : { "field": "d61SugStreet", size: 10 }
+    } }'
 
 ## Client Apps
 
@@ -167,12 +253,17 @@ Example usage:
 
 This didn't work:
 
-    zcat ../dibpMail/data.tsv.gz | cut -f29-30,32,33,53  | node src/main/webapp/main.js > dibpMailAddresses
+    zcat ../dibpMail/data.tsv.gz | cut -f29-30,32,33,53  | sed -e '1d' -e 's/\t/~/g' | node src/main/webapp/main.js > dibpMailAddresses
     Error { [Error: connect EADDRNOTAVAIL 127.0.0.1:9200 - Local (127.0.0.1:0)]
     
-but this works OK:
+I think the async node request module is firing off too many concurrent requests to Elasticsearch. This works OK, but I think firing up node for each query is slowing it down:
 
     zcat ../dibpMail/data.tsv.gz | cut -f29-30,32,33,53  | sed -e '1d' -e 's/\t/~/g' | while read a; do echo $a | node src/main/webapp/main.js; done > dibpMailAddresses
+
+We could try splitting the input into chunks that are small enough to process completely asynchronously:
+
+    zcat ../dibpMail/data.tsv.gz | cut -f29-30,32,33,53  | sed -e '1d' -e 's/\t/~/g' | split -l40 -a6 - chunk-
+    for f in chunk-*; do node src/main/webapp/main.js < $f; done > dibpMailAddresses
 
 ## Notes on the H2 database
 
@@ -202,7 +293,6 @@ The free text query (with heuristics) takes ~0.07 sec (without heuristics it tak
 The equivalent fields query takes ~0.03 sec:
 
     "{"query":{"bool":{"should":[{"term":{"level.number":-1}},{"term":{"flat.number":-1}},{"term":{"numberFirst.prefix":"D61_NULL"}},{"term":{"numberFirst.number":"7"}},{"term":{"numberFirst.suffix":"D61_NULL"}},{"match":{"d61Street":{"query":"LONDON CCT","fuzziness":1,"prefix_length":2}}},{"term":{"postcode":"2601"}},{"term":{"stateAbbreviation":"ACT"}}],"minimum_should_match":"75%"}},"size":10}"
-
 
 ## Data License
 

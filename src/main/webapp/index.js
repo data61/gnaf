@@ -1,10 +1,36 @@
 $(document).ready(init);
 
 function init() {
-  // initBaseUrl();
+  initBaseUrl();
   $('#searchForm button').on('click', stopProp(search));
   $('#clearFreeText').on('click', stopProp(clearFreeText));
   $('#clearFields').on('click', stopProp(clearFields));
+  
+  var elem = $('#street');
+  elem.autocomplete({
+    minLength: 2,
+    source: suggest,
+    select: function(e, selected) {
+      // e.preventDefault(); // override default select
+      debug('street autocomplete: selected = ', selected);
+      elem.val(selected.item.value);
+    }
+  });
+  elem.data("ui-autocomplete")._renderItem = function (ul, item) {
+      debug('street autocomplete: item', item);
+      return $("<li>")
+        .data("item.autocomplete", item)
+        .append($('<a>').attr({ class: item.class}).append(item.label))
+        .appendTo(ul);
+    };  
+}
+
+var baseUrl = 'http://localhost:9200/gnaf/';
+
+function initBaseUrl() {
+//  baseUrl = window.location.protocol === 'file:'
+//    ? 'localhost:9200/gnaf/'  // use this when page served from a local file during dev
+//    : '/analytics/rest/v1.0'; // use this when page served from webapp
 }
 
 function stopProp(f) {
@@ -37,17 +63,36 @@ function getFields() {
   );
 }
 
-var baseUrl = 'http://localhost:9200/gnaf/';
-
-// function initBaseUrl() {
-// baseUrl = window.location.protocol === 'file:'
-// ? 'localhost:9200/gnaf/' // use this when page served from a local file
-// during dev
-// : '/analytics/rest/v1.0'; // use this when page served from webapp
-// }
+function suggest(req, resp) {
+  try {
+    var params = { street: {
+      text: req.term, 
+      completion: {
+        field: "d61SugStreet",
+        size: 10
+      }
+    } };
+    debug('suggest: params =', params);
+    $.ajax({
+      type: 'POST',
+      url: baseUrl + '_suggest',
+      data: JSON.stringify(params),
+      dataType: 'json',
+      success: function(data, textStatus, jqXHR) {
+        debug('suggest success: data', data, 'textStatus', textStatus, 'jqXHR', jqXHR);
+        resp(data.street[0].options.map(i => i.text));
+      },
+      error: function(jqXHR, textStatus, errorThrown) {
+        debug('search ajax error jqXHR =', jqXHR, 'textStatus =', textStatus, 'errorThrown =', errorThrown);
+        resp([]);
+      }
+    });
+  } catch (e) {
+    debug('suggest error: e =', e);
+  }
+}
 
 function search() {
-  var url = baseUrl + '_search';
   var elem = $('#searchResult');
   try {
     elem.empty();
@@ -55,15 +100,15 @@ function search() {
     var freeText = $('#freeText').val().trim();
     var params = freeText.length > 0 ? searchQuery(freeText, $('#heuristics').is(':checked')) : fieldQuery(getFields());
     params.size = 10;
-    debug('search:', 'url', url, 'params', params, 'stringified', JSON.stringify(params));
+    debug('search: params =', params, 'stringified =', JSON.stringify(params));
     $.ajax({
       type: 'POST',
-      url: url,
+      url: baseUrl + '_search',
       data: JSON.stringify(params),
       dataType: 'json',
       success: function(data, textStatus, jqXHR) {
         try {
-          debug('search success: data', data, 'textStatus', textStatus, 'jqXHR', jqXHR);
+          debug('search success: data =', data, 'textStatus =', textStatus, 'jqXHR =', jqXHR);
           elem.empty();
           elem.append(searchResult(data));
         } catch (e) {
@@ -73,13 +118,13 @@ function search() {
         }
       },
       error: function(jqXHR, textStatus, errorThrown) {
-        debug('search ajax error jqXHR = ', jqXHR, 'textStatus = ', textStatus, 'errorThrown = ', errorThrown);
+        debug('search ajax error jqXHR =', jqXHR, 'textStatus =', textStatus, 'errorThrown =', errorThrown);
         elem.empty();
         showError(elem, errorThrown);
       }
     });
   } catch (e) {
-    debug('search error: url = ' + url, e);
+    debug('search error: e =', e);
     elem.empty();
     showError(elem, e.message);
   }

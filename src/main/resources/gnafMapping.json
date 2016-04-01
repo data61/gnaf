@@ -7,30 +7,34 @@
   // composite for numeric fields that are mostly null (mapped to -1 in the index to make them searchable)
   "d61NullInt": { "type": "string", "analyzer": "whitespace", "null_value": "-1" },
   
-  // composites
-  "d61SiteBuildingLevel": { "type": "string", "analyzer": "whitespace", "null_value": "D61_NULL" },
-  "d61Unit": { "type": "string", "analyzer": "whitespace", "null_value": "D61_NULL" },   // TODO: rename to d61Flat for consistency with GNAF
+  // composites for search
+  "d61SiteBuilding": { "type": "string", "analyzer": "whitespace", "null_value": "D61_NULL" },
+  "d61Level": { "type": "string", "analyzer": "whitespace", "null_value": "D61_NULL" },
+  "d61Flat": { "type": "string", "analyzer": "whitespace", "null_value": "D61_NULL" },
   "d61Street": { "type": "string", "analyzer": "whitespace", "null_value": "D61_NULL" },
   "d61Locality": { "type": "string", "analyzer": "whitespace", "null_value": "D61_NULL" },
   
-  "addressDetailPid": { "type": "string", "index": "not_analyzed" },
-  "addressSiteName": { "type": "string", "analyzer": "whitespace", "null_value": "D61_NULL", "copy_to": [ "d61NullStr", "d61SiteBuildingLevel" ] },
-  "buildingName": { "type": "string", "analyzer": "whitespace", "null_value": "D61_NULL", "copy_to": [ "d61NullStr", "d61SiteBuildingLevel" ] },
+  // suggesters
+  "d61SugStreet": { "type" : "completion", "analyzer" : "whitespace" }, // default 'simple' analyzer tokenizes letter sequences, omits street number
   
-  "flatTypeCode": { "type": "string", "index": "not_analyzed", "null_value": "D61_NULL", "copy_to": [ "d61NullStr", "d61Unit" ] },
-  "flatTypeName": { "type": "string", "analyzer": "whitespace", "null_value": "D61_NULL", "copy_to": [ "d61NullStr", "d61Unit" ] },
+  "addressDetailPid": { "type": "string", "index": "not_analyzed" },
+  "addressSiteName": { "type": "string", "analyzer": "whitespace", "null_value": "D61_NULL", "copy_to": [ "d61NullStr", "d61SiteBuilding" ] },
+  "buildingName": { "type": "string", "analyzer": "whitespace", "null_value": "D61_NULL", "copy_to": [ "d61NullStr", "d61SiteBuilding" ] },
+  
+  "flatTypeCode": { "type": "string", "index": "not_analyzed", "null_value": "D61_NULL", "copy_to": [ "d61NullStr", "d61Flat" ] },
+  "flatTypeName": { "type": "string", "analyzer": "whitespace", "null_value": "D61_NULL", "copy_to": [ "d61NullStr", "d61Flat" ] },
   "flat": { "type": "object", "properties": {
-    "prefix": { "type": "string", "index": "not_analyzed", "null_value": "D61_NULL", "copy_to": [ "d61NullStr", "d61Unit" ] },
-    "number": { "type": "integer", "null_value": -1, "copy_to": [ "d61NullInt", "d61Unit" ] },
-    "suffix": { "type": "string", "index": "not_analyzed", "null_value": "D61_NULL", "copy_to": [ "d61NullStr", "d61Unit" ] }
+    "prefix": { "type": "string", "index": "not_analyzed", "null_value": "D61_NULL", "copy_to": [ "d61NullStr", "d61Flat" ] },
+    "number": { "type": "integer", "null_value": -1, "copy_to": [ "d61NullInt", "d61Flat" ] },
+    "suffix": { "type": "string", "index": "not_analyzed", "null_value": "D61_NULL", "copy_to": [ "d61NullStr", "d61Flat" ] }
   } },
   
-  "levelTypeCode": { "type": "string", "index": "not_analyzed", "null_value": "D61_NULL", "copy_to": [ "d61NullStr", "d61SiteBuildingLevel" ] },
-  "levelTypeName": { "type": "string", "analyzer": "whitespace", "null_value": "D61_NULL", "copy_to": [ "d61NullStr", "d61SiteBuildingLevel" ] }, // UPPER GROUND FLOOR
+  "levelTypeCode": { "type": "string", "index": "not_analyzed", "null_value": "D61_NULL", "copy_to": [ "d61NullStr", "d61Level" ] },
+  "levelTypeName": { "type": "string", "analyzer": "whitespace", "null_value": "D61_NULL", "copy_to": [ "d61NullStr", "d61Level" ] }, // UPPER GROUND FLOOR
   "level": { "type": "object", "properties": {
-    "prefix": { "type": "string", "index": "not_analyzed", "null_value": "D61_NULL", "copy_to": [ "d61NullStr", "d61SiteBuildingLevel" ] },
-    "number": { "type": "integer", "null_value": -1, "copy_to": [ "d61NullInt", "d61SiteBuildingLevel" ] },
-    "suffix": { "type": "string", "index": "not_analyzed", "null_value": "D61_NULL", "copy_to": [ "d61NullStr", "d61SiteBuildingLevel" ] }
+    "prefix": { "type": "string", "index": "not_analyzed", "null_value": "D61_NULL", "copy_to": [ "d61NullStr", "d61Level" ] },
+    "number": { "type": "integer", "null_value": -1, "copy_to": [ "d61NullInt", "d61Level" ] },
+    "suffix": { "type": "string", "index": "not_analyzed", "null_value": "D61_NULL", "copy_to": [ "d61NullStr", "d61Level" ] }
   } },
   
   "numberFirst": { "type": "object", "properties": {
@@ -47,8 +51,8 @@
   
   "street": { "type": "object", "properties": {
     "name": { "type": "string", "analyzer": "whitespace", "null_value": "D61_NULL", "copy_to": [ "d61NullStr", "d61Street" ] },
-    "typeCode": { "type": "string", "index": "not_analyzed", "null_value": "D61_NULL", "copy_to": [ "d61NullStr", "d61Street" ] },
-    "typeName": { "type": "string", "analyzer": "whitespace", "null_value": "D61_NULL", "copy_to": [ "d61NullStr", "d61Street" ] },
+    "typeCode": { "type": "string", "analyzer": "whitespace", "null_value": "D61_NULL", "copy_to": [ "d61NullStr", "d61Street" ] }, // reversed from other lookup tables!
+    "typeName": { "type": "string", "index": "not_analyzed", "null_value": "D61_NULL", "copy_to": [ "d61NullStr", "d61Street" ] },  // code is long, name is short abbreviation
     "suffixCode": {"type": "string", "index": "not_analyzed", "null_value": "D61_NULL", "copy_to": [ "d61NullStr", "d61Street" ] },
     "suffixName": { "type": "string", "analyzer": "whitespace", "null_value": "D61_NULL", "copy_to": [ "d61NullStr", "d61Street" ] }
   } },
