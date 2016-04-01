@@ -250,10 +250,16 @@ For free text address entry, two search strategies are available:
   - its the simplest thing that could possibly work;
   - it makes no assumptions about address formatting.
 - if  the `heuristics` checkbox is selected then the a more targeted query of specific GNAF fields is
-attempted by using assumptions about address formating to extract fields from the text. Advantage:
-  - it may be faster and more precise.
+attempted by using assumptions about address formating to extract fields from the text. Advantages:
+  - it may be faster;
+  - it supports field specific strategies such as different tokenization and pre-processing (Lucene `Analyzer`s) and matching (such as fuzzyness);
+  - using field specific term frequencies should provide better ranking.
 
-When the address is entered into separate fields a third search strategy is used. This reuses some of the above heuristics to parse the data entry fields into finer grained GNAF fields. 
+When the address is entered into separate fields a third search strategy is used. This reuses some of the above heuristics to parse the data entry fields into finer grained GNAF fields.
+Advantages:
+- those described above for the heuristic strategy;
+- fewer assumptions about formatting because the input is partially segmented;
+- the autocompletion feature outlined in the previous section.
 
 See `src/main/webapp/query.js` for the actual query generation, which is more complex than outlined here.
 ### Command Line
