@@ -1,3 +1,26 @@
+import ReleaseTransformations._
+import com.typesafe.sbt.license.{DepModuleInfo, LicenseInfo}
+
+concurrentRestrictions in Global := Seq(
+  Tags.limit(Tags.Test, 1) // only one test at a time across all projects because different tests write database & Lucene indices to same path
+)
+
+// default release process, but without publishArtifacts
+releaseProcess := Seq[ReleaseStep](
+  checkSnapshotDependencies,
+  inquireVersions,
+  runTest,
+  setReleaseVersion,
+  commitReleaseVersion,
+  tagRelease,
+  // publishArtifacts,
+  setNextVersion,
+  commitNextVersion,
+  pushChanges
+)
+
+def hasPrefix(org: String, prefixes: Seq[String]) = prefixes.exists(x => org.startsWith(x))
+
 name := "gnaf"
 
 organization := "au.com.data61"
@@ -59,4 +82,12 @@ libraryDependencies ++= Seq(
   "slick",
   "slick-hikaricp"
 ) map ("com.typesafe.slick" %% _ % "3.1.1")
+ 
+licenseOverrides := {
+    case DepModuleInfo(org, _, _) if hasPrefix(org, Seq("org.apache", "com.fasterxml", "com.google.guava", "org.javassist")) => LicenseInfo(LicenseCategory.Apache, "The Apache Software License, Version 2.0", "http://www.apache.org/licenses/LICENSE-2.0.txt")
+    case DepModuleInfo(org, _, _) if hasPrefix(org, Seq("com.thoughtworks.paranamer")) => LicenseInfo(LicenseCategory.BSD, "BSD-Style", "http://www.opensource.org/licenses/bsd-license.php")
+    case DepModuleInfo(org, _, _) if hasPrefix(org, Seq("javax.ws.rs", "org.jvnet.mimepull", "org.glassfish")) => LicenseInfo(LicenseCategory.GPLClasspath, "CDDL + GPLv2 with classpath exception", "https://glassfish.dev.java.net/nonav/public/CDDL+GPL.html")
+    case DepModuleInfo(org, _, _) if hasPrefix(org, Seq("ch.qos.logback")) => LicenseInfo(LicenseCategory.LGPL, "EPL + GNU Lesser General Public License", "http://logback.qos.ch/license.html")
+    case DepModuleInfo(org, _, _) if hasPrefix(org, Seq("org.slf4j")) => LicenseInfo(LicenseCategory.MIT, "MIT License", "http://www.slf4j.org/license.html")
+  }
  
