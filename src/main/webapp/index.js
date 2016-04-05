@@ -65,10 +65,10 @@ function getFields() {
 }
 
 function filterJoin(arr, sep) {
-  return arr.filter(x => x !== null && x !== '' && x !== 'D61_NULL').join(sep)
+  return arr.filter(x => x !== null && x !== '').join(sep)
 }
 function namePreNumSuf(name, n) {
-  return n.number === -1 ? '' : filterJoin([name, filterJoin([n.prefix, n.number, n.suffix], '') ], ' ');
+  return filterJoin([name, filterJoin([n.prefix, n.number, n.suffix], '') ], ' ');
 }
   
 function initSuggestAddress() {
@@ -80,7 +80,7 @@ function initSuggestAddress() {
       e.preventDefault();
       debug('address autocomplete: selected =', selected, 'value =', selected.item.value);
       elem.val(selected.item.value);
-      var a = selected.item.payload;
+      var a = replaceNulls(selected.item.payload);
       $('#site').val(siteColHandler(a));
       $('#level').val(levelColHandler(a));
       $('#flat').val(flatColHandler(a));
