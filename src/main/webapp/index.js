@@ -22,34 +22,16 @@ function init() {
   $('#searchForm button').on('click', stopProp(search));
   $('#clearFreeText').on('click', stopProp(clearFreeText));
   $('#clearFields').on('click', stopProp(clearFields));
-  
-  var elem = $('#street');
-  elem.autocomplete({
-    minLength: 2,
-    source: suggest,
-    select: function(e, selected) {
-      e.preventDefault();
-      debug('street autocomplete: selected = ', selected);
-      elem.val(selected.item.value);
-      $('#locality').val(selected.item.payload.localityName);
-      $('#postcode').val(selected.item.payload.postcode);
-      $('#state').val(selected.item.payload.stateAbbreviation);
-    }
-  });
-  elem.data("ui-autocomplete")._renderItem = function (ul, item) {
-      debug('street autocomplete: item', item);
-      return $("<li>")
-        .append($('<a>').attr({ class: item.class}).append(item.label))
-        .appendTo(ul);
-    };  
+  initSuggestAddress();
+  initSuggestStreet();    
 }
 
-var baseUrl = 'http://localhost:9200/gnaf/';
+var baseUrl;
 
 function initBaseUrl() {
-//  baseUrl = window.location.protocol === 'file:'
-//    ? 'localhost:9200/gnaf/'  // use this when page served from a local file during dev
-//    : '/analytics/rest/v1.0'; // use this when page served from webapp
+  baseUrl = window.location.protocol === 'file:'
+    ? 'http://localhost:9200/gnaf/'                                               // use this when page served from a local file during dev
+    : window.location.protocol + '//' + window.location.hostname + ':9200/gnaf/'; // or this when page served from web server
 }
 
 function stopProp(f) {
@@ -66,7 +48,7 @@ function clearFreeText() {
 var fields = [ 'site', 'level', 'flat', 'street', 'locality', 'postcode', 'state' ];
 
 function clearFields() {
-  fields.forEach(a => $('#' + a).val(""));
+  fields.forEach(a => $('#' + a).val(a === 'state' ? 'ACT' : ''));
 }
 
 /**
@@ -82,32 +64,116 @@ function getFields() {
   );
 }
 
-function suggest(req, resp) {
+function filterJoin(arr, sep) {
+  return arr.filter(x => x !== null && x !== '' && x !== 'D61_NULL').join(sep)
+}
+function namePreNumSuf(name, n) {
+  return n.number === -1 ? '' : filterJoin([name, filterJoin([n.prefix, n.number, n.suffix], '') ], ' ');
+}
+  
+function initSuggestAddress() {
+  var elem = $('#freeText');
+  elem.autocomplete({
+    minLength: 4,
+    source: suggestAddress,
+    select: function(e, selected) {
+      e.preventDefault();
+      debug('address autocomplete: selected =', selected, 'value =', selected.item.value);
+      elem.val(selected.item.value);
+      var a = selected.item.payload;
+      $('#site').val(siteColHandler(a));
+      $('#level').val(levelColHandler(a));
+      $('#flat').val(flatColHandler(a));
+      $('#street').val(a.d61SugStreet.input);
+      $('#locality').val(a.localityName);
+      $('#postcode').val(a.postcode);
+      $('#state').val(a.stateAbbreviation);
+      $('#searchResult').empty().append(searchResult({ took: 0, hits: { max_score: 1.0, total: 1, hits: [ { _score: 1.0, _source: a } ] } }));
+    }
+  });
+  elem.data("ui-autocomplete")._renderItem = function (ul, item) {
+    debug('address autocomplete: item', item);
+    return $("<li>")
+      .append($('<a>').append(item.label))
+      .appendTo(ul);
+  };
+}
+
+function suggestAddress(req, resp) {
+  try {
+    var params = {
+      "query": { "match": { "d61Address": { "query": req.term,  "fuzziness": 2, "prefix_length": 2 } } },
+      "size": 10
+    };
+    debug('suggestAddress: params =', params);
+    $.ajax({
+      type: 'POST',
+      url: baseUrl + '_search',
+      data: JSON.stringify(params),
+      dataType: 'json',
+      success: function(data, textStatus, jqXHR) {
+        debug('suggestAddress success: data', data, 'textStatus', textStatus, 'jqXHR', jqXHR);
+        resp(data.hits.hits.map(i => ({ label: i._source.d61Address, payload: i._source }) ));
+      },
+      error: function(jqXHR, textStatus, errorThrown) {
+        debug('suggestAddress ajax error jqXHR =', jqXHR, 'textStatus =', textStatus, 'errorThrown =', errorThrown);
+        resp([]);
+      }
+    });
+  } catch (e) {
+    debug('suggestAddress error: e =', e);
+  }
+}
+
+function initSuggestStreet() {
+  var elem = $('#street');
+  elem.autocomplete({
+    minLength: 4,
+    source: suggestStreet,
+    select: function(e, selected) {
+      e.preventDefault();
+      debug('street autocomplete: selected =', selected);
+      elem.val(selected.item.value);
+      var a = selected.item.payload;
+      $('#locality').val(a.localityName);
+      $('#postcode').val(a.postcode);
+      $('#state').val(a.stateAbbreviation);
+    }
+  });
+  elem.data("ui-autocomplete")._renderItem = function (ul, item) {
+    debug('street autocomplete: item', item);
+    return $("<li>")
+      .append($('<a>').append(item.label))
+      .appendTo(ul);
+  };  
+}
+
+function suggestStreet(req, resp) {
   try {
     var params = { street: {
-      text: req.term.trim().toUpperCase(), 
+      text: req.term.trim(), // .toUpperCase(), 
       completion: {
         field: "d61SugStreet",
         size: 10
       }
     } };
-    debug('suggest: params =', params);
+    debug('suggestStreet: params =', params);
     $.ajax({
       type: 'POST',
       url: baseUrl + '_suggest',
       data: JSON.stringify(params),
       dataType: 'json',
       success: function(data, textStatus, jqXHR) {
-        debug('suggest success: data', data, 'textStatus', textStatus, 'jqXHR', jqXHR);
+        debug('suggestStreet success: data', data, 'textStatus', textStatus, 'jqXHR', jqXHR);
         resp(data.street[0].options.map(i => ({ label: i.text + ', ' + i.payload.localityName + ', ' + i.payload.stateAbbreviation + ' ' + i.payload.postcode, value: i.text, payload: i.payload }) ));
       },
       error: function(jqXHR, textStatus, errorThrown) {
-        debug('search ajax error jqXHR =', jqXHR, 'textStatus =', textStatus, 'errorThrown =', errorThrown);
+        debug('suggestStreet ajax error jqXHR =', jqXHR, 'textStatus =', textStatus, 'errorThrown =', errorThrown);
         resp([]);
       }
     });
   } catch (e) {
-    debug('suggest error: e =', e);
+    debug('suggestStreet error: e =', e);
   }
 }
 
@@ -128,8 +194,7 @@ function search() {
       success: function(data, textStatus, jqXHR) {
         try {
           debug('search success: data =', data, 'textStatus =', textStatus, 'jqXHR =', jqXHR);
-          elem.empty();
-          elem.append(searchResult(data));
+          elem.empty().append(searchResult(data));
         } catch (e) {
           debug('search success error: e = ', e);
           elem.empty();
@@ -160,9 +225,9 @@ function searchResult(data) {
   var table = genTable(hits, [
     new Col('Rank', 'score', scoreColHandler),
     new Col('Site', 'record', siteColHandler),
-    new Col('Flat', 'record', flatColHandler),
     new Col('Level', 'record', levelColHandler),
-    new Col('Street', 'record', streetColHandler),
+    new Col('Flat', 'record', flatColHandler),
+    new Col('Street', 'd61SugStreet', streetColHandler),
     new Col('Locality', 'localityName'),
     new Col('Postcode', 'postcode'),
     new Col('State', 'stateName'),
@@ -172,22 +237,19 @@ function searchResult(data) {
 }
 
 function siteColHandler(h) {
-  return [ h.addressSiteName, h.buildingName ].join(' ');
-}
-
-function flatColHandler(h) {
-  return [ h.flatTypeCode, h.flat.prefix, h.flat.number, h.flat.suffix ].join(' ');
+  return filterJoin([ h.addressSiteName, h.buildingName ], ' ');
 }
 
 function levelColHandler(h) {
-  return [ h.levelName, h.level.prefix, h.level.number, h.level.suffix ].join(' ');
+  return namePreNumSuf(h.levelName, h.level);
 }
 
-function streetColHandler(h) {
-  var first = [ h.numberFirst.prefix, h.numberFirst.number, h.numberFirst.suffix ].join('').trim();
-  var last = [ h.numberLast.prefix, h.numberLast.number, h.numberLast.suffix ].join('').trim();
-  var range = first.length > 0 && last.length > 0 ? first + '-' + last : first + last; 
-  return [ range, h.street.name, h.street.typeCode, h.street.suffixCode ].join(' ');
+function flatColHandler(h) {
+  return namePreNumSuf(h.flatTypeName, h.flat);
+}
+
+function streetColHandler(l) {
+  return l.input;
 }
 
 function locationColHandler(l) {

@@ -189,7 +189,25 @@ For now we'll opt for 1 and manually move this into `src/main/scala`.
 So far it has not needed tweaking and there has been an unsuccessful attempt at using [sbt-slick-codegen](https://github.com/tototoshi/sbt-slick-codegen)
 for option 2 (see comments in `project/plugins.sbt`).
 
-## Create Elasticsearch Index
+## Elasticsearch
+### Configuration
+Elasticsearch configuration is in `config/elasticsearch.yml`.
+
+To prevent the node joining some other Elasticsearch cluster change the cluster name from the default 'elasticsearch':
+
+    cluster.name: gnaf
+    
+Access by the client apps requires [CORS](https://en.wikipedia.org/wiki/Cross-origin_resource_sharing) to be configured:
+
+    http.cors.enabled: true
+    http.cors.allow-origin: "*"
+        
+then restart Elasticsearch.
+
+Since adding the suggester, it may be necessary to increase the default heap size for Elasticsearch (at least during indexing). The [docs](https://www.elastic.co/guide/en/elasticsearch/guide/current/heap-sizing.html) suggest allocating 50% of physical memory (up to no more than a bit less than 32G).
+
+### Create Index
+
 Running:
 
     src/main/script/loadElasticSearch.sh
@@ -198,7 +216,7 @@ builds and runs the Scala program, transforms the output to suit Elasticsearch's
 - the JSON transformation tool [jq](https://stedolan.github.io/jq/);
 - Elasticsearch running on http://localhost:9200 (that is its default port).
 
-## Example Elasticsearch Queries
+### Example Queries
 
 Search for an exact match:
 
@@ -225,16 +243,6 @@ Get suggestions for completing the street field which match the currently entere
     } }'
 
 ## Client Apps
-
-### Elasticsearch CORS Support
-
-Access by the client apps requires [CORS](https://en.wikipedia.org/wiki/Cross-origin_resource_sharing) to be configured in Elasticsearch.
-Append to `config/elasticsearch.yml`:
-
-    http.cors.enabled: true
-    http.cors.allow-origin: "*"
-        
-then restart Elasticsearch.
 
 ### Web Page
 The web page `src/main/webapp/index.html` provides a user interface to query Elasticsearch.
@@ -263,8 +271,9 @@ Advantages:
 
 See `src/main/webapp/query.js` for the actual query generation, which is more complex than outlined here.
 ### Command Line
-The [node.js](https://nodejs.org/) command line client require node's `request` module, which is installed with:
+The [node.js](https://nodejs.org/) command line client was created for bulk lookup of 1.1M addresses from the DIBP Mail project. It requires node's `request` module, which is installed with:
 
+    npm init
     npm install request
     
 Run the [node.js](https://nodejs.org/) command line client with:
