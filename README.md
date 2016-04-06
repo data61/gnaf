@@ -316,6 +316,17 @@ Analysis in comments in `Main.scala` shows that we need to handle result sets up
 ## To Do
 Add some pointers to H2 doco showing how to start a H2 with a Postgres protocol listener and connect to it with psql Postgres client. That may be a more convenient way to run `createGnafDb.sql`. Note psql cannot connect with blank username and password, so you need to create a user and grant it suitable rights.
 
+The phrase suggester (actually 1 to 3-gram search) handles {unit number} / {street number} pretty well (with occaisional hits on other pairs of numbers).
+Without the '/' it works better, finding adjacent pairs of numbers.
+With '/' without spaces on each side it doesn't work.
+Should we change '/' to space in the input?
+
+At some cost in terms of speed, we could prioritize primary over secondary addresses and principle over alias addresses.
+
+We could add synonymns to the phrase suggester index using code/name from the *_AUT tables.
+
+Would adding synonymns for street aliases and locality aliases help, or do alias addresses already provide that? 
+
 https://www.elastic.co/guide/en/elasticsearch/guide/current/_dealing_with_null_values.html
 The mapping can have a value to substitute for null values, so we can do away with that from the Scala code.
 

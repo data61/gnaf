@@ -19,9 +19,9 @@ function init() {
     opt.text(s.name);
     return opt;
   }));
-  $('#searchForm button').on('click', stopProp(search));
-  $('#clearFreeText').on('click', stopProp(clearFreeText));
-  $('#clearFields').on('click', stopProp(clearFields));
+  $('#searchForm button').on('click', stopPropagation(search));
+  $('#clearFreeText').on('click', stopPropagation(clearFreeText));
+  $('#clearFields').on('click', stopPropagation(clearFields));
   initSuggestAddress();
   initSuggestStreet();    
 }
@@ -34,7 +34,7 @@ function initBaseUrl() {
     : window.location.protocol + '//' + window.location.hostname + ':9200/gnaf/'; // or this when page served from web server
 }
 
-function stopProp(f) {
+function stopPropagation(f) {
   return function(ev) {
     ev.stopPropagation();
     f();
@@ -42,7 +42,7 @@ function stopProp(f) {
 }
 
 function clearFreeText() {
-  $('#freeText').val("");
+  $('#freeText').val('');
 }
 
 var fields = [ 'site', 'level', 'flat', 'street', 'locality', 'postcode', 'state' ];
@@ -218,7 +218,7 @@ function searchResult(data) {
   var stats = $('<span>').attr('class', 'stats').text(data.hits.hits.length.toLocaleString() + ' of ' + data.hits.total.toLocaleString() + ' hits in ' + (data.took/1000.0).toFixed(3) + ' sec');
   var hits = data.hits.hits.map(h => {
     var obj = replaceNulls(h._source);
-    obj.score = h._score;
+    obj.score = h._score / data.hits.max_score;
     obj.record = obj; // for colHandler to access whole record
     return obj;
   });
