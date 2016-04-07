@@ -321,7 +321,7 @@ Without the '/' it works better, finding adjacent pairs of numbers.
 With '/' without spaces on each side it doesn't work.
 Should we change '/' to space in the input?
 
-At some cost in terms of speed, we could prioritize primary over secondary addresses and principle over alias addresses.
+At some cost in terms of speed, we could prioritize primary over secondary addresses and principle over alias addresses (already done in the free text search).
 
 We could add synonymns to the phrase suggester index using code/name from the *_AUT tables.
 
