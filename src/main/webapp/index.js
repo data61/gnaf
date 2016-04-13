@@ -1,4 +1,3 @@
-$(document).ready(init);
 
 var states = [
   { code: 'ACT', name: 'AUSTRALIAN CAPITAL TERRITORY' },
@@ -12,7 +11,7 @@ var states = [
   { code: 'WA', name: 'WESTERN AUSTRALIA' }
 ];
 
-function init() {
+function initSearch() {
   initBaseUrl();
   $('#state').append(states.map(s => {
     var opt = $('<option>').val(s.code);
@@ -26,12 +25,19 @@ function init() {
   initSuggestStreet();    
 }
 
+function initBulk() {
+  initBaseUrl();
+  $('#searchForm button').on('click', stopPropagation(bulk));
+  $('#clearFreeText').on('click', stopPropagation(clearFreeText));
+}
+
 var baseUrl;
 
 function initBaseUrl() {
   baseUrl = window.location.protocol === 'file:'
     ? 'http://localhost:9200/gnaf/'                                               // use this when page served from a local file during dev
-    : window.location.protocol + '//' + window.location.hostname + ':9200/gnaf/'; // or this when page served from web server
+    // : window.location.protocol + '//' + window.location.hostname + ':9200/gnaf/'; // or this when page served from web server
+    : window.location.protocol + '//' + window.location.hostname + '/es/'; // or this when page served from web server
 }
 
 function stopPropagation(f) {
@@ -99,29 +105,61 @@ function initSuggestAddress() {
   };
 }
 
+function bulk() {
+  var r = $('#searchResult');
+  var tbl = genTable([], searchResultCols);
+  r.empty().append(tbl);
+  
+  function q(query) {
+    d61AddressQuery(
+      query, 1,
+      function(data) {
+        data.hits.max_score = 1.0;
+        tbl.append(genRow(dataHits(data)[0], searchResultCols));
+      },
+      function() {}
+    );
+  }
+  
+  $('#freeText').val().split('\n').forEach(addr => q(addr));
+}
+
 function suggestAddress(req, resp) {
+  d61AddressQuery(
+    req.term, 10,
+    function(data) {
+      resp(data.hits.hits.map(i => ({ label: i._source.d61Address, payload: i._source }) ));
+    },
+    function() {
+      resp([]);
+    }
+  );
+}
+
+function d61AddressQuery(query, size, success, error) {
   try {
     var params = {
-      "query": { "match": { "d61Address": { "query": req.term,  "fuzziness": 2, "prefix_length": 2 } } },
-      "size": 10
+      "query": { "match": { "d61Address": { "query": query,  "fuzziness": 2, "prefix_length": 2 } } },
+      "size": size
     };
-    debug('suggestAddress: params =', params);
+    debug('d61AddressQuery: params =', params);
     $.ajax({
       type: 'POST',
       url: baseUrl + '_search',
       data: JSON.stringify(params),
       dataType: 'json',
       success: function(data, textStatus, jqXHR) {
-        debug('suggestAddress success: data', data, 'textStatus', textStatus, 'jqXHR', jqXHR);
-        resp(data.hits.hits.map(i => ({ label: i._source.d61Address, payload: i._source }) ));
+        debug('d61AddressQuery success: data', data, 'textStatus', textStatus, 'jqXHR', jqXHR);
+        success(data);
       },
       error: function(jqXHR, textStatus, errorThrown) {
-        debug('suggestAddress ajax error jqXHR =', jqXHR, 'textStatus =', textStatus, 'errorThrown =', errorThrown);
-        resp([]);
+        debug('d61AddressQuery ajax error jqXHR =', jqXHR, 'textStatus =', textStatus, 'errorThrown =', errorThrown);
+        error();
       }
     });
   } catch (e) {
-    debug('suggestAddress error: e =', e);
+    debug('d61AddressQuery error: e =', e);
+    error();
   }
 }
 
@@ -214,25 +252,30 @@ function search() {
   }
 }
 
-function searchResult(data) {
-  var stats = $('<span>').attr('class', 'stats').text(data.hits.hits.length.toLocaleString() + ' of ' + data.hits.total.toLocaleString() + ' hits in ' + (data.took/1000.0).toFixed(3) + ' sec');
-  var hits = data.hits.hits.map(h => {
+var searchResultCols = [
+  new Col('Rank', 'score', scoreColHandler),
+  new Col('Site', 'record', siteColHandler),
+  new Col('Level', 'record', levelColHandler),
+  new Col('Flat', 'record', flatColHandler),
+  new Col('Street', 'd61SugStreet', streetColHandler),
+  new Col('Locality', 'localityName'),
+  new Col('Postcode', 'postcode'),
+  new Col('State', 'stateName'),
+  new Col('Location', 'location', locationColHandler)
+];
+
+function dataHits(data) {
+  return data.hits.hits.map(h => {
     var obj = replaceNulls(h._source);
     obj.score = h._score / data.hits.max_score;
     obj.record = obj; // for colHandler to access whole record
     return obj;
   });
-  var table = genTable(hits, [
-    new Col('Rank', 'score', scoreColHandler),
-    new Col('Site', 'record', siteColHandler),
-    new Col('Level', 'record', levelColHandler),
-    new Col('Flat', 'record', flatColHandler),
-    new Col('Street', 'd61SugStreet', streetColHandler),
-    new Col('Locality', 'localityName'),
-    new Col('Postcode', 'postcode'),
-    new Col('State', 'stateName'),
-    new Col('Location', 'location', locationColHandler)
-  ]);
+}
+
+function searchResult(data) {
+  var stats = $('<span>').attr('class', 'stats').text(data.hits.hits.length.toLocaleString() + ' of ' + data.hits.total.toLocaleString() + ' hits in ' + (data.took/1000.0).toFixed(3) + ' sec');
+  var table = genTable(dataHits(data), searchResultCols);
   return [ stats, table ];
 }
 
@@ -278,14 +321,18 @@ function genTable(data, cols) {
   // make a row from each element in 'data'
   // 'fields' gives the properties to use and their order
   $.each(data, function(index, x) {
-    var tr = $('<tr>');
-    for (var i = 0; i < cols.length; i++) {
-      var col = cols[i];
-      tr.append($('<td>').attr('class', col.tdClass).append(col.handler(x[col.field])));
-    }
-    t.append(tr);
+    t.append(genRow(x, cols));
   });
   return t;
+}
+
+function genRow(x, cols) {
+  var tr = $('<tr>');
+  for (var i = 0; i < cols.length; i++) {
+    var col = cols[i];
+    tr.append($('<td>').attr('class', col.tdClass).append(col.handler(x[col.field])));
+  }
+  return tr;
 }
 
 // what genTable needs to know for each column

@@ -39,9 +39,9 @@ unmanagedSourceDirectories in Compile := (scalaSource in Compile).value :: Nil /
 
 unmanagedSourceDirectories in Test := (scalaSource in Test).value :: Nil
 
-licenses := Seq("GPL v3" -> url("http://www.gnu.org/copyleft/gpl.html"))
+licenses := Seq("BSD" -> url("https://github.inside.nicta.com.au/nbacon/gnaf/blob/master/CSIRO%20BSD%20MIT%20Licence%20v2.0-4.txt"))
 
-// homepage := Some(url("https://github.inside.nicta.com.au/nbacon/social-watch"))
+homepage := Some(url("https://github.inside.nicta.com.au/nbacon/gnaf"))
 
 EclipseKeys.withSource := true
 

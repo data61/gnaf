@@ -59,6 +59,10 @@ h1, h2, h3, h4 {
   font-size: small;	
 }
 
+.multi-line {
+  display: inline-block;
+}
+
 .label, label {
   color: #98bf21;
   font-weight: bold;

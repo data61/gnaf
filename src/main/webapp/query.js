@@ -140,12 +140,12 @@ function searchQuery(query, heuristics) {
     // but this scores higher: 94-96[A] SMITHS ROAD       TEMPLESTOWE     3106
     // Additional 'street.name' term just adds: 94 TEMPLESTOWE ROAD in 5th place.
     if (q5.str.trim().length > 0) {
-      // terms.push( { match: { 'street.name': { query: q5.str, fuzziness: 1, prefix_length: 2, boost: 2.0 } } } );
-      terms.push( { match: { '_all': { query: q5.str, fuzziness: 1, prefix_length: 2 } } } );
+      // terms.push( { match: { 'street.name': { query: q5.str, fuzziness: 2, prefix_length: 2, boost: 2.0 } } } );
+      terms.push( { match: { '_all': { query: q5.str, fuzziness: 2, prefix_length: 2 } } } );
     }
     
   } else {
-    terms.push( { match: { '_all': { query: query, fuzziness: 1, prefix_length: 2 } } } );
+    terms.push( { match: { '_all': { query: query, fuzziness: 2, prefix_length: 2 } } } );
   }
   
   return { query: { bool: { should: terms, minimum_should_match: '75%' } } };
@@ -191,7 +191,7 @@ function fieldQuery(fields) {
   function addMatch(field, query, terms) {
     if (query) {
       var match = {};
-      match[field] = fuzzy ? { query: query, fuzziness: 1, prefix_length: 2 } : query;
+      match[field] = fuzzy ? { query: query, fuzziness: 2, prefix_length: 2 } : query;
       terms.push( { match: match } );
     }
   };
