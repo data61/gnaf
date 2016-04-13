@@ -136,10 +136,21 @@ function suggestAddress(req, resp) {
   );
 }
 
+/**
+ * Instead of "UNIT 2 12 BLAH STREET" people often use "2 / 12 BLAH STREET".
+ * If the shingle filter is used to store 2 & 3-grams "2 12 BLAH" will get a high score, but "2 / 12 BLAH" won't;
+ * so we replace the "/" with " ".
+ * @param addr
+ * @returns
+ */
+function flatSeparator(addr) {
+  return addr.replace(/\//g, ' ');
+}
+
 function d61AddressQuery(query, size, success, error) {
   try {
     var params = {
-      "query": { "match": { "d61Address": { "query": query,  "fuzziness": 2, "prefix_length": 2 } } },
+      "query": { "match": { "d61Address": { "query": flatSeparator(query),  "fuzziness": 2, "prefix_length": 2 } } },
       "size": size
     };
     debug('d61AddressQuery: params =', params);
@@ -189,7 +200,7 @@ function initSuggestStreet() {
 function suggestStreet(req, resp) {
   try {
     var params = { street: {
-      text: req.term.trim(), // .toUpperCase(), 
+      text: flatSeparator(req.term).trim(),
       completion: {
         field: "d61SugStreet",
         size: 10
@@ -220,7 +231,7 @@ function search() {
   try {
     elem.empty();
     addSpinner(elem);
-    var freeText = $('#freeText').val().trim();
+    var freeText = flatSeparator($('#freeText').val()).trim();
     var params = freeText.length > 0 ? searchQuery(freeText, $('#heuristics').is(':checked')) : fieldQuery(getFields());
     params.size = 10;
     debug('search: params =', params, 'stringified =', JSON.stringify(params));

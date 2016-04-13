@@ -19,37 +19,66 @@ To develop [Scala](http://scala-lang.org/) code install:
 
 Run `sbt update-classifiers` to download dependencies including the H2 database engine used in the next section.
 
+## H2 database
+H2 provides single file, zero-admin databases.
+
+### Result Set Spooling
+If an [H2](http://www.h2database.com/) result set contains more than
+[MAX_MEMORY_ROWS](http://www.h2database.com/html/grammar.html?highlight=max_memory_rows&search=MAX_MEMORY_ROWS#set_max_memory_rows),
+it is spooled to disk before the first row is provided to the client.
+The default is 40000 per GB of available RAM and setting a non-default value requires database admin rights (which we prefer to avoid using).
+Analysis in comments in `Main.scala` shows that we need to handle result sets up to 95,004 rows, so allocating up to 3GB of heap (with `java -Xmx3G`) should avoid spooling.
+
+### Postgres Protocol
+H2 supports the Postgres protocol, allowing access from any Postgres compatible client.
+
+Start the [H2 server](http://www.h2database.com/html/tutorial.html#using_server) with options:
+
+- `-web` to start the HTTP H2 Console on port 8082; and
+- `-pg` to start the Postgres protocol on port 5435 (different from Postgres Server default of 5432 so as not to clash).
+
+Options are available to change these default ports.
+Upon the first connection using the Postgres protocol, H2 runs a script to create Postgres compatible system views and this requires a user with admin rights.
+
+First connection with admin rights:
+
+        psql --host=localhost --port=5435 --username=gnaf --dbname=~/sw/gnaf/data/gnaf
+
+Subsequent connections may use reduced access rights:
+
+        psql --host=localhost --port=5435 --username=READONLY --dbname=~/sw/gnaf/data/gnaf
+
+psql cannot connect with blank username or password.
+
 ## Create Database
 
-The scripts described here automate the procedure described in the [getting started guide](https://www.psma.com.au/sites/default/files/g-naf_-_getting_started_guide.pdf).
+This section describes automation of the procedure described in the G-NAF [getting started guide](https://www.psma.com.au/sites/default/files/g-naf_-_getting_started_guide.pdf).
 See also https://github.com/minus34/gnaf-loader as an alternative (which makes some modifications to the data).
 
-### Download, Unpack & Generate SQL
+### Create SQL Load Script
+
 Running:
 
     src/main/script/createGnafDb.sh
 
 - downloads the G-NAF zip file to `data/` (if not found);
 - unzips to `data/unzipped/` (if not found); and
-- writes SQL to create the H2 database to `data/createGnafDb.sql` (`createGnafDb.sh` would require adaptation for other databases).
+- writes SQL to create the H2 database to `data/createGnafDb.sql`.
 
-### Start Database Engine & SQL Client
+
+### Start Database
 The [H2](http://www.h2database.com/) database engine is started with:
 
-    java -jar ~/.ivy2/cache/com.h2database/h2/jars/h2-1.4.191.jar
+    java -Xmx3G -jar ~/.ivy2/cache/com.h2database/h2/jars/h2-1.4.191.jar -web -pg
 
 (the H2 jar file was put here by `sbt update-classifiers`, alternatively download the jar from the H2 web site and run it as above).
-This:
-- starts a web server on port 8082 serving the SQL client application (it should also open http://127.0.1.1:8082/login.jsp in a web browser);
-- starts a tcp/jdbc server on port 9092; and
-- starts a postgres protocol server on port 5435 (note this is different from the default port used by Postgres 5432).
 
 The database engine is stopped with `Ctrl-C` (but not yet as it's needed for the next step).
 
-### Run SQL
-In the SQL client, enter JDBC URL: `jdbc:h2:file:~/sw/gnaf/data/gnaf`, User name: `gnaf` and Password: `gnaf`) and click `Connect` to create an empty database at this location.
-This is a single file, zero-admin database. It can me moved/renamed simply by moving/renaming the `gnaf.mv.db` file.
+### Run SQL Load Script
+The instructions in this section describe use of the H2 Console webapp, a SQL client running at: http://127.0.1.1:8082/, to run the SQL Load Script `data/createGnafDb.sql`. Alternatively a Postgres client could be used.
 
+In the SQL client, enter JDBC URL: `jdbc:h2:file:~/sw/gnaf/data/gnaf`, User name: `gnaf` and Password: `gnaf`) and click `Connect`. If a database doesn't already exist at this location an empty database is created with the given credentials as the admin user.
 
 Run the SQL commands either by:
 - entering: `RUNSCRIPT FROM '~/sw/gnaf/data/createGnafDb.sql'` into the SQL input area (this method displays no indication of progress); or
@@ -113,12 +142,12 @@ Looking at cases where the alias has a different STREET_NAME (27119 cases):
 
 - the vast majority appear to be spelling variants with an edit distance of 1 - exception FLAGSTONE -> WHISKEY BAY
 - our queries will match with an edit distance of 2 (after an initial 2 character match), so these will mostly match
-  however O'Farrel -> OFarrel won't match (tried prefix_length = 2 but that inexplicably messed up "18 London circuit")
+  however O'Farrel -> OFarrel won't match (tried prefix_length = 1 but that made "18 London circuit" match some other number first)
 - in some cases the number of tokens is different e.g. DE CHAIR -> DECHAIR, TWELVETREES -> TWELVE TREES,
   however the combination of the shingle filter (1 - 3-grams) and edit distance matching will make these match
 - there are aliases for SAINT X -> ST X (237), ST X -> SAINT X (26), MOUNT X -> MT X (577) and MT X -> MOUNT X (110)
 
-Currently the suggesters (auto-complete) do not index street and locality aliases (see To Do section), but the searches do.
+Currently the suggesters (auto-complete) do not search street and locality aliases (see To Do section), but the searches do.
 
 ### Code/name Lookup Tables
 
@@ -196,7 +225,15 @@ The following sections show sample rows from these tables and the number of rows
         ...
         
 265 rows, many rather obscure. In contrast to all the previous tables, CODE is the full text which can contain spaces and NAME is the short abbreviation.
-        
+
+### ADRESS_DETAIL Rows
+- non null numberLast: 1,121,843 out of 14,126,043
+- flatNumber prefix length 2, 14,099,611 nulls; suffix length 2, 4,017,287 nulls, both with lots of letter and number combinations
+- level prefix length 2, 14,123,096 nulls; suffix length 2, 14,125,593 nulls
+- numberFirst prefix length 3, 14,122,945 nulls; suffix length 2, 13,493,586 nulls
+- numberLast prefix length 3; suffix length 2
+
+    
 ## Build and Development Set Up
 The script described in the "Elasticsearch | Create Index" section runs the build, so most readers can safely skip this section.
 
@@ -357,28 +394,8 @@ We could try splitting the input into chunks that are small enough to process co
     zcat ../dibpMail/data.tsv.gz | cut -f29-30,32,33,53  | sed -e '1d' -e 's/\t/~/g' | split -l40 -a6 - chunk-
     for f in chunk-*; do node src/main/webapp/main.js < $f; done > dibpMailAddresses
 
-## Notes on the H2 database
-
-If an [H2](http://www.h2database.com/) result set contains more than
-[MAX_MEMORY_ROWS](http://www.h2database.com/html/grammar.html?highlight=max_memory_rows&search=MAX_MEMORY_ROWS#set_max_memory_rows),
-it is spooled to disk before the first row is provided to the client.
-The default is 40000 per GB of available RAM and setting a non-default value requires database admin rights (which we prefer to avoid using).
-Analysis in comments in `Main.scala` shows that we need to handle result sets up to 95,004 rows, so allocating up to 3GB of heap (with `java -Xmx3G`) should avoid spooling.
-
-## Field Statistics
-- non null numberLast: 1,121,843 out of 14,126,043
-- flatNumber prefix length 2, 14,099,611 nulls; suffix length 2, 4,017,287 nulls, both with lots of letter and number combinations
-- level prefix length 2, 14,123,096 nulls; suffix length 2, 14,125,593 nulls
-- numberFirst prefix length 3, 14,122,945 nulls; suffix length 2, 13,493,586 nulls
-- numberLast prefix length 3; suffix length 2
 
 ## To Do
-Add some pointers to H2 doco showing how to start a H2 with a Postgres protocol listener and connect to it with psql Postgres client. That may be a more convenient way to run `createGnafDb.sql`. Note psql cannot connect with blank username and password, so you need to create a user and grant it suitable rights.
-
-The phrase suggester (actually 1 to 3-gram search) handles {unit number} / {street number} pretty well (with occaisional hits on other pairs of numbers).
-Without the '/' it works better, finding adjacent pairs of numbers.
-With '/' without spaces on each side it doesn't work.
-Should we change '/' to space in the input?
 
 Add Code/Name from the _AUT tables as synonyms (e.g. so ST will match STREET) to the phrase suggester.
 The current indexed term is the full name (which may contain spaces), so we need to add the abbreviation (which does not contain spaces).
@@ -386,12 +403,16 @@ A difference in spaces alters the number of tokens and all the following term po
 See https://www.elastic.co/guide/en/elasticsearch/guide/current/multi-word-synonyms.html, which suggest using "Simple Contraction".
 However we're using shingles/ngrams rather than phrase search, so do we have the same problem? Yes I think so.
 We should do contraction to the single term abreviation.
+Possible negative consequences? Synonyms create the risk of spurious matches. The tables contain some unused entries (e.g. the STREET_TYPE_AUT (AWLK, AIRWALK)) and many rarely used entries; using them all as synonyms increases the risk. e.g. ATM has small edit distance from ATMA, ATKA, ATEA (street names), so contracting "AUTOMATIC TELLER MACHINE" to "ATM" could result in these street names matching AUTOMATIC TELLER MACHINEs.
+Perhaps we need to be quite selective in the use of synonyms.
 
 Add street (locality) aliases and locality aliases to the phrase suggester.
 Don't think we can use contraction here because one is not the contraction of the other, they are both multi-term.
+Simply appending the alias terms will probably be sufficient.
 
 Other synonyms: "St" for "Saint", "Mt" for "Mount"?
 The "Example Queries" section shows that this would be handled by including street (locality) aliases.
+
 
 The phrase suggester I think is performing better than the main query. Replace the latter with the query from the former.
 
