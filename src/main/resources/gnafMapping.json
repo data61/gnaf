@@ -14,7 +14,7 @@
   "filter": {
     "filter_shingle": {
       "type": "shingle",
-      "max_shingle_size": 3,
+      "max_shingle_size": 2,
       "min_shingle_size": 2,
       "output_unigrams": "true"
     }
@@ -38,8 +38,7 @@
   "d61Locality": { "type": "string", "analyzer": "d61Whitespace", "null_value": "D61_NULL" },
   
   // suggesters
-  "d61Address": { "type": "string", "analyzer": "d61Shingle" },
-  "d61SugStreet": { "type": "completion", "analyzer": "d61Whitespace", "payloads": true }, // default 'simple' analyzer tokenizes letter sequences, omits street number
+  "d61Address": { "type": "string", "position_increment_gap": 100, "analyzer": "d61Shingle" },
   
   "addressDetailPid": { "type": "string", "index": "not_analyzed" },
   "addressSiteName": { "type": "string", "analyzer": "d61Whitespace", "null_value": "D61_NULL", "copy_to": [ "d61NullStr", "d61SiteBuilding" ] },

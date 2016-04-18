@@ -2,7 +2,9 @@
 
 set -ex
 GNAF=$PWD
+
 DIR=tmp
+# DIR=/srv/gnaf/data # for http://gnaf.it.csiro.au/ (no space in user home dir)
 
 if false
 then
@@ -16,6 +18,8 @@ mkdir -p $DIR
 time java -Xmx3G -jar target/scala-2.11/gnaf_2.11-0.1-SNAPSHOT-one-jar.jar | gzip > $DIR/out.gz
 mv gnaf.log $DIR
 
+fi
+
 (
   cd $DIR
   
@@ -26,8 +30,6 @@ mv gnaf.log $DIR
   rm -f chunk-???
   split -l10000 -a3 bulk chunk-
 )
-
-fi
 
 # delete any old index
 curl -XDELETE 'localhost:9200/gnaf/'

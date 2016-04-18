@@ -22,7 +22,6 @@ function initSearch() {
   $('#clearFreeText').on('click', stopPropagation(clearFreeText));
   $('#clearFields').on('click', stopPropagation(clearFields));
   initSuggestAddress();
-  initSuggestStreet();    
 }
 
 function initBulk() {
@@ -73,10 +72,11 @@ function getFields() {
 function filterJoin(arr, sep) {
   return arr.filter(x => x !== null && x !== '').join(sep)
 }
+
 function namePreNumSuf(name, n) {
   return filterJoin([name, filterJoin([n.prefix, n.number, n.suffix], '') ], ' ');
 }
-  
+
 function initSuggestAddress() {
   var elem = $('#freeText');
   elem.autocomplete({
@@ -86,11 +86,11 @@ function initSuggestAddress() {
       e.preventDefault();
       debug('address autocomplete: selected =', selected, 'value =', selected.item.value);
       elem.val(selected.item.value);
-      var a = replaceNulls(selected.item.payload);
+      var a = selected.item.payload;
       $('#site').val(siteColHandler(a));
       $('#level').val(levelColHandler(a));
       $('#flat').val(flatColHandler(a));
-      $('#street').val(a.d61SugStreet.input);
+      $('#street').val(streetColHandler(a));
       $('#locality').val(a.localityName);
       $('#postcode').val(a.postcode);
       $('#state').val(a.stateAbbreviation);
@@ -110,9 +110,9 @@ function bulk() {
   var tbl = genTable([], searchResultCols);
   r.empty().append(tbl);
   
-  function q(query) {
-    d61AddressQuery(
-      query, 1,
+  function q(terms) {
+    runQuery(
+      d61AddressQuery(terms, 1),
       function(data) {
         data.hits.max_score = 1.0;
         tbl.append(genRow(dataHits(data)[0], searchResultCols));
@@ -125,10 +125,10 @@ function bulk() {
 }
 
 function suggestAddress(req, resp) {
-  d61AddressQuery(
-    req.term, 10,
+  runQuery(
+    d61AddressQuery(req.term, 10),
     function(data) {
-      resp(data.hits.hits.map(i => ({ label: i._source.d61Address, payload: i._source }) ));
+      resp(data.hits.hits.map(i => ({ label: hitToAddress(i._source), payload: i._source }) ));
     },
     function() {
       resp([]);
@@ -147,94 +147,33 @@ function flatSeparator(addr) {
   return addr.replace(/\//g, ' ');
 }
 
-function d61AddressQuery(query, size, success, error) {
-  try {
-    var params = {
-      "query": { "match": { "d61Address": { "query": flatSeparator(query),  "fuzziness": 2, "prefix_length": 2 } } },
-      "size": size
-    };
-    debug('d61AddressQuery: params =', params);
-    $.ajax({
-      type: 'POST',
-      url: baseUrl + '_search',
-      data: JSON.stringify(params),
-      dataType: 'json',
-      success: function(data, textStatus, jqXHR) {
-        debug('d61AddressQuery success: data', data, 'textStatus', textStatus, 'jqXHR', jqXHR);
-        success(data);
-      },
-      error: function(jqXHR, textStatus, errorThrown) {
-        debug('d61AddressQuery ajax error jqXHR =', jqXHR, 'textStatus =', textStatus, 'errorThrown =', errorThrown);
-        error();
-      }
-    });
-  } catch (e) {
-    debug('d61AddressQuery error: e =', e);
-    error();
-  }
+function d61AddressQuery(terms, size) {
+  return {
+    "query": { "match": { "d61Address": { "query": flatSeparator(terms),  "fuzziness": 2, "prefix_length": 2 } } },
+    "size": size
+  };
 }
 
-function initSuggestStreet() {
-  var elem = $('#street');
-  elem.autocomplete({
-    minLength: 4,
-    source: suggestStreet,
-    select: function(e, selected) {
-      e.preventDefault();
-      debug('street autocomplete: selected =', selected);
-      elem.val(selected.item.value);
-      var a = selected.item.payload;
-      $('#locality').val(a.localityName);
-      $('#postcode').val(a.postcode);
-      $('#state').val(a.stateAbbreviation);
-    }
-  });
-  elem.data("ui-autocomplete")._renderItem = function (ul, item) {
-    debug('street autocomplete: item', item);
-    return $("<li>")
-      .append($('<a>').append(item.label))
-      .appendTo(ul);
-  };  
+/**
+* Replace values used to represent `searchable nulls` with actual nulls.
+* <p>
+* Elastic search omits nulls from the index, consequently they cannot be searched for.
+* The indexing process substitutes 'D61_NULL' for null values to make them searchable and here we do the reverse.
+* 
+* @param h
+*/
+function replaceNulls(h) {
+ for (var p in h) {
+   var obj = h[p];
+   if (obj === 'D61_NULL' || obj === -1) h[p] = null;
+   else if (typeof obj === 'object' && !Array.isArray(obj)) replaceNulls(obj);
+ }
+ return h;
 }
 
-function suggestStreet(req, resp) {
+function runQuery(params, success, error) {
   try {
-    var params = { street: {
-      text: flatSeparator(req.term).trim(),
-      completion: {
-        field: "d61SugStreet",
-        size: 10
-      }
-    } };
-    debug('suggestStreet: params =', params);
-    $.ajax({
-      type: 'POST',
-      url: baseUrl + '_suggest',
-      data: JSON.stringify(params),
-      dataType: 'json',
-      success: function(data, textStatus, jqXHR) {
-        debug('suggestStreet success: data', data, 'textStatus', textStatus, 'jqXHR', jqXHR);
-        resp(data.street[0].options.map(i => ({ label: i.text + ', ' + i.payload.localityName + ', ' + i.payload.stateAbbreviation + ' ' + i.payload.postcode, value: i.text, payload: i.payload }) ));
-      },
-      error: function(jqXHR, textStatus, errorThrown) {
-        debug('suggestStreet ajax error jqXHR =', jqXHR, 'textStatus =', textStatus, 'errorThrown =', errorThrown);
-        resp([]);
-      }
-    });
-  } catch (e) {
-    debug('suggestStreet error: e =', e);
-  }
-}
-
-function search() {
-  var elem = $('#searchResult');
-  try {
-    elem.empty();
-    addSpinner(elem);
-    var freeText = flatSeparator($('#freeText').val()).trim();
-    var params = freeText.length > 0 ? searchQuery(freeText, $('#heuristics').is(':checked')) : fieldQuery(getFields());
-    params.size = 10;
-    debug('search: params =', params, 'stringified =', JSON.stringify(params));
+    debug('runQuery: params =', params);
     $.ajax({
       type: 'POST',
       url: baseUrl + '_search',
@@ -242,33 +181,48 @@ function search() {
       dataType: 'json',
       success: function(data, textStatus, jqXHR) {
         try {
-          debug('search success: data =', data, 'textStatus =', textStatus, 'jqXHR =', jqXHR);
-          elem.empty().append(searchResult(data));
+          debug('runQuery success: data', data, 'textStatus', textStatus, 'jqXHR', jqXHR);
+          data.hits.hits.forEach(h => replaceNulls(h));
+          success(data);
         } catch (e) {
-          debug('search success error: e = ', e);
-          elem.empty();
-          showError(elem, e.message);
+          debug('runQuery success error: e = ', e);
+          error(e.message);
         }
       },
       error: function(jqXHR, textStatus, errorThrown) {
-        debug('search ajax error jqXHR =', jqXHR, 'textStatus =', textStatus, 'errorThrown =', errorThrown);
-        elem.empty();
-        showError(elem, errorThrown);
+        debug('runQuery ajax error jqXHR =', jqXHR, 'textStatus =', textStatus, 'errorThrown =', errorThrown);
+        error(errorThrown);
       }
     });
   } catch (e) {
-    debug('search error: e =', e);
-    elem.empty();
-    showError(elem, e.message);
+    debug('runQuery error: e =', e);
+    error(e.message);
   }
+}
+
+function search() {
+  var elem = $('#searchResult');
+  elem.empty();
+  addSpinner(elem);
+  var freeText = $('#freeText').val().trim();
+  runQuery(
+    freeText.length > 0 ? d61AddressQuery(freeText, 10) : fieldQuery(getFields()),
+    function(data, textStatus, jqXHR) {
+      elem.empty().append(searchResult(data));
+    },
+    function(msg) {
+      elem.empty();
+      showError(elem, msg);
+    }
+  );
 }
 
 var searchResultCols = [
   new Col('Rank', 'score', scoreColHandler),
   new Col('Site', 'record', siteColHandler),
-  new Col('Level', 'record', levelColHandler),
   new Col('Flat', 'record', flatColHandler),
-  new Col('Street', 'd61SugStreet', streetColHandler),
+  new Col('Level', 'record', levelColHandler),
+  new Col('Street', 'record', streetColHandler),
   new Col('Locality', 'localityName'),
   new Col('Postcode', 'postcode'),
   new Col('State', 'stateName'),
@@ -277,7 +231,7 @@ var searchResultCols = [
 
 function dataHits(data) {
   return data.hits.hits.map(h => {
-    var obj = replaceNulls(h._source);
+    var obj = h._source;
     obj.score = h._score / data.hits.max_score;
     obj.record = obj; // for colHandler to access whole record
     return obj;
@@ -294,20 +248,34 @@ function siteColHandler(h) {
   return filterJoin([ h.addressSiteName, h.buildingName ], ' ');
 }
 
-function levelColHandler(h) {
-  return namePreNumSuf(h.levelName, h.level);
-}
-
 function flatColHandler(h) {
   return namePreNumSuf(h.flatTypeName, h.flat);
 }
 
-function streetColHandler(l) {
-  return l.input;
+function levelColHandler(h) {
+  return namePreNumSuf(h.levelName, h.level);
+}
+
+function streetNum(h) {
+  var f = namePreNumSuf(null, h.numberFirst);
+  var l = namePreNumSuf(null, h.numberLast);
+  return l === '' ? f : f + '-' + l;
+}
+
+function streetColHandler(h) {
+  return filterJoin([ streetNum(h), h.street.name, h.street.typeCode, h.street.suffixName ], ' ');
 }
 
 function locationColHandler(l) {
   return l.lat + ', ' + l.lon;
+}
+
+function hitToAddress(h) {
+  return filterJoin([
+    siteColHandler(h),
+    filterJoin([ flatColHandler(h), levelColHandler(h), streetColHandler(h) ], ' '),
+    filterJoin([ h.localityName, h.stateAbbreviation, h.postcode ], ' ')
+  ], ', ');
 }
 
 // *********************************************************
