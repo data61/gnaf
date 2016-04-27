@@ -314,6 +314,10 @@ builds and runs the Scala program, transforms the output to suit Elasticsearch's
 
 ### Example Queries
 
+Get the schema/mapping (created by above script loading `src/main/resouces/gnafMapping.json`):
+
+	$ curl -XGET 'localhost:9200/gnaf/?pretty'
+	
 Search for an exact match, retrieve at most 5 results:
 
     $ curl -XPOST 'localhost:9200/gnaf/_search?pretty' -d '
@@ -331,7 +335,7 @@ Search for a fuzzy match against all fields:
     }' 
 
 
-Search for a fuzzy match against a field using a shingle filter (n-grams n = 1, 2, 3):
+Search for a fuzzy match against the `d61Address` field which uses a shingle filter (n-grams n = 1, 2, 3) set up in the schema/mapping:
 
     curl -XPOST 'localhost:9200/gnaf/_search?pretty' -d '
     {
@@ -381,23 +385,13 @@ The web page `src/main/webapp/index.html` provides a user interface to query Ela
 This method provides autocompletion on the street field which also sets the locality, postcode, state; thus ensuring valid data entry.
 
 #### Search Strategies
-For free text address entry, two search strategies are available:
-- if the `heuristics` checkbox is not selected then the [_all](https://www.elastic.co/guide/en/elasticsearch/reference/2.3/mapping-all-field.html) field (which collates all terms from all GNAF fields) is searched for all the entered terms. Fuzzy matching allows for an edit-distance of 1 after the first two characters. Advantages:
-  - its the simplest thing that could possibly work;
-  - it makes no assumptions about address formatting.
-- if  the `heuristics` checkbox is selected then the a more targeted query of specific GNAF fields is
-attempted by using assumptions about address formating to extract fields from the text. Advantages:
-  - it may be faster;
-  - it supports field specific strategies such as different tokenization and pre-processing (Lucene `Analyzer`s) and matching (such as fuzzyness);
-  - using field specific term frequencies should provide better ranking.
+For free text address entry a fuzzy search is performed on the `d61Address` field as shown in the examples above.
+The shingle (n-gram) filter strongly rewards words appearing in the correct order whilst still matching terms out-of-order.
 
-When the address is entered into separate fields a third search strategy is used. This reuses some of the above heuristics to parse the data entry fields into finer grained GNAF fields.
-Advantages:
-- those described above for the heuristic strategy;
-- fewer assumptions about formatting because the input is partially segmented;
-- the autocompletion feature outlined in the previous section.
+When the address is entered into separate fields it is parsed into finer grained GNAF fields for a very specific search.
 
-See `src/main/webapp/query.js` for the actual query generation, which is more complex than outlined here.
+See `src/main/webapp/query.js` for the actual query generation.
+
 ### Command Line
 The [node.js](https://nodejs.org/) command line client was created for bulk lookup of 1.1M addresses from the DIBP Mail project. It requires node's `request` module, which is installed with:
 
