@@ -314,7 +314,7 @@ builds and runs the Scala program, transforms the output to suit Elasticsearch's
 
 ### Example Queries
 
-Search for an exact match:
+Search for an exact match, retrieve at most 5 results:
 
     $ curl -XPOST 'localhost:9200/gnaf/_search?pretty' -d '
     {
@@ -330,13 +330,45 @@ Search for a fuzzy match against all fields:
       "size": 5
     }' 
 
-Get suggestions for completing the street field which match the currently entered prefix:
 
-    $ curl -X POST 'localhost:9200/gnaf/_suggest?pretty' -d '
-    { "responseName": {
-      "text" : "12 TYTHER", 
-      "completion" : { "field": "d61SugStreet", size: 10 }
-    } }'
+Search for a fuzzy match against a field using a shingle filter (n-grams n = 1, 2, 3):
+
+    curl -XPOST 'localhost:9200/gnaf/_search?pretty' -d '
+    {
+        "query": {
+            "match": {
+                "d61Address": {
+                    "query": "7 LONDON CIRCUIT, CITY ACT 2601",
+                    "fuzziness": 2,
+                    "prefix_length": 2
+                }
+            }
+        },
+        "size": 5
+    }'
+
+Search for addresses within 200m of a location:
+
+    curl -XPOST 'localhost:9200/gnaf/_search?pretty' -d '
+    {
+        "query": {
+            "bool" : {
+                "must" : {
+                    "match_all" : {}
+                },
+                "filter" : {
+                    "geo_distance" : {
+                        "distance" : "200m",
+                        "location" : {
+                            "lat" : -35.28150121,
+                            "lon" : 149.12512965
+                        }
+                    }
+                }
+            }
+        },
+        size: 5
+    }'
 
 ## Client Apps
 
