@@ -34,7 +34,7 @@ var baseUrl;
 
 function initBaseUrl() {
   baseUrl = window.location.protocol === 'file:'
-    ? 'http://localhost:9200/gnaf/'                                               // use this when page served from a local file during dev
+    ? 'http://gnaf.it.csiro.au/es/' // 'http://localhost:9200/gnaf/' // use this when page served from a local file during dev
     // : window.location.protocol + '//' + window.location.hostname + ':9200/gnaf/'; // or this when page served from web server
     : window.location.protocol + '//' + window.location.hostname + '/es/'; // or this when page served from web server
 }
@@ -178,6 +178,7 @@ function runQuery(params, success, error) {
       type: 'POST',
       url: baseUrl + '_search',
       data: JSON.stringify(params),
+      contentType: "application/json; charset=utf-8",
       dataType: 'json',
       success: function(data, textStatus, jqXHR) {
         try {

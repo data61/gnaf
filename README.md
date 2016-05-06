@@ -309,7 +309,8 @@ Running:
 
 builds and runs the Scala program, transforms the output to suit Elasticsearch's 'bulk' API and loads the data to create an Elasticsearch index. Dependencies:
 
-- the JSON transformation tool [jq](https://stedolan.github.io/jq/);
+- the JSON transformation tool [jq](https://stedolan.github.io/jq/).
+  The version from the Ubuntu 15.10 or later repo is OK, the version in the Ubuntu 14.04 LTS repo is to old;
 - Elasticsearch running on http://localhost:9200 (that is its default port).
 
 ### Example Queries
