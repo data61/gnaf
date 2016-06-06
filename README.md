@@ -34,21 +34,19 @@ H2 supports the Postgres protocol, allowing access from any Postgres compatible 
 
 Start the [H2 server](http://www.h2database.com/html/tutorial.html#using_server) with options:
 
-- `-web` to start the HTTP H2 Console on port 8082; and
-- `-pg` to start the Postgres protocol on port 5435 (different from Postgres Server default of 5432 so as not to clash).
+- `-web` to start the HTTP H2 Console on port 8082;
+- `-pg` to start the Postgres protocol on port 5435 (different from Postgres Server default of 5432 so as not to clash); and
+- `-webAllowOthers`/`-pgAllowOthers` if remote (non-localhost) access is required.
 
-Options are available to change these default ports.
-Upon the first connection using the Postgres protocol, H2 runs a script to create Postgres compatible system views and this requires a user with admin rights.
+Upon the first connection using the Postgres protocol H2 runs a script to create Postgres compatible system views in order to support Postgres client commands.
 
-First connection with admin rights:
+First connection with admin rights to create system views:
 
         psql --host=localhost --port=5435 --username=gnaf --dbname=~/sw/gnaf/data/gnaf
 
 Subsequent connections may use reduced access rights:
 
         psql --host=localhost --port=5435 --username=READONLY --dbname=~/sw/gnaf/data/gnaf
-
-psql cannot connect with blank username or password.
 
 ## Create Database
 
@@ -87,7 +85,7 @@ Run the SQL commands either by:
 On a macbook-pro (with SSD) it takes 26 min to load the data and another 53 min to create the indexes.
 The script creates a user `READONLY` with password `READONLY` that has only the `SELECT` right. This user should be used for read-only access.
 
-### Example Queries
+### Exploring Address Data
 Find me (fast):
 
     SELECT SL.*, AD.*
@@ -146,8 +144,6 @@ Looking at cases where the alias has a different STREET_NAME (27119 cases):
 - in some cases the number of tokens is different e.g. DE CHAIR -> DECHAIR, TWELVETREES -> TWELVE TREES,
   however the combination of the shingle filter (1 - 3-grams) and edit distance matching will make these match
 - there are aliases for SAINT X -> ST X (237), ST X -> SAINT X (26), MOUNT X -> MT X (577) and MT X -> MOUNT X (110)
-
-Currently the suggesters (auto-complete) do not search street and locality aliases (see To Do section), but the searches do.
 
 ### Code/name Lookup Tables
 
@@ -233,7 +229,56 @@ The following sections show sample rows from these tables and the number of rows
 - numberFirst prefix length 3, 14,122,945 nulls; suffix length 2, 13,493,586 nulls
 - numberLast prefix length 3; suffix length 2
 
-    
+## Exploring Geocode Data
+
+###  ADDRESS_SITE_GEOCODE 
+
+- RELIABILITY_CODE (descriptions quoted from p17 [GNAF Product Description](https://www.psma.com.au/sites/default/files/g-naf_product_description.pdf)):
+  - 2 (13,369,902 rows), "sufficient to place geocode within address site boundary or access point
+close to address site boundary"
+  - 3 (186,160 rows), "sufficient to place geocode near (or possibly within) address site boundary" (generally less precise than 2)
+  - no other values are used 
+
+- BOUNDARY_EXTENT, PLANIMETRIC_ACCURACY, ELEVATION and DATE_RETIRED are always null
+- GEOCODE_TYPE_CODE - most of the available values in GEOCODE_TYPE_AUT are not used:
+
+        SELECT asg.GEOCODE_TYPE_CODE , gta.NAME, count(*)
+        FROM ADDRESS_SITE_GEOCODE AS asg
+        JOIN GEOCODE_TYPE_AUT AS gta ON asg.GEOCODE_TYPE_CODE = gta.CODE
+        GROUP BY GEOCODE_TYPE_CODE;
+
+        GEOCODE_TYPE_CODE  	NAME  	                            COUNT(*)  
+        BC	                BUILDING CENTROID	                201520
+        PCM	                PROPERTY CENTROID MANUAL	        2307
+        PC	                PROPERTY CENTROID	                9479989
+        PAPS	            PROPERTY ACCESS POINT SETBACK	    221312
+        FCS	                FRONTAGE CENTRE SETBACK	            3464774
+        GG	                GAP GEOCODE	                        186160
+
+- ADDRESS_SITEs have at most 2 geocodes (58,165 have 2):
+
+        SELECT ADDRESS_SITE_PID, count(*) AS cnt
+        FROM ADDRESS_SITE_GEOCODE
+        GROUP BY ADDRESS_SITE_PID
+        ORDER BY cnt desc;
+        
+        ADDRESS_SITE_PID  	CNT  
+        415053318			2
+        415095264			2
+        415102559			2
+        ...
+
+Looking at the first of these (ADDRESS_DETAIL_PID: GASA_414912543, 26 STRANGMAN ROAD, WAIKERIE SA 5330):
+
+        SELECT * FROM ADDRESS_DETAIL AS ad
+        JOIN ADDRESS_DEFAULT_GEOCODE AS adg ON adg.ADDRESS_DETAIL_PID = ad.ADDRESS_DETAIL_PID
+        JOIN ADDRESS_SITE AS as ON as.ADDRESS_SITE_PID = ad.ADDRESS_SITE_PID
+        JOIN ADDRESS_SITE_GEOCODE AS asg ON asg.ADDRESS_SITE_PID = ad.ADDRESS_SITE_PID
+        WHERE ad.ADDRESS_SITE_PID = 415053318
+
+The ADDRESS_DEFAULT_GEOCODE corresponds to one of the 2 ADDRESS_SITE_GEOCODE rows (although there is no key to link them). These have GEOCODE_TYPE_CODE: PAPS, PROPERTY ACCESS POINT SETBACK (the other row is: PC, PROPERTY CENTROID).
+
+
 ## Build and Development Set Up
 The script described in the "Elasticsearch | Create Index" section runs the build, so most readers can safely skip this section.
 
@@ -280,7 +325,7 @@ The script described in the "Elasticsearch | Create Index" section runs the code
 
 The command:
 
-    java -jar target/scala-2.11/bpcsimilarity_2.11-0.1-SNAPSHOT-one-jar.jar --help
+    java -jar target/scala-2.11/gnaf_2.11-0.1-SNAPSHOT-one-jar.jar au.csiro.data61.gnaf.indexer.Indexer --help
     
 shows help on command line options, which should be sufficient to run the code.
 
@@ -292,7 +337,7 @@ To prevent the node joining some other Elasticsearch cluster change the cluster 
 
     cluster.name: gnaf
     
-Access by the client apps requires [CORS](https://en.wikipedia.org/wiki/Cross-origin_resource_sharing) to be configured:
+Access by the client apps requires [CORS](https://en.wikipedia.org/wiki/Cross-origin_resource_sharing) to be configured (note this does not appear to work and we are currently using an nginx proxy to add a CORS header):
 
     http.cors.enabled: true
     http.cors.allow-origin: "*"

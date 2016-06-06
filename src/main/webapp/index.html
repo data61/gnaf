@@ -2,45 +2,18 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>G-NAF Search</title>
-  <link rel="icon" type="image/ico" href="nicta-favicon.ico" />
-  <link rel="stylesheet" type="text/css" href="https://code.jquery.com/ui/1.11.4/themes/ui-lightness/jquery-ui.css">
+  <title>G-NAF</title>
+  <link rel="icon" type="image/ico" href="http://www.csiro.au/themes/default/img/favicon.ico" />
+  <link rel="stylesheet" type="text/css" href="https://code.jquery.com/ui/1.11.4/themes/smoothness/jquery-ui.css">
   <link rel="stylesheet" type="text/css" href="index.css">
 </head>
 <body>
-  <h1>G-NAF Search</h1>
-  Also available: <a href="bulk.html">bulk</a> lookup
-  <h2>Search</h2>
-  <div id="search">
-    <div id="searchForm">
-      <form>
-        <div id="freeTextDiv">
-          <label for="freeText">free text</label>
-          <span class="example">e.g. 7 London Circuit, ACT 2601; auto-complete sets everything!</span>
-          <a id="clearFreeText" href="#">clear</a>
-          <textarea id="freeText" name="freeText"></textarea>
-        </div>
-        <div id="fieldsDiv">
-          <label>or fields</label>
-          <a id="clearFields" href="#">clear</a>
-          <div class="field"><label for="site">site</label><input type="text" id="site" name="site"></div>
-          <div class="field"><label for="level">level</label><input type="text" id="level" name="level"></div>
-          <div class="field"><label for="flat">flat</label><input type="text" id="flat" name="flat"></div>
-          <div class="field"><label for="street">street</label><input type="text" id="street" name="street"></div>
-          <div class="field"><label for="locality">locality</label><input type="text" id="locality" name="locality"></div>
-          <div class="field"><label for="postcode">post code</label><input type="text" id="postcode" name="postcode"></div>
-          <div class="field"><label for="state">state</label><select id="state" name="state"></select></div>
-        </div>
-        <button type="button">Search</button>
-      </form>
-    </div>
-    <div id="searchResult"></div>
-  </div>
+  <h1>G-NAF</h1>
+  <div id="gnaf"></div>
   <script type="text/javascript" src="https://code.jquery.com/jquery-2.2.2.min.js"></script>
   <script type="text/javascript" src="https://code.jquery.com/ui/1.11.4/jquery-ui.min.js"></script>
-  <script type="text/javascript" src="query.js"></script>
   <script type="text/javascript" src="index.js"></script>
-  <script type="text/javascript">$(document).ready(initSearch);</script>
+  <script type="text/javascript">$(document).ready(initGnaf);</script>
 </body>
 </html>
 

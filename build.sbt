@@ -1,9 +1,9 @@
 import ReleaseTransformations._
 import com.typesafe.sbt.license.{DepModuleInfo, LicenseInfo}
 
-concurrentRestrictions in Global := Seq(
-  Tags.limit(Tags.Test, 1) // only one test at a time across all projects because different tests write database & Lucene indices to same path
-)
+// concurrentRestrictions in Global := Seq(
+//   Tags.limit(Tags.Test, 1) // only one test at a time across all projects because different tests write database & Lucene indices to same path
+// )
 
 // default release process, but without publishArtifacts
 releaseProcess := Seq[ReleaseStep](
@@ -27,7 +27,7 @@ organization := "au.com.data61"
 
 // version := "0.1-SNAPSHOT" // see version.sbt maintained by sbt-release plugin
 
-scalaVersion := "2.11.7"
+scalaVersion := "2.11.8"
 
 scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature", "-optimise")
 
@@ -56,33 +56,46 @@ EclipseKeys.createSrc := EclipseCreateSrc.Default + EclipseCreateSrc.Resource
 // experiment with running a pre-compilation step
 // http://stackoverflow.com/questions/7344477/adding-new-task-dependencies-to-built-in-sbt-tasks
 
+Revolver.settings
 com.github.retronym.SbtOneJar.oneJarSettings
 
-mainClass in run in Compile := Some("au.com.data61.gnaf.indexer.Main")
+// mainClass in run in Compile := Some("au.csiro.data61.gnaf.indexer.Indexer")
+mainClass in run in Compile := Some("au.csiro.data61.gnaf.service.GnafService")
 
 filterScalaLibrary := false // sbt-dependency-graph: include scala library in output
 
 libraryDependencies ++= Seq(
-  // "org.scala-lang" % "scala-reflect" % "2.11.7", // how to use scalaVersion?
+  "org.scala-lang" % "scala-reflect" % "2.11.8", // how to use scalaVersion?
   "org.scala-lang.modules" %% "scala-xml" % "1.0.4",
   "com.typesafe.scala-logging" %% "scala-logging" % "3.1.0",
-  "com.typesafe.akka" %% "akka-actor" % "2.4.2",
   "com.github.scopt" %% "scopt" % "3.3.0",
   "com.jsuereth" %% "scala-arm" % "2.0.0-M1",
+  "ch.megard" %% "akka-http-cors" % "0.1.2",
   "com.h2database" % "h2" % "1.4.191" % "runtime",
-  "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.7.2",
-  "com.fasterxml.jackson.core" % "jackson-annotations" % "2.7.2",
   "org.slf4j" % "slf4j-api" % "1.7.12",
   "ch.qos.logback" % "logback-classic" % "1.1.3" % "runtime",
-  "org.scalatest" %% "scalatest" % "2.2.4" % "test"
+  "org.scalatest" %% "scalatest" % "2.2.6" % "test"
   )
 
+libraryDependencies ++= Seq(
+  "com.fasterxml.jackson.module" %% "jackson-module-scala",
+  "com.fasterxml.jackson.core" % "jackson-annotations"
+) map (_ % "2.7.2")
+ 
 libraryDependencies ++= Seq(
   "slick-codegen",
   "slick",
   "slick-hikaricp"
 ) map ("com.typesafe.slick" %% _ % "3.1.1")
  
+libraryDependencies ++= Seq(
+  "akka-actor",
+  "akka-stream",
+  "akka-http-experimental",
+  "akka-http-spray-json-experimental",
+  "akka-http-testkit"
+  ) map ("com.typesafe.akka" %% _ % "2.4.3")
+
 licenseOverrides := {
     case DepModuleInfo(org, _, _) if hasPrefix(org, Seq("org.apache", "com.fasterxml", "com.google.guava", "org.javassist")) => LicenseInfo(LicenseCategory.Apache, "The Apache Software License, Version 2.0", "http://www.apache.org/licenses/LICENSE-2.0.txt")
     case DepModuleInfo(org, _, _) if hasPrefix(org, Seq("com.thoughtworks.paranamer")) => LicenseInfo(LicenseCategory.BSD, "BSD-Style", "http://www.opensource.org/licenses/bsd-license.php")

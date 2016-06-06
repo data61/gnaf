@@ -4,76 +4,48 @@ body {
   color: #404040;
 }
 
-h1, h2, h3, h4 {
+h1, h2, h3, h4, .ui-tabs-nav .ui-state-active a {
   color: #98bf21;
 }
 
-#search {
-  margin-left: 10px;
-}
+/* .example { */
+/*   padding-left: 10px; */
+/*   font-size: small;	 */
+/* } */
 
-#searchForm a {
-  padding-left: 30px;
-}
-
-#freeTextDiv textarea {
-  margin-top: 5px;
-  margin-left: 10px;
-}
-
-#freeTextDiv label[for=heuristics] {
-  margin-left: 10px;
-}
-
-#fieldsDiv .field {
-  margin-left: 10px;
-}
-
-#fieldsDiv input {
-  width: 400px;
-}
-
-#searchForm button {
-  margin-top: 30px;
-}
-
-#fieldsDiv {
-  margin-top: 20px;
-}
-
-#fieldsDiv .field {
-  margin-top: 10px;
-}
-
-#fieldsDiv .field label {
-  display: inline-block;
-  width: 90px;
-}
-
-#searchResult {
-  margin-top: 10px;
+.label, label {
+  color: #98bf21;
+  font-weight: bold;
+  margin-right: 5px;
+  vertical-align: top;
 }
 
 .example {
   padding-left: 10px;
   font-size: small;	
+  vertical-align: top;
 }
 
 .multi-line {
   display: inline-block;
 }
 
-.label, label {
-  color: #98bf21;
-  font-weight: bold;
+#bulkLookup .header a {
+  margin-left: 10px;
 }
 
-.error {
-  color: red;
-  margin-top: 15px;
-  font-family: monospace;
-  white-space: pre;
+#bulkAddresses {
+  height: 250px;
+  width: 500px;
 }
+
+
+/* .error { */
+/*   color: red; */
+/*   margin-top: 15px; */
+/*   font-family: monospace; */
+/*   white-space: pre; */
+/* } */
 
 button {
   color: white;
@@ -81,17 +53,6 @@ button {
   border: 1px outset #98bf21;
   margin-top: 10px;
   font-weight: bold;
-}
-
-#searchForm textarea {
-  width: 800px;
-  height: 4em;
-  padding: 2px;
-  display: block;
-}
-
-.stats {
-  font-size: small;
 }
 
 table {
@@ -116,3 +77,28 @@ td {
   border: 1px solid #98bf21;
   padding: 2px 5px 2px 5px;
 }
+
+div.location {
+  margin-bottom: 10px;
+}
+
+div.location a, #addressNearMe .refresh {
+  margin-left: 5px;
+}
+
+#addressLookup input {
+  width: 500px;
+}
+
+#addressLookupResult, #addressNearMeResult, #bulkResult, .geoDetail {
+  margin-top: 15px;
+}
+
+.showGeoDetail {
+  margin-left: 10px;
+}
+
+#streetFilter, #address {
+  width: 300px;
+}
+

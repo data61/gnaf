@@ -15,7 +15,7 @@ sbt oneJar
 # run Scala program, takes about 25min with a SSD
 rm -f gnaf.log
 mkdir -p $DIR
-time java -Xmx3G -jar target/scala-2.11/gnaf_2.11-0.1-SNAPSHOT-one-jar.jar | gzip > $DIR/out.gz
+time java -Xmx3G -jar target/scala-2.11/gnaf_2.11-0.1-SNAPSHOT-one-jar.jar au.csiro.data61.gnaf.indexer.Indexer | gzip > $DIR/out.gz
 mv gnaf.log $DIR
 
 fi

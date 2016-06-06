@@ -8,7 +8,7 @@
     </encoder>
   </appender>
 
-  <logger name="au.com.data61.gnaf" level="DEBUG" />
+  <logger name="au.csiro.data61.gnaf" level="DEBUG" />
   
   <root level="INFO">
     <appender-ref ref="FILE" />

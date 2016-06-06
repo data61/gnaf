@@ -7,6 +7,8 @@
 // required by above
 // libraryDependencies += "com.h2database" % "h2" % "1.4.191"
 
+addSbtPlugin("io.spray" % "sbt-revolver" % "0.8.0")
+
 addSbtPlugin("com.typesafe.sbteclipse" % "sbteclipse-plugin" % "4.0.0")
 
 addSbtPlugin("org.scala-sbt.plugins" % "sbt-onejar" % "0.8")
