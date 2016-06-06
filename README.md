@@ -438,35 +438,6 @@ When the address is entered into separate fields it is parsed into finer grained
 
 See `src/main/webapp/query.js` for the actual query generation.
 
-### Command Line
-The [node.js](https://nodejs.org/) command line client was created for bulk lookup of 1.1M addresses from the DIBP Mail project. It requires node's `request` module, which is installed with:
-
-    npm init
-    npm install request
-    
-Run the [node.js](https://nodejs.org/) command line client with:
-
-    node src/main/webapp/main.js
-
-It reads lines from stdin purporting to be an address and writes the top Elasticsearch match as JSON to stdout.
-
-Example usage:
-
-This didn't work:
-
-    zcat ../dibpMail/data.tsv.gz | cut -f29-30,32,33,53  | sed -e '1d' -e 's/\t/~/g' | node src/main/webapp/main.js > dibpMailAddresses
-    Error { [Error: connect EADDRNOTAVAIL 127.0.0.1:9200 - Local (127.0.0.1:0)]
-    
-I think the async node request module is firing off too many concurrent requests to Elasticsearch. This works OK, but I think firing up node for each query is slowing it down:
-
-    zcat ../dibpMail/data.tsv.gz | cut -f29-30,32,33,53  | sed -e '1d' -e 's/\t/~/g' | while read a; do echo $a | node src/main/webapp/main.js; done > dibpMailAddresses
-
-We could try splitting the input into chunks that are small enough to process completely asynchronously:
-
-    zcat ../dibpMail/data.tsv.gz | cut -f29-30,32,33,53  | sed -e '1d' -e 's/\t/~/g' | split -l40 -a6 - chunk-
-    for f in chunk-*; do node src/main/webapp/main.js < $f; done > dibpMailAddresses
-
-
 ## To Do
 
 Add Code/Name from the _AUT tables as synonyms (e.g. so ST will match STREET) to the phrase suggester.
@@ -478,28 +449,13 @@ We should do contraction to the single term abreviation.
 Possible negative consequences? Synonyms create the risk of spurious matches. The tables contain some unused entries (e.g. the STREET_TYPE_AUT (AWLK, AIRWALK)) and many rarely used entries; using them all as synonyms increases the risk. e.g. ATM has small edit distance from ATMA, ATKA, ATEA (street names), so contracting "AUTOMATIC TELLER MACHINE" to "ATM" could result in these street names matching AUTOMATIC TELLER MACHINEs.
 Perhaps we need to be quite selective in the use of synonyms.
 
-Add street (locality) aliases and locality aliases to the phrase suggester.
-Don't think we can use contraction here because one is not the contraction of the other, they are both multi-term.
-Simply appending the alias terms will probably be sufficient.
-
 Other synonyms: "St" for "Saint", "Mt" for "Mount"?
-The "Example Queries" section shows that this would be handled by including street (locality) aliases.
+The "Example Queries" section shows that this should be handled already by the inclusion of street (locality) aliases.
 
-
-The phrase suggester I think is performing better than the main query. Replace the latter with the query from the former.
-
-At some cost in terms of speed, we could prioritize primary over secondary addresses and principle over alias addresses (already done in the free text search). But maybe the default higher weigh given to shorter docs is already enough?
+At some cost in terms of speed, we could prioritize primary over secondary addresses and principle over alias addresses. But maybe the default higher weigh given to shorter docs is already enough?
 
 https://www.elastic.co/guide/en/elasticsearch/guide/current/_dealing_with_null_values.html
 The mapping can have a value to substitute for null values, so we can do away with that from the Scala code.
-
-The free text query (with heuristics) takes ~0.07 sec (without heuristics it takes ~1.1 sec):
-
-    "{"query":{"bool":{"should":[{"constant_score":{"filter":{"term":{"primarySecondary":"0"}},"boost":0.8}},{"constant_score":{"filter":{"term":{"primarySecondary":"P"}},"boost":1}},{"constant_score":{"filter":{"term":{"aliasPrincipal":"P"}},"boost":1}},{"match":{"d61NullStr":"D61_NULL"}},{"match":{"d61NullInt":"-1"}},{"term":{"stateAbbreviation":"ACT"}},{"term":{"postcode":"2601"}},{"term":{"numberFirst.number":"7"}},{"multi_match":{"query":"7","fields":["level.number^0.2","flat.number^0.4","numberFirst.number^0.5","numberLast.number^0.3","postcode^0.5"],"type":"most_fields"}},{"match":{"_all":{"query":" LONDON CCT, ","fuzziness":1,"prefix_length":2}}}],"minimum_should_match":"75%"}},"size":10}"
-
-The equivalent fields query takes ~0.03 sec:
-
-    "{"query":{"bool":{"should":[{"term":{"level.number":-1}},{"term":{"flat.number":-1}},{"term":{"numberFirst.prefix":"D61_NULL"}},{"term":{"numberFirst.number":"7"}},{"term":{"numberFirst.suffix":"D61_NULL"}},{"match":{"d61Street":{"query":"LONDON CCT","fuzziness":1,"prefix_length":2}}},{"term":{"postcode":"2601"}},{"term":{"stateAbbreviation":"ACT"}}],"minimum_should_match":"75%"}},"size":10}"
 
 ## Data License
 
