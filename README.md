@@ -278,6 +278,8 @@ Looking at the first of these (ADDRESS_DETAIL_PID: GASA_414912543, 26 STRANGMAN 
 
 The ADDRESS_DEFAULT_GEOCODE corresponds to one of the 2 ADDRESS_SITE_GEOCODE rows (although there is no key to link them). These have GEOCODE_TYPE_CODE: PAPS, PROPERTY ACCESS POINT SETBACK (the other row is: PC, PROPERTY CENTROID).
 
+Note the related address with ADDRESS_DETAIL_PID = 'GASA_424344634' has an ADDRESS_DEFAULT_GEOCODE row and an ADDRESS_SITE row, but no ADDRESS_SITE_GEOCODE rows.
+
 
 ## Build and Development Set Up
 The script described in the "Elasticsearch | Create Index" section runs the build, so most readers can safely skip this section.
