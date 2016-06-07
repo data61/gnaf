@@ -357,7 +357,7 @@ Running:
 builds and runs the Scala program, transforms the output to suit Elasticsearch's 'bulk' API and loads the data to create an Elasticsearch index. Dependencies:
 
 - the JSON transformation tool [jq](https://stedolan.github.io/jq/).
-  The version from the Ubuntu 15.10 or later repo is OK, the version in the Ubuntu 14.04 LTS repo is to old;
+  The version from the Ubuntu 15.10 or later repo is OK, the version in the Ubuntu 14.04 LTS repo is too old;
 - Elasticsearch running on http://localhost:9200 (that is its default port).
 
 ### Example Queries
@@ -435,10 +435,6 @@ This method provides autocompletion on the street field which also sets the loca
 #### Search Strategies
 For free text address entry a fuzzy search is performed on the `d61Address` field as shown in the examples above.
 The shingle (n-gram) filter strongly rewards words appearing in the correct order whilst still matching terms out-of-order.
-
-When the address is entered into separate fields it is parsed into finer grained GNAF fields for a very specific search.
-
-See `src/main/webapp/query.js` for the actual query generation.
 
 ## To Do
 
