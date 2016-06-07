@@ -50,7 +50,7 @@ trait Service extends Protocols {
     db.run(GeocodeTypeAut.result).map(_.map(t => t.code -> t.description.getOrElse(t.code)).toMap)
   }
   lazy val geocodeTypesFuture = geocodeTypes
-    
+  
   // left join because some addressDetailPid have no AddressSiteGeocode
   val qGeocodes = {
     def q(addressDetailPid: Rep[String]) = for {
@@ -65,17 +65,44 @@ trait Service extends Protocols {
       typ <- geocodeTypesFuture
       seq <- db.run(qGeocodes(addressDetailPid).result)
     } yield seq.map { case (dg, sg) =>
-      sg.map { x => Geocode(x.geocodeTypeCode, x.geocodeTypeCode.map(typ), Some(x.reliabilityCode), Some(dg.geocodeTypeCode) == x.geocodeTypeCode, x.latitude, x.longitude) }
+      sg.map { x => Geocode(x.geocodeTypeCode, x.geocodeTypeCode.map(typ), Some(x.reliabilityCode), Some(dg.geocodeTypeCode) == x.geocodeTypeCode && dg.latitude == x.latitude && dg.longitude == x.longitude, x.latitude, x.longitude) }
         .getOrElse(Geocode(Some(dg.geocodeTypeCode), Some(typ(dg.geocodeTypeCode)), None, true, dg.latitude, dg.longitude)) // handle the no AddressSiteGeocode case
     }.sortBy(!_.isDefault)
   }
   
+  def addressTypes()(implicit db: Database): Future[Map[String, String]] = {
+    db.run(AddressTypeAut.result).map(_.map(t => t.code -> t.description.getOrElse(t.code)).toMap)
+  }
+  lazy val addressTypesFuture = addressTypes
+    
+  val qAddressType = {
+    def q(addressDetailPid: Rep[String]) = for {
+      ad <- AddressDetail if ad.addressDetailPid === addressDetailPid
+      as <- AddressSite if as.addressSitePid === ad.addressSitePid
+    } yield as.addressType
+    Compiled(q _)
+  }
+  
+  def addressType(addressDetailPid: String)(implicit db: Database) = {
+    for {
+      typ <- addressTypesFuture
+      cod <- db.run(qAddressType(addressDetailPid).result.headOption).map(_.flatten)
+    } yield cod.map(typ)
+  }
+
   val routes = { cors() {
     logRequestResult("GnafService") {
       pathPrefix("addressGeocode") {
         (get & path(Segment)) { addressDetailPid =>
           complete {
             geocodes(addressDetailPid)
+          }
+        }
+      } ~
+      pathPrefix("addressType") {
+        (get & path(Segment)) { addressDetailPid =>
+          complete {
+            addressType(addressDetailPid)
           }
         }
       }
