@@ -23,7 +23,7 @@ function initBaseUrl() {
 //    : window.location.protocol + '//' + window.location.hostname + ':9200/gnaf/'; // or this when page served from web server
 //    // : window.location.protocol + '//' + window.location.hostname + '/es/'; // or this when page served from web server
   esUrl = 'http://gnaf.it.csiro.au/es/'
-  dbUrl = 'http://localhost:9000/';
+  dbUrl = 'http://gnaf.it.csiro.au:9000/';
 }
 
 var myCoords;
@@ -69,7 +69,7 @@ function createTabs(id, itc) {
     activate: function(ev, ui) {
       debug('tabs.activate: ev =', ev, 'ui =', ui);
       var sel = '#' + tabDef[1].id;
-      if (ui.newPanel.selector == sel && myCoords) searchAddressesNearMe(myCoords, $('#addressNearMe'))
+      if (ui.newPanel.selector == sel) searchAddressesNearMe(myCoords, $('#addressNearMe'))
     } 
   });
   return tabs;
@@ -161,10 +161,11 @@ var unqStreet;
 function searchAddressesNearMe(coords, elem) {
   var loc = toQueryLoc(coords);
   var dist = getDist();
+  debug('searchAddressesNearMe: loc =', loc, 'dist =', dist);
   if (!loc || !dist) {
     elem.empty().append([
       $('<span>').text('Please set a Location and Search distance then'),
-      $('<a>').attr('href', '#').addClass('refresh').text('refresh').click(stopPropagation(() => searchAddressesNearMe(coords, elem)))
+      $('<a>').attr('href', '#').addClass('refresh').text('refresh').click(stopPropagation(() => searchAddressesNearMe(myCoords, elem)))
     ]);
   } else {
     runQuery(

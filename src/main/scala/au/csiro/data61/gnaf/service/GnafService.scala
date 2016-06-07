@@ -22,7 +22,7 @@ import au.csiro.data61.gnaf.db.GnafTables
 import au.csiro.data61.gnaf.util.Util
 import ch.megard.akka.http.cors.CorsDirectives.cors
 
-case class Geocode(geocodeTypeCode: Option[String], geocodeTypeDescription: Option[String], reliabilityCode: Int, isDefault: Boolean, latitude: Option[BigDecimal], longitude: Option[BigDecimal])
+case class Geocode(geocodeTypeCode: Option[String], geocodeTypeDescription: Option[String], reliabilityCode: Option[Int], isDefault: Boolean, latitude: Option[BigDecimal], longitude: Option[BigDecimal])
 
 trait Protocols extends DefaultJsonProtocol {
   implicit val geocodeFormat = jsonFormat6(Geocode.apply)
@@ -51,12 +51,12 @@ trait Service extends Protocols {
   }
   lazy val geocodeTypesFuture = geocodeTypes
     
+  // left join because some addressDetailPid have no AddressSiteGeocode
   val qGeocodes = {
     def q(addressDetailPid: Rep[String]) = for {
-      ad <- AddressDetail if ad.addressDetailPid === addressDetailPid
+      (ad, sg) <- AddressDetail joinLeft AddressSiteGeocode on (_.addressSitePid === _.addressSitePid) if ad.addressDetailPid === addressDetailPid
       dg <- AddressDefaultGeocode if dg.addressDetailPid === addressDetailPid
-      sg <- AddressSiteGeocode if sg.addressSitePid === ad.addressSitePid
-    } yield (dg.geocodeTypeCode, sg.geocodeTypeCode, sg.reliabilityCode, sg.latitude, sg.longitude)
+    } yield (dg, sg)
     Compiled(q _)
   }
   
@@ -64,8 +64,9 @@ trait Service extends Protocols {
     for {
       typ <- geocodeTypesFuture
       seq <- db.run(qGeocodes(addressDetailPid).result)
-    } yield seq.map { x =>
-      Geocode(x._2, x._2.map(typ), x._3, Some(x._1) == x._2, x._4, x._5)
+    } yield seq.map { case (dg, sg) =>
+      sg.map { x => Geocode(x.geocodeTypeCode, x.geocodeTypeCode.map(typ), Some(x.reliabilityCode), Some(dg.geocodeTypeCode) == x.geocodeTypeCode, x.latitude, x.longitude) }
+        .getOrElse(Geocode(Some(dg.geocodeTypeCode), Some(typ(dg.geocodeTypeCode)), None, true, dg.latitude, dg.longitude)) // handle the no AddressSiteGeocode case
     }.sortBy(!_.isDefault)
   }
   
