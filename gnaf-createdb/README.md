@@ -252,9 +252,3 @@ Looking at the first of these (ADDRESS_DETAIL_PID: GASA_414912543, 26 STRANGMAN 
 The ADDRESS_DEFAULT_GEOCODE corresponds to one of the 2 ADDRESS_SITE_GEOCODE rows (although there is no key to link them). These have GEOCODE_TYPE_CODE: PAPS, PROPERTY ACCESS POINT SETBACK (the other row is: PC, PROPERTY CENTROID).
 
 Note the related address with ADDRESS_DETAIL_PID = 'GASA_424344634' has an ADDRESS_DEFAULT_GEOCODE row and an ADDRESS_SITE row, but no ADDRESS_SITE_GEOCODE rows.
-
-## Data License
-
-Incorporates or developed using G-NAF ©PSMA Australia Limited licensed by the Commonwealth of Australia under the
-[http://data.gov.au/dataset/19432f89-dc3a-4ef3-b943-5326ef1dbecc/resource/09f74802-08b1-4214-a6ea-3591b2753d30/download/20160226---EULA---Open-G-NAF.pdf](Open Geo-coded National Address File (G-NAF) End User Licence Agreement).
-
