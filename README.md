@@ -43,5 +43,5 @@ uses the [sbteclipse](https://github.com/typesafehub/sbteclipse/wiki/Using-sbtec
 ## Data License
 
 Incorporates or developed using G-NAF ©PSMA Australia Limited licensed by the Commonwealth of Australia under the
-[http://data.gov.au/dataset/19432f89-dc3a-4ef3-b943-5326ef1dbecc/resource/09f74802-08b1-4214-a6ea-3591b2753d30/download/20160226---EULA---Open-G-NAF.pdf](Open Geo-coded National Address File (G-NAF) End User Licence Agreement).
+[Open Geo-coded National Address File (G-NAF) End User Licence Agreement](http://data.gov.au/dataset/19432f89-dc3a-4ef3-b943-5326ef1dbecc/resource/09f74802-08b1-4214-a6ea-3591b2753d30/download/20160226---EULA---Open-G-NAF.pdf).
 
