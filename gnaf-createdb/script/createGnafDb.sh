@@ -86,11 +86,12 @@ echo "create index STREET_LOCALITY_NAME_IDX on STREET_LOCALITY (STREET_NAME);"
 
 progress "add view (suggested in getting_started_guide) ..."
 cat "$gnaf/Extras/GNAF_View_Scripts/address_view.sql"
+echo ";"
 
 progress "Create READONLY user ..."
 cat <<-'EoF'
-CREATE USER READONLY PASSWORD 'READONLY'
-GRANT SELECT ON SCHEMA PUBLIC TO READONLY
+CREATE USER READONLY PASSWORD 'READONLY';
+GRANT SELECT ON SCHEMA PUBLIC TO READONLY;
 EoF
 
 } > $dataDir/createGnafDb.sql
