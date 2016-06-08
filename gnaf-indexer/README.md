@@ -124,9 +124,3 @@ At some cost in terms of speed, we could prioritize primary over secondary addre
 
 https://www.elastic.co/guide/en/elasticsearch/guide/current/_dealing_with_null_values.html
 The mapping can have a value to substitute for null values, so we can do away with that from the Scala code.
-
-## Data License
-
-Incorporates or developed using G-NAF ©PSMA Australia Limited licensed by the Commonwealth of Australia under the
-[http://data.gov.au/dataset/19432f89-dc3a-4ef3-b943-5326ef1dbecc/resource/09f74802-08b1-4214-a6ea-3591b2753d30/download/20160226---EULA---Open-G-NAF.pdf](Open Geo-coded National Address File (G-NAF) End User Licence Agreement).
-
