@@ -2,17 +2,17 @@
 *~
 
 # sbt specific
-/target/
+target/
 /project/project/
 /project/target/
-/.cache-main
-/.cache-tests
+.cache-main
+.cache-tests
 
 # Scala-IDE specific
-/bin/
-/test-bin/
-/.classpath
-/.project
+bin/
+test-bin/
+.classpath
+.project
 .settings/
 .worksheet
 
