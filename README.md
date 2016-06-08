@@ -9,7 +9,7 @@ This project provides:
 4. gnaf-service: a [Scala](http://scala-lang.org/) [RESTful](https://en.wikipedia.org/wiki/Representational_state_transfer) web service providing access to the database.
 5. gnaf-ui: static files providing a demonstration web user interface using the Elasticsearch index and the gnaf-service.
 
-The top level directory contains no code, but contains the `sbt` build for 2, 3 & 4.
+The top level directory contains no code, but contains the [sbt](http://www.scala-sbt.org/) build for 2, 3 & 4.
 
 ## Install Tools
 
@@ -20,8 +20,6 @@ To run the Scala code install:
 To develop [Scala](http://scala-lang.org/) code install:
 - the above items (you may prefer to install the full JDK instead of just the JRE but I think the JRE is sufficient);
 - the [Scala IDE](http://scala-ide.org/download/current.html).
-
-Run `sbt update-classifiers` to download dependencies including the H2 database engine used in the next section.
 
 ### Build
 
