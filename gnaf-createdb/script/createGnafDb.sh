@@ -3,7 +3,7 @@
 set -ex
 
 baseDir=$PWD
-scriptDir=$baseDir/src/main/script
+scriptDir=$baseDir/script
 dataDir=$baseDir/data
 mkdir -p $dataDir
  
@@ -97,8 +97,8 @@ EoF
 
 cat <<-'EoF'
 
-Start H2 database engine in the gnaf dir with 'java -jar h2*.jar'.
-Create an empty database by connecting to a new dburl e.g. jdbc:h2:file:~/sw/gnaf/data/gnaf (leave username and password blank).
+Start H2 database engine with: java -jar h2*.jar -web -pg
+Create an empty database by connecting to a new dburl e.g. jdbc:h2:file:~/gnaf (specify 'gnaf' as the username and password).
 In the SQL input area enter: RUNSCRIPT FROM 'data/createGnafDb.sql'
 or paste in the content of this file (to get progress feedback lacking with RUNSCRIPT).
 After an hour (with SSD) you should have a GNAF database.

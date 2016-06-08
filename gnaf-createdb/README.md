@@ -1,0 +1,260 @@
+# gnaf-createdb
+
+## Introduction
+This project provides scripts to load the [G-NAF data set](http://www.data.gov.au/dataset/geocoded-national-address-file-g-naf) into an [H2](http://www.h2database.com/) relational database. With minor changes it could load into Postgres or something else.
+
+## Install Tools
+
+Running sbt from the top level gnaf directory, e.g. `sbt update-classifiers` downloads dependencies including the H2 database engine used in the next section. Sbt puts the h2 jar at `~/.ivy2/cache/com.h2database/h2/jars/h2-1.4.191.jar`. Alternatively you can download it from the H2 database website.
+
+## H2 database
+H2 provides a single file, zero-admin database.
+
+The H2 database engine is started with:
+
+    java -Xmx3G -jar ~/.ivy2/cache/com.h2database/h2/jars/h2-1.4.191.jar -web -pg
+
+H2 supports the Postgres protocol, allowing access from any Postgres compatible client. Some options are:
+
+- `-web` to start the H2 SQL Console webapp on port 8082;
+- `-pg` to start the Postgres protocol on port 5435 (different from Postgres Server default of 5432 so as not to clash); and
+- `-webAllowOthers`/`-pgAllowOthers` if remote (non-localhost) access is required.
+
+Upon the first connection using the Postgres protocol H2 runs a script to create Postgres compatible system views in order to support Postgres client commands.
+
+First connection with admin rights to create system views:
+
+        psql --host=localhost --port=5435 --username=gnaf --dbname=~/gnaf
+
+Subsequent connections may use reduced access rights:
+
+        psql --host=localhost --port=5435 --username=READONLY --dbname=~/gnaf
+
+## Create Database
+
+This section describes automation of the procedure described in the G-NAF [getting started guide](https://www.psma.com.au/sites/default/files/g-naf_-_getting_started_guide.pdf).
+See also https://github.com/minus34/gnaf-loader as an alternative (which makes some modifications to the data).
+
+### Create SQL Load Script
+
+Running:
+
+    script/createGnafDb.sh
+
+- downloads the G-NAF zip file to `data/` (if not found);
+- unzips to `data/unzipped/` (if not found); and
+- writes SQL to create the H2 database to `data/createGnafDb.sql`.
+
+
+### Run SQL Load Script
+The instructions in this section describe use of the H2 Console webapp, a SQL client running at: http://127.0.1.1:8082/, to run the SQL Load Script `data/createGnafDb.sql`. Alternatively a Postgres client could be used.
+
+In the SQL client, enter JDBC URL: `jdbc:h2:file:~/gnaf`, User name: `gnaf` and Password: `gnaf`) and click `Connect`. If a database doesn't already exist at this location an empty database is created with the given credentials as the admin user.
+
+Run the SQL commands either by:
+- entering: `RUNSCRIPT FROM '~/sw/gnaf/data/createGnafDb.sql'` into the SQL input area (this method displays no indication of progress); or
+- pasting the content of this file into the SQL input area (this method displays what is going on).
+
+On a macbook-pro (with SSD) it takes 26 min to load the data and another 53 min to create the indexes.
+The script creates a user `READONLY` with password `READONLY` that has only the `SELECT` right. This user should be used for read-only access.
+
+## Exploring Address Data
+Find me (fast):
+
+    SELECT SL.*, AD.*
+    FROM
+        STREET_LOCALITY SL
+        LEFT JOIN ADDRESS_DETAIL AD ON AD.STREET_LOCALITY_PID = SL.STREET_LOCALITY_PID  
+    WHERE SL.STREET_NAME = 'TYTHERLEIGH'
+        AND AD.NUMBER_FIRST = 14
+
+This is slow (45892 ms):
+
+    SELECT * FROM ADDRESS_VIEW 
+    WHERE STREET_NAME = 'TYTHERLEIGH'
+    AND NUMBER_FIRST = 14
+
+but at least this is fast:
+
+    SELECT * FROM ADDRESS_VIEW 
+    WHERE ADDRESS_DETAIL_PID = 'GAACT714928273'
+
+Although data quality is generally very good, this shows some dodgy STREET_LOCALITY_ALIAS records:
+
+    SELECT sl.STREET_NAME, sl.STREET_TYPE_CODE, sl.STREET_SUFFIX_CODE,
+      sla.STREET_NAME, sla.STREET_TYPE_CODE , sla.STREET_SUFFIX_CODE 
+    FROM STREET_LOCALITY_ALIAS sla, STREET_LOCALITY sl
+    WHERE sla.STREET_LOCALITY_PID = sl.STREET_LOCALITY_PID
+    AND sl.STREET_NAME = 'REED'
+        
+    STREET_NAME     STREET_TYPE_CODE    STREET_SUFFIX_CODE      STREET_NAME     STREET_TYPE_CODE    STREET_SUFFIX_CODE  
+    REED            STREET              S                       REED STREET     SOUTH               null
+    REED            STREET              N                       REED STREET     NORTH               null
+
+Here is an example showing a cul-de-sac with some even numbered houses:
+
+    SELECT
+      SL.STREET_NAME, SL.STREET_TYPE_CODE, SL.STREET_SUFFIX_CODE, SL.STREET_LOCALITY_PID,
+      SLA.STREET_NAME, SLA.STREET_TYPE_CODE, SLA.STREET_SUFFIX_CODE, SLA.ALIAS_TYPE_CODE
+    FROM
+      STREET_LOCALITY as SL
+      left join STREET_LOCALITY_ALIAS as SLA on SL.STREET_LOCALITY_PID = SLA.STREET_LOCALITY_PID
+    WHERE SL.STREET_NAME = 'OFFICER'
+
+    STREET_NAME  STREET_TYPE_CODE  STREET_SUFFIX_CODE  STREET_LOCALITY_PID  STREET_NAME  STREET_TYPE_CODE  STREET_SUFFIX_CODE  ALIAS_TYPE_CODE  
+    OFFICER     CRESCENT        null    ACT3379850      null    null    null    null
+    OFFICER     CRESCENT        null    ACT253      null        null    null    null
+    OFFICER     PLACE       null        ACT254   OFFICER CRESCENT       null    SYN
+
+STREET_LOCALITY_PID `ACT3379850` not used in any ADDRESS_DETAIL. `ACT253` is used for all numbers on this street except `ACT254` used for even nos from [80 – 98].
+So for most numbers only CRESCENT is acceptable, for these even nos 'PLACE' is correct but 'CRESCENT' is also acceptable.
+
+Looking at cases where the alias has a different STREET_NAME (27119 cases):
+
+- the vast majority appear to be spelling variants with an edit distance of 1 - exception FLAGSTONE -> WHISKEY BAY
+- our queries will match with an edit distance of 2 (after an initial 2 character match), so these will mostly match
+  however O'Farrel -> OFarrel won't match (tried prefix_length = 1 but that made "18 London circuit" match some other number first)
+- in some cases the number of tokens is different e.g. DE CHAIR -> DECHAIR, TWELVETREES -> TWELVE TREES,
+  however the combination of the shingle filter (1 - 3-grams) and edit distance matching will make these match
+- there are aliases for SAINT X -> ST X (237), ST X -> SAINT X (26), MOUNT X -> MT X (577) and MT X -> MOUNT X (110)
+
+### Code/name Lookup Tables
+
+For all tables in this section the values in the `DESCRIPTION` and `NAME` columns are the same.
+
+For the tables `FLAT_TYPE_AUT`, `LEVEL_TYPE_AUT` and `STREET_SUFFIX_AUT`:
+- `CODE` is a short abbreviation containing only letters;
+- `NAME` is the full name/description that may contain spaces.
+
+However for `STREET_TYPE_AUT` these roles are reversed:
+- `CODE` is the full name/description: alphabetic only except for "CUL-DE-SAC" and "RIGHT OF WAY";
+- `NAME` is a short abbreviation containing only letters.
+
+One row ( `CODE` = AWLK, `NAME` = AIRWALK ) breaks this rule, with the abbreviation stored in `CODE`. 
+
+The following sections show sample rows from these tables and the number of rows.
+
+#### FLAT_TYPE_AUT
+
+    SELECT * FROM FLAT_TYPE_AUT
+    CODE    NAME                      DESCRIPTION 
+    ATM     AUTOMATED TELLER MACHINE  AUTOMATED TELLER MACHINE
+    APT     APARTMENT                 APARTMENT
+    FLAT    FLAT                      FLAT
+    SE      SUITE                     SUITE
+    STU     STUDIO                    STUDIO
+    UNIT    UNIT                      UNIT
+    ...
+    
+53 rows, many rather obscure.
+
+#### LEVEL_TYPE_AUT
+    
+        SELECT * FROM LEVEL_TYPE_AUT
+        CODE    NAME            DESCRIPTION  
+        B       BASEMENT        BASEMENT
+        FL      FLOOR           FLOOR
+        G       GROUND          GROUND
+        L       LEVEL           LEVEL
+        LB      LOBBY           LOBBY
+        LG      LOWER GROUND FLOOR      LOWER GROUND FLOOR
+        M       MEZZANINE       MEZZANINE
+        ...
+        
+15 rows.
+
+#### STREET_SUFFIX_AUT
+
+        SELECT * FROM STREET_SUFFIX_AUT
+        CODE    NAME    DESCRIPTION  
+        CN      CENTRAL CENTRAL
+        DE      DEVIATION       DEVIATION
+        NE      NORTH EAST      NORTH EAST
+        EX      EXTENSION       EXTENSION
+        LR      LOWER   LOWER
+        ...
+        
+19 rows.
+
+#### STREET_TYPE_AUT
+       
+        SELECT * FROM STREET_TYPE_AUT
+        CODE    NAME    DESCRIPTION  
+        HIKE    HIKE    HIKE
+        AWLK    AIRWALK AIRWALK
+        FLATS   FLTS    FLTS
+        BOARDWALK       BWLK    BWLK
+        BOULEVARD       BVD     BVD
+        BOULEVARDE      BVDE    BVDE
+        CLOSE   CL      CL
+        COURT   CT      CT
+        CUL-DE-SAC      CSAC    CSAC
+        DRIVE   DR      DR
+        STREET  ST      ST
+        ...
+        
+265 rows, many rather obscure. In contrast to all the previous tables, CODE is the full text which can contain spaces and NAME is the short abbreviation.
+
+### ADRESS_DETAIL Rows
+- non null numberLast: 1,121,843 out of 14,126,043
+- flatNumber prefix length 2, 14,099,611 nulls; suffix length 2, 4,017,287 nulls, both with lots of letter and number combinations
+- level prefix length 2, 14,123,096 nulls; suffix length 2, 14,125,593 nulls
+- numberFirst prefix length 3, 14,122,945 nulls; suffix length 2, 13,493,586 nulls
+- numberLast prefix length 3; suffix length 2
+
+## Exploring Geocode Data
+
+###  ADDRESS_SITE_GEOCODE 
+
+- RELIABILITY_CODE (descriptions quoted from p17 [GNAF Product Description](https://www.psma.com.au/sites/default/files/g-naf_product_description.pdf)):
+  - 2 (13,369,902 rows), "sufficient to place geocode within address site boundary or access point
+close to address site boundary"
+  - 3 (186,160 rows), "sufficient to place geocode near (or possibly within) address site boundary" (generally less precise than 2)
+  - no other values are used 
+
+- BOUNDARY_EXTENT, PLANIMETRIC_ACCURACY, ELEVATION and DATE_RETIRED are always null
+- GEOCODE_TYPE_CODE - most of the available values in GEOCODE_TYPE_AUT are not used:
+
+        SELECT asg.GEOCODE_TYPE_CODE , gta.NAME, count(*)
+        FROM ADDRESS_SITE_GEOCODE AS asg
+        JOIN GEOCODE_TYPE_AUT AS gta ON asg.GEOCODE_TYPE_CODE = gta.CODE
+        GROUP BY GEOCODE_TYPE_CODE;
+
+        GEOCODE_TYPE_CODE  	NAME  	                            COUNT(*)  
+        BC	                BUILDING CENTROID	                201520
+        PCM	                PROPERTY CENTROID MANUAL	        2307
+        PC	                PROPERTY CENTROID	                9479989
+        PAPS	            PROPERTY ACCESS POINT SETBACK	    221312
+        FCS	                FRONTAGE CENTRE SETBACK	            3464774
+        GG	                GAP GEOCODE	                        186160
+
+- ADDRESS_SITEs have at most 2 geocodes (58,165 have 2):
+
+        SELECT ADDRESS_SITE_PID, count(*) AS cnt
+        FROM ADDRESS_SITE_GEOCODE
+        GROUP BY ADDRESS_SITE_PID
+        ORDER BY cnt desc;
+        
+        ADDRESS_SITE_PID  	CNT  
+        415053318			2
+        415095264			2
+        415102559			2
+        ...
+
+Looking at the first of these (ADDRESS_DETAIL_PID: GASA_414912543, 26 STRANGMAN ROAD, WAIKERIE SA 5330):
+
+        SELECT * FROM ADDRESS_DETAIL AS ad
+        JOIN ADDRESS_DEFAULT_GEOCODE AS adg ON adg.ADDRESS_DETAIL_PID = ad.ADDRESS_DETAIL_PID
+        JOIN ADDRESS_SITE AS as ON as.ADDRESS_SITE_PID = ad.ADDRESS_SITE_PID
+        JOIN ADDRESS_SITE_GEOCODE AS asg ON asg.ADDRESS_SITE_PID = ad.ADDRESS_SITE_PID
+        WHERE ad.ADDRESS_SITE_PID = 415053318
+
+The ADDRESS_DEFAULT_GEOCODE corresponds to one of the 2 ADDRESS_SITE_GEOCODE rows (although there is no key to link them). These have GEOCODE_TYPE_CODE: PAPS, PROPERTY ACCESS POINT SETBACK (the other row is: PC, PROPERTY CENTROID).
+
+Note the related address with ADDRESS_DETAIL_PID = 'GASA_424344634' has an ADDRESS_DEFAULT_GEOCODE row and an ADDRESS_SITE row, but no ADDRESS_SITE_GEOCODE rows.
+
+## Data License
+
+Incorporates or developed using G-NAF ©PSMA Australia Limited licensed by the Commonwealth of Australia under the
+[http://data.gov.au/dataset/19432f89-dc3a-4ef3-b943-5326ef1dbecc/resource/09f74802-08b1-4214-a6ea-3591b2753d30/download/20160226---EULA---Open-G-NAF.pdf](Open Geo-coded National Address File (G-NAF) End User Licence Agreement).
+

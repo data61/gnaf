@@ -9,14 +9,11 @@ DIR=tmp
 if false
 then
 
-# build Scala program
-sbt oneJar
-
 # run Scala program, takes about 25min with a SSD
-rm -f gnaf.log
+rm -f gnaf-indexer.log
 mkdir -p $DIR
-time java -Xmx3G -jar target/scala-2.11/gnaf_2.11-0.1-SNAPSHOT-one-jar.jar au.csiro.data61.gnaf.indexer.Indexer | gzip > $DIR/out.gz
-mv gnaf.log $DIR
+time java -Xmx3G -jar target/scala-2.11/gnaf-indexer_2.11-0.1-SNAPSHOT-one-jar.jar | gzip > $DIR/out.gz
+mv gnaf-indexer.log $DIR
 
 fi
 
@@ -35,7 +32,7 @@ fi
 curl -XDELETE 'localhost:9200/gnaf/'
 
 # create new index with custom field mappings
-curl -XPUT 'localhost:9200/gnaf/' --data-binary @src/main/resources/gnafMapping.json
+curl -XPUT 'localhost:9200/gnaf/' --data-binary @src/main/script/gnafMapping.json
 
 # load the chunks using the Elasticsearch 'bulk' API 
 for i in $DIR/chunk-???
