@@ -71,7 +71,7 @@ object Indexer {
   import MyGnafTables.profile.api._
 
   /** result of command line option processing */
-  case class CliOption(dburl: String = "jdbc:h2:file:/mnt/data/gnaf")
+  case class CliOption(dburl: String = "jdbc:h2:file:~/gnaf")
 
   def main(args: Array[String]): Unit = {
     val parser = new scopt.OptionParser[CliOption]("gnaf-indexer") {
