@@ -18,15 +18,14 @@ var esUrl; // Elasticsearch
 var dbUrl; // GNAF (database) Service
 
 function initBaseUrl() {
-  if (window.location.protocol === 'file:') {
-    var host = 'http://gnaf.it.csiro.au';
-    esUrl = host + '/es/'; // nginx proxy for CORS since Elastcsearch CORS appears broken
-    dbUrl = host + ':9000/'; // CORS out of the box
-  } else {
-    var host = window.location.protocol + '//' + window.location.hostname;
-    esUrl = host + ':9200/gnaf/';
-    dbUrl = host + ':9000/';
-  }
+  var host = window.location.protocol === 'file:' ? 'http://localhost' : window.location.protocol + '//' + window.location.hostname;
+  esUrl = host + ':9200/gnaf/';
+  dbUrl = host + ':9000/';
+
+// or to use the production servers with the webapp served from a different domain: 
+//  var host = 'http://gnaf.it.csiro.au';
+//  esUrl = host + '/es/'; // nginx proxy for CORS since Elastcsearch CORS appears broken
+//  dbUrl = host + ':9000/'; // CORS out of the box
 }
 
 var myCoords;

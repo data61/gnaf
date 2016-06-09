@@ -55,7 +55,7 @@ This section provides a very brief summary of how to run the project. Detailed i
 	src/main/script/loadElasticsearch.sh
 	
 	cd ../gnaf-service
-	# start gnaf database web service
+	# start gnaf database web service (uses the database in embedded mode)
 	java -jar target/scala-2.11/gnaf-service_2.11-0.1-SNAPSHOT-one-jar.jar &> gnaf-service.log &
 	
 Test with the demonstration web user interface by opening the file `gnaf-ui/html/index.html` in a recent version of Chrome, Firefox or Edge.

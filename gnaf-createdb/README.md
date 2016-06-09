@@ -18,7 +18,7 @@ with the webapp available at `http://127.0.1.1:8082`.
 
 ### Optional Postgres Client Access
 This project does not require use of a Postgres client, however this is a useful feature.
-Adding `-pg` to the command above starts the Postgres protocol on port 5435 (different from Postgres Server default of 5432 so as not to clash).
+Adding `-pg` to the command above starts the Postgres protocol on port 5435 (different from the Postgres Server default of 5432 so as not to clash).
 
 Upon the first connection using the Postgres protocol H2 runs a script to create Postgres compatible system views in order to support Postgres client commands.
 
@@ -57,12 +57,13 @@ Run the SQL Load Script `data/createGnafDb.sql` using one of:
 1. In the SQL Console webapp, enter JDBC URL: `jdbc:h2:file:~/gnaf`, User name: `gnaf` and Password: `gnaf`) and click `Connect`.
 If a database doesn't already exist at this location an empty database is created with the given credentials as the admin user.
 In the SQL box enter: `RUNSCRIPT FROM '{gnaf}/gnaf-createdb/data/createGnafDb.sql'`, substituting the full path for {gnaf}.
-This method displays no indication of progress.
-2. As above but paste the content of this file into the SQL box. This method displays what is going on.
+
+2. As above but paste the content of this file into the SQL box. This method displays the SQL being executed.
+
 3. Start H2 with the `-pg` option and run the Postgres client:
 
 
-	cat data/createGnafDb.sql | psql --host=localhost --port=5435 --username=gnaf --dbname=~/gnaf
+	psql --host=localhost --port=5435 --username=gnaf --dbname=~/gnaf < data/createGnafDb.sql
 	Password for user gnaf: gnaf
 
 On a macbook-pro (with SSD) it takes 26 min to load the data and another 53 min to create the indexes.
