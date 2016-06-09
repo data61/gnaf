@@ -63,6 +63,7 @@ In the SQL box enter: `RUNSCRIPT FROM '{gnaf}/gnaf-createdb/data/createGnafDb.sq
 3. Start H2 with the `-pg` option and run the Postgres client:
 
 
+
 	psql --host=localhost --port=5435 --username=gnaf --dbname=~/gnaf < data/createGnafDb.sql
 	Password for user gnaf: gnaf
 
