@@ -17,7 +17,7 @@ The H2 database engine and SQL Console webapp is started with:
 with the webapp available at `http://127.0.1.1:8082`.
 
 ### Optional Postgres Client Access
-This project does not require use of a Postgres client, however this is a useful feature and a Postgres client could be used instead of the SQL Console webapp.
+This project does not require use of a Postgres client, however this is a useful feature.
 Adding `-pg` to the command above starts the Postgres protocol on port 5435 (different from Postgres Server default of 5432 so as not to clash).
 
 Upon the first connection using the Postgres protocol H2 runs a script to create Postgres compatible system views in order to support Postgres client commands.
@@ -52,13 +52,18 @@ Running:
 
 
 ### Run SQL Load Script
-The instructions in this section describe use of the H2 Console webapp, a SQL client running at: http://127.0.1.1:8082/, to run the SQL Load Script `data/createGnafDb.sql`. Alternatively a Postgres client could be used.
+Run the SQL Load Script `data/createGnafDb.sql` using one of:
 
-In the SQL client, enter JDBC URL: `jdbc:h2:file:~/gnaf`, User name: `gnaf` and Password: `gnaf`) and click `Connect`. If a database doesn't already exist at this location an empty database is created with the given credentials as the admin user.
+1. In the SQL Console webapp, enter JDBC URL: `jdbc:h2:file:~/gnaf`, User name: `gnaf` and Password: `gnaf`) and click `Connect`.
+If a database doesn't already exist at this location an empty database is created with the given credentials as the admin user.
+In the SQL box enter: `RUNSCRIPT FROM '{gnaf}/gnaf-createdb/data/createGnafDb.sql'`, substituting the full path for {gnaf}.
+This method displays no indication of progress.
+2. As above but paste the content of this file into the SQL box. This method displays what is going on.
+3. Start H2 with the `-pg` option and run the Postgres client:
 
-Run the SQL commands either by:
-- entering: `RUNSCRIPT FROM '{gnaf}/gnaf-createdb/data/createGnafDb.sql'` into the SQL input area, substituting the full path for {gnaf} (this method displays no indication of progress); or
-- pasting the content of this file into the SQL input area (this method displays what is going on).
+
+	cat data/createGnafDb.sql | psql --host=localhost --port=5435 --username=gnaf --dbname=~/gnaf
+	Password for user gnaf: gnaf
 
 On a macbook-pro (with SSD) it takes 26 min to load the data and another 53 min to create the indexes.
 The script creates a user `READONLY` with password `READONLY` that has only the `SELECT` right. This user should be used for read-only access.

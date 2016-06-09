@@ -6,7 +6,7 @@ This is a stand-alone webapp and does not run in a servlet container.
 
 ## Configuration
 
-Configuration is in `src/main/resources/application.conf` and most settings can be overriden with environment variables (we could also add command line options).
+Configuration is in [application.conf](src/main/resources/application.conf) and most settings can be overriden with environment variables.
 
 ## Running
 
