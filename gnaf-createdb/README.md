@@ -8,17 +8,17 @@ This project provides scripts to load the [G-NAF data set](http://www.data.gov.a
 Running sbt from the top level gnaf directory, e.g. `sbt update-classifiers` downloads dependencies including the H2 database engine used in the next section. Sbt puts the h2 jar at `~/.ivy2/cache/com.h2database/h2/jars/h2-1.4.191.jar`. Alternatively you can download it from the H2 database website.
 
 ## H2 database
-H2 provides a single file, zero-admin database.
+H2 provides a single file, zero-admin database that can be run embedded (within the application process) or client-server.
 
-The H2 database engine is started with:
+The H2 database engine and SQL Console webapp is started with:
 
-    java -Xmx3G -jar ~/.ivy2/cache/com.h2database/h2/jars/h2-1.4.191.jar -web -pg
+    java -Xmx3G -jar ~/.ivy2/cache/com.h2database/h2/jars/h2-1.4.191.jar -web
 
-H2 supports the Postgres protocol, allowing access from any Postgres compatible client. Some options are:
+with the webapp available at `http://127.0.1.1:8082`.
 
-- `-web` to start the H2 SQL Console webapp on port 8082;
-- `-pg` to start the Postgres protocol on port 5435 (different from Postgres Server default of 5432 so as not to clash); and
-- `-webAllowOthers`/`-pgAllowOthers` if remote (non-localhost) access is required.
+### Optional Postgres Client Access
+This project does not require use of a Postgres client, however this is a useful feature and a Postgres client could be used instead of the SQL Console webapp.
+Adding `-pg` to the command above starts the Postgres protocol on port 5435 (different from Postgres Server default of 5432 so as not to clash).
 
 Upon the first connection using the Postgres protocol H2 runs a script to create Postgres compatible system views in order to support Postgres client commands.
 
@@ -29,6 +29,11 @@ First connection with admin rights to create system views:
 Subsequent connections may use reduced access rights:
 
         psql --host=localhost --port=5435 --username=READONLY --dbname=~/gnaf
+
+### Non-local Access
+
+By default H2 only accepts connections from the localhost. Use `-webAllowOthers` and/or `-pgAllowOthers` if remote (non-localhost) access is required.
+
 
 ## Create Database
 
