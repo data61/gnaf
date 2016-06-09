@@ -9,7 +9,7 @@ This project provides:
 4. gnaf-service: a [Scala](http://scala-lang.org/) [RESTful](https://en.wikipedia.org/wiki/Representational_state_transfer) web service providing access to the database.
 5. gnaf-ui: static files providing a demonstration web user interface using the Elasticsearch index and the gnaf-service.
 
-The top level directory contains no code, but contains the [sbt](http://www.scala-sbt.org/) build for 2, 3 & 4.
+The top level directory contains no code, but contains the [sbt](http://www.scala-sbt.org/) build for 2, 3 & 4 (no build is required for 1 & 5).
 
 ## Install Tools
 
@@ -39,6 +39,11 @@ The command:
     sbt update-classifiers eclipse
 
 uses the [sbteclipse](https://github.com/typesafehub/sbteclipse/wiki/Using-sbteclipse) plugin to create the .project and .classpath files required by Eclipse (with source attachments for dependencies).
+
+## Software License
+
+This software is released under the CSIRO BSD license - see `Licence.txt`.
+Each of the sub-projects 2 - 4 lists its dependencies and their licenses in `3rd-party-licenses.html`.
 
 ## Data License
 
