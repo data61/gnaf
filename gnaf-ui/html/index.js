@@ -18,12 +18,15 @@ var esUrl; // Elasticsearch
 var dbUrl; // GNAF (database) Service
 
 function initBaseUrl() {
-//  esUrl = window.location.protocol === 'file:'
-//    ? 'http://gnaf.it.csiro.au/es/' // 'http://localhost:9200/gnaf/' // use this when page served from a local file during dev
-//    : window.location.protocol + '//' + window.location.hostname + ':9200/gnaf/'; // or this when page served from web server
-//    // : window.location.protocol + '//' + window.location.hostname + '/es/'; // or this when page served from web server
-  esUrl = 'http://gnaf.it.csiro.au/es/'
-  dbUrl = 'http://gnaf.it.csiro.au:9000/';
+  if (window.location.protocol === 'file:') {
+    var host = 'http://gnaf.it.csiro.au';
+    esUrl = host + '/es/'; // nginx proxy for CORS since Elastcsearch CORS appears broken
+    dbUrl = host + ':9000/'; // CORS out of the box
+  } else {
+    var host = window.location.protocol + '//' + window.location.hostname;
+    esUrl = host + ':9200/gnaf/';
+    dbUrl = host + ':9000/';
+  }
 }
 
 var myCoords;
@@ -352,14 +355,14 @@ function runQuery(query, success, error) {
   );
 }
 
-function doAjax(url, data, success, error, type, contentType = 'application/json; charset=utf-8', dataType = 'json') {
-  if (!type) {
-    type = data ? 'POST' : 'GET';
-  }
+function doAjax(url, data, success, error, typ, contentType, dataType) {
+  if (!typ) typ = data ? 'POST' : 'GET';
+  if (!contentType) contentType = 'application/json; charset=utf-8';
+  if (!dataType) dataType = 'json';
   try {
     debug('doAjax: url =', url, 'data =', data);
     $.ajax({
-      type: type,
+      type: typ,
       url: url,
       data: data,
       contentType: contentType,
