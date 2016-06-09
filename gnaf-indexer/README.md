@@ -8,7 +8,7 @@ If an [H2](http://www.h2database.com/) result set contains more than
 [MAX_MEMORY_ROWS](http://www.h2database.com/html/grammar.html?highlight=max_memory_rows&search=MAX_MEMORY_ROWS#set_max_memory_rows),
 it is spooled to disk before the first row is provided to the client.
 The default is 40000 per GB of available RAM and setting a non-default value requires database admin rights (which we prefer to avoid using).
-Analysis in comments in `Indexer.scala` shows that we need to handle result sets up to 95,004 rows, so allocating up to 3GB of heap (with `java -Xmx3G`) should avoid spooling.
+Analysis in comments in `Indexer.scala` shows that it needs to handle result sets up to 95,004 rows, so allocating 3GB of heap (with `java -Xmx3G`) should avoid spooling.
 
 ## Elasticsearch
 Elasticsearch configuration is in `config/elasticsearch.yml`.
@@ -28,7 +28,7 @@ Restart Elasticsearch for the changes to take effect.
 
 ## Configuration
 
-Configuration is in `src/main/resources/application.conf` and most settings can be overriden with environment variables (the dburl can also be set with a command line option).
+Indexer configuration is in [application.conf](src/main/resources/application.conf) and most settings can be overriden with environment variables (the dburl can also be set with a command line option).
 
 ## Create Index
 

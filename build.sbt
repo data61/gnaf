@@ -22,7 +22,7 @@ releaseProcess := Seq[ReleaseStep](
 def hasPrefix(org: String, prefixes: Seq[String]) = prefixes.exists(x => org.startsWith(x))
 
 lazy val commonSettings = Seq(
-  organization := "au.com.data61",
+  organization := "au.csiro.data61.gnaf",
   // version := "0.1-SNAPSHOT", // see version.sbt maintained by sbt-release plugin
   scalaVersion := "2.11.8",
   scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature", "-optimise"),
@@ -38,7 +38,7 @@ lazy val commonSettings = Seq(
   // So here we tell Eclipse to build somewhere else (bin is it's default build output folder)
   EclipseKeys.eclipseOutput in Compile := Some("bin"),   // default is sbt's target/scala-2.11/classes
   EclipseKeys.eclipseOutput in Test := Some("test-bin"), // default is sbt's target/scala-2.11/test-classes
-  EclipseKeys.createSrc := EclipseCreateSrc.Default + EclipseCreateSrc.Resource,
+  // EclipseKeys.createSrc := EclipseCreateSrc.Default + EclipseCreateSrc.Resource,
   licenseOverrides := {
     case DepModuleInfo(org, _, _) if hasPrefix(org, Seq("org.apache", "com.fasterxml", "com.google.guava", "org.javassist")) => LicenseInfo(LicenseCategory.Apache, "The Apache Software License, Version 2.0", "http://www.apache.org/licenses/LICENSE-2.0.txt")
     case DepModuleInfo(org, _, _) if hasPrefix(org, Seq("com.thoughtworks.paranamer")) => LicenseInfo(LicenseCategory.BSD, "BSD-Style", "http://www.opensource.org/licenses/bsd-license.php")
@@ -56,13 +56,10 @@ lazy val root = (project in file(".")).
   )
 
 lazy val gnafCommon = (project in file("gnaf-common")).
-  settings(commonSettings: _*).
-  settings(
-    // other settings
-  )
+  settings(commonSettings: _*)
 
 lazy val gnafIndexer = (project in file("gnaf-indexer")).
-  dependsOn(gnafCommon).
+  // dependsOn(gnafCommon). // with this the one-jar excludes the gnaf-common jar
   settings(commonSettings: _*).
   settings(com.github.retronym.SbtOneJar.oneJarSettings: _*). // `oneJar` task
   settings(
@@ -70,7 +67,7 @@ lazy val gnafIndexer = (project in file("gnaf-indexer")).
   )
   
 lazy val gnafService = (project in file("gnaf-service")).
-  dependsOn(gnafCommon).
+  // dependsOn(gnafCommon). // with this the one-jar excludes the gnaf-common jar
   settings(commonSettings: _*).
   settings(com.github.retronym.SbtOneJar.oneJarSettings: _*). // `oneJar` task
   settings(

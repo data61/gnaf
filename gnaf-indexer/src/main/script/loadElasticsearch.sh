@@ -6,7 +6,7 @@ GNAF=$PWD
 DIR=tmp
 # DIR=/srv/gnaf/data # for http://gnaf.it.csiro.au/ (no space in user home dir)
 
-if false
+if true
 then
 
 # run Scala program, takes about 25min with a SSD
