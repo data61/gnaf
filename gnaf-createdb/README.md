@@ -58,11 +58,11 @@ Run the SQL Load Script `data/createGnafDb.sql` using one of:
 If a database doesn't already exist at this location an empty database is created with the given credentials as the admin user.
 In the SQL box enter: `RUNSCRIPT FROM '{gnaf}/gnaf-createdb/data/createGnafDb.sql'`, substituting the full path for {gnaf}.
 
-2. As above but paste the content of this file into the SQL box. This method displays the SQL being executed.
+1. As above but paste the content of this file into the SQL box. This method displays the SQL being executed.
 
-3. Start H2 with the `-pg` option and run the Postgres client:
+1. Start H2 with the `-pg` option and run the Postgres client:
 
-
+.
 
 	psql --host=localhost --port=5435 --username=gnaf --dbname=~/gnaf < data/createGnafDb.sql
 	Password for user gnaf: gnaf
