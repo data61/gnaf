@@ -57,7 +57,7 @@ The instructions in this section describe use of the H2 Console webapp, a SQL cl
 In the SQL client, enter JDBC URL: `jdbc:h2:file:~/gnaf`, User name: `gnaf` and Password: `gnaf`) and click `Connect`. If a database doesn't already exist at this location an empty database is created with the given credentials as the admin user.
 
 Run the SQL commands either by:
-- entering: `RUNSCRIPT FROM '~/sw/gnaf/data/createGnafDb.sql'` into the SQL input area (this method displays no indication of progress); or
+- entering: `RUNSCRIPT FROM '{gnaf}/gnaf-createdb/data/createGnafDb.sql'` into the SQL input area, substituting the full path for {gnaf} (this method displays no indication of progress); or
 - pasting the content of this file into the SQL input area (this method displays what is going on).
 
 On a macbook-pro (with SSD) it takes 26 min to load the data and another 53 min to create the indexes.
