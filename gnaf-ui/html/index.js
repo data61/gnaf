@@ -114,20 +114,21 @@ function createBulkLookup() {
   ]);
 }
 
-function bulkSearch(addresses, result) {
+function bulkSearch(addresses, elem) {
   var loc = toQueryLoc(myCoords);
   var dist = getDist();
   var queries = addresses.map(a => '{}\n' + JSON.stringify(d61AddressQuery(loc, dist, a, 1)) + '\n').join('');
   debug('bulkSearch: queries =', queries);
+  showLoading(elem);
   doAjax(
     esUrl + '_msearch', 
     queries,
     data => {
       var hits = data.responses.map(r => replaceNulls(r.hits.hits[0]));
       var max = hits.reduce((z, h) => h._score > z ? h._score : z, 0);
-      result.empty().append(searchResult({ took: 0, hits: { max_score: max, total: hits.length, hits: hits } }));
+      elem.empty().append(searchResult({ took: 0, hits: { max_score: max, total: hits.length, hits: hits } }));
     }, 
-    msg => null, 'POST', false, 'json');
+    msg => elem.empty(), 'POST', false, 'json');
 }
 
 //  <div class="header">
@@ -316,10 +317,13 @@ function locationQuery(loc, dist, street, size) {
   };
 }
 
+function showLoading(elem) {
+  elem.empty().append($('<img>').attr({ alt: '', src: 'loading.gif', 'class': 'loading' }));
+}
+
 function search(inp, elem) {
   return function() {
-    elem.empty();
-    // addSpinner(elem);
+    showLoading(elem);
     runQuery(
       d61AddressQuery(toQueryLoc(myCoords), getDist(), inp.val(), 10),
       function(data, textStatus, jqXHR) {
@@ -433,18 +437,29 @@ function locationColHandler(geoDetail) {
 
 function showGeoDetail(elem, addressDetailPid) {
   return function() {
-    elem.empty();
+    var addrType = $('<div>').addClass('addrType');
+    var geoDetail = $('<div>').addClass('addrType');
+    elem.empty().append(addrType).append(geoDetail);
+    showLoading(addrType);
+    showLoading(geoDetail);
+    
     doAjax(dbUrl + 'addressGeocode/' + addressDetailPid, null,
-      function(data) {
-        elem.append(genTable(data, [
+      data => geoDetail.empty().append(genTable(data, [
           new Col('Default', 'isDefault', d => d ? '*' : ''),
           new Col('Latitude', 'latitude'),
           new Col('Longitude', 'longitude'),
           new Col('Reliability', 'reliabilityCode'),
           new Col('Type', 'geocodeTypeDescription')
-        ]));
-      }, 
-      function() {}
+      ])), 
+      err => geoDetail.empty()
+    );
+    
+    doAjax(dbUrl + 'addressType/' + addressDetailPid, null,
+      data => addrType.empty().append([
+          $('<label>').text('Address type'),
+          $('<span>').text(data.addressType ? data.addressType : 'none')
+      ]), 
+      err => addrType.empty()
     );
   }
 }
@@ -468,6 +483,7 @@ function dataHits(data) {
 
 function searchResult(data) {
   var geoDetail = $('<div>').addClass('geoDetail');
+  var locHandler = locationColHandler(geoDetail);
   return [
     $('<span>').attr('class', 'stats').text(data.hits.hits.length.toLocaleString() + ' of ' + data.hits.total.toLocaleString() + ' hits in ' + (data.took/1000.0).toFixed(3) + ' sec'),
     genTable(dataHits(data), [
@@ -479,7 +495,7 @@ function searchResult(data) {
                               new Col('Locality', 'localityName'),
                               new Col('Postcode', 'postcode'),
                               new Col('State', 'stateName'),
-                              new Col('Location', 'record', locationColHandler(geoDetail))
+                              new Col('Location', 'record', locHandler)
                             ]),
     geoDetail
   ];
