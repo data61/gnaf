@@ -1,26 +1,22 @@
 package au.csiro.data61.gnaf.service
 
-import akka.actor.ActorSystem
-import akka.event.{LoggingAdapter, Logging}
-import akka.http.scaladsl.Http
-import akka.http.scaladsl.client.RequestBuilding
-import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
-import akka.http.scaladsl.marshalling.ToResponseMarshallable
-import akka.http.scaladsl.model.{HttpResponse, HttpRequest}
-import akka.http.scaladsl.model.StatusCodes._
-import akka.http.scaladsl.server.Directives._
-import akka.http.scaladsl.unmarshalling.Unmarshal
-import akka.stream.{ActorMaterializer, Materializer}
-import akka.stream.scaladsl.{Flow, Sink, Source}
-import com.typesafe.config.Config
+import scala.concurrent.{ ExecutionContextExecutor, Future }
+import scala.math.BigDecimal
+
 import com.typesafe.config.ConfigFactory
-import java.io.IOException
-import scala.concurrent.{ExecutionContextExecutor, Future}
-import scala.math._
-import spray.json.DefaultJsonProtocol
+
+import akka.actor.ActorSystem
+import akka.event.{ Logging, LoggingAdapter }
+import akka.http.scaladsl.Http
+import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport.sprayJsonMarshaller
+import akka.http.scaladsl.marshalling.ToResponseMarshallable.apply
+import akka.http.scaladsl.server.Directives.{ Segment, complete, enhanceRouteWithConcatenation, get, logRequestResult, path, pathPrefix, segmentStringToPathMatcher }
+import akka.http.scaladsl.server.RouteResult.route2HandlerFlow
+import akka.stream.{ ActorMaterializer, Materializer }
 import au.csiro.data61.gnaf.common.db.GnafTables
 import au.csiro.data61.gnaf.common.util.Util
 import ch.megard.akka.http.cors.CorsDirectives.cors
+import spray.json.DefaultJsonProtocol
 
 case class Geocode(geocodeTypeCode: Option[String], geocodeTypeDescription: Option[String], reliabilityCode: Option[Int], isDefault: Boolean, latitude: Option[BigDecimal], longitude: Option[BigDecimal])
 case class AddressType(addressType: Option[String])
@@ -92,8 +88,9 @@ trait Service extends Protocols {
     } yield AddressType(cod.map(typ))
   }
 
-  val routes = { cors() {
-    logRequestResult("GnafService") {
+  // val corsSettings = CorsSettings.defaultSettings.copy(allowGenericHttpRequests = true, allowedMethods = List(HttpMethods.GET, HttpMethods.OPTIONS), allowedOrigins = HttpOriginRange.*)
+  val routes = {
+    logRequestResult("GnafService") {  cors() {
       pathPrefix("addressGeocode") {
         (get & path(Segment)) { addressDetailPid =>
           complete {
@@ -108,8 +105,8 @@ trait Service extends Protocols {
           }
         }
       }
-    }
-  } }
+    } }
+  }
 }
 
 object GnafService extends Service {
