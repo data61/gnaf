@@ -75,4 +75,11 @@ lazy val gnafService = (project in file("gnaf-service")).
   settings(
     mainClass in run in Compile := Some("au.csiro.data61.gnaf.service.GnafService")
   )
-  
+
+lazy val gnafContrib = (project in file("gnaf-contrib")).
+  dependsOn(gnafCommon).
+  settings(commonSettings: _*).
+  settings(com.github.retronym.SbtOneJar.oneJarSettings: _*).
+  settings(
+    mainClass in run in Compile := Some("au.csiro.data61.gnaf.contrib.service.ContribService")
+  )

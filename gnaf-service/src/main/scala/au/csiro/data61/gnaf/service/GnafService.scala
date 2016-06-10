@@ -20,10 +20,15 @@ import spray.json.DefaultJsonProtocol
 
 case class Geocode(geocodeTypeCode: Option[String], geocodeTypeDescription: Option[String], reliabilityCode: Option[Int], isDefault: Boolean, latitude: Option[BigDecimal], longitude: Option[BigDecimal])
 case class AddressType(addressType: Option[String])
+// TODO: next two also needed in gnaf-contrib so maybe move them all to gnaf-common?
+case class GeocodeType(code: String, description: String)
+case class GeocodeTypes(types: Seq[GeocodeType])
 
 trait Protocols extends DefaultJsonProtocol {
   implicit val geocodeFormat = jsonFormat6(Geocode.apply)
   implicit val addressTypeFormat = jsonFormat1(AddressType.apply)
+  implicit val geocodeTypeFormat = jsonFormat2(GeocodeType.apply)
+  implicit val geocodeTypesFormat = jsonFormat1(GeocodeTypes.apply)
 }
 
 trait Service extends Protocols {
@@ -102,6 +107,15 @@ trait Service extends Protocols {
         (get & path(Segment)) { addressDetailPid =>
           complete {
             addressType(addressDetailPid)
+          }
+        }
+      } ~
+      pathPrefix("geocodeTypes") {
+        get {
+          complete {
+            geocodeTypes.map { x =>
+              GeocodeTypes(x.toSeq.map(b => GeocodeType.apply(b._1, b._2))) // TODO: map(GeocodeType.apply) ?
+            }
           }
         }
       }

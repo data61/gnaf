@@ -224,7 +224,8 @@ close to address site boundary"
   - 3 (186,160 rows), "sufficient to place geocode near (or possibly within) address site boundary" (generally less precise than 2)
   - no other values are used 
 
-- BOUNDARY_EXTENT, PLANIMETRIC_ACCURACY, ELEVATION and DATE_RETIRED are always null
+- BOUNDARY_EXTENT, PLANIMETRIC_ACCURACY, ELEVATION, DATE_RETIRED, GEOCODE_SITE_NAME and GEOCODE_SITE_DESCRIPTION are always null
+
 - GEOCODE_TYPE_CODE - most of the available values in GEOCODE_TYPE_AUT are not used:
 
         SELECT asg.GEOCODE_TYPE_CODE , gta.NAME, count(*)
