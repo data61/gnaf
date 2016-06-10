@@ -36,8 +36,8 @@ Running:
 
     src/main/script/loadElasticSearch.sh
 
-optionally runs the Scala program (check the if in the source - takes about 25min with a SSD),
-transforms the output to suit Elasticsearch's 'bulk' API and loads the data to create an Elasticsearch index.
+optionally runs the Scala program (check the `if` in the source - takes about 25min with a SSD),
+transforms the output to suit Elasticsearch's 'bulk' API (takes about 32min) and loads the data to create an Elasticsearch index (takes about 60min).
 Dependencies:
 
 - the JSON transformation tool [jq](https://stedolan.github.io/jq/).

@@ -20,7 +20,7 @@ fi
 (
   cd $DIR
   
-  # transform output of Scala program to suit Elasticsearch 'bulk' API, takes about 9min with a SSD
+  # transform output of Scala program to suit Elasticsearch 'bulk' API, takes about 32min with a SSD
   time zcat out.gz | jq -c -f $GNAF/src/main/script/loadElasticsearch.jq > bulk
 
   # split 'bulk' file into chunks not too big for a POST request

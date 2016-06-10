@@ -24,21 +24,26 @@ def hasPrefix(org: String, prefixes: Seq[String]) = prefixes.exists(x => org.sta
 lazy val commonSettings = Seq(
   organization := "au.csiro.data61.gnaf",
   // version := "0.1-SNAPSHOT", // see version.sbt maintained by sbt-release plugin
+  licenses := Seq("BSD" -> url("https://github.com/data61/gnaf/blob/master/LICENSE.txt")),
+  homepage := Some(url("https://github.com/data61/gnaf")),
+
   scalaVersion := "2.11.8",
   scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature", "-optimise"),
-  scalacOptions in (Compile,doc) := Seq("-diagrams"), // sbt-dependency-graph needs: sudo apt-get install graphviz
-  autoAPIMappings := true,
-  filterScalaLibrary := false, // sbt-dependency-graph: include scala library in output
+  exportJars := true, // required by sbt-onejar
+  autoAPIMappings := true, // scaladoc
+  
   unmanagedSourceDirectories in Compile := (scalaSource in Compile).value :: Nil, // only Scala sources, no Java
   unmanagedSourceDirectories in Test := (scalaSource in Test).value :: Nil,
-  licenses := Seq("BSD" -> url("https://github.inside.nicta.com.au/nbacon/gnaf/blob/master/CSIRO%20BSD%20MIT%20Licence%20v2.0-4.txt")),
-  homepage := Some(url("https://github.data61.csiro.au/nbacon/gnaf")),
+  
+  filterScalaLibrary := false, // sbt-dependency-graph: include scala library in output
+  scalacOptions in (Compile,doc) := Seq("-diagrams"), // sbt-dependency-graph needs: sudo apt-get install graphviz
+  
   EclipseKeys.withSource := true,
   // If Eclipse and sbt are both building to same dirs at same time it takes forever and produces corrupted builds.
   // So here we tell Eclipse to build somewhere else (bin is it's default build output folder)
   EclipseKeys.eclipseOutput in Compile := Some("bin"),   // default is sbt's target/scala-2.11/classes
   EclipseKeys.eclipseOutput in Test := Some("test-bin"), // default is sbt's target/scala-2.11/test-classes
-  // EclipseKeys.createSrc := EclipseCreateSrc.Default + EclipseCreateSrc.Resource,
+
   licenseOverrides := {
     case DepModuleInfo(org, _, _) if hasPrefix(org, Seq("org.apache", "com.fasterxml", "com.google.guava", "org.javassist")) => LicenseInfo(LicenseCategory.Apache, "The Apache Software License, Version 2.0", "http://www.apache.org/licenses/LICENSE-2.0.txt")
     case DepModuleInfo(org, _, _) if hasPrefix(org, Seq("com.thoughtworks.paranamer")) => LicenseInfo(LicenseCategory.BSD, "BSD-Style", "http://www.opensource.org/licenses/bsd-license.php")
@@ -48,29 +53,26 @@ lazy val commonSettings = Seq(
     }
   )
 
-lazy val root = (project in file(".")).
-  aggregate(gnafCommon, gnafIndexer, gnafService).
-  settings(
-    unmanagedSourceDirectories in Compile := Nil, // no sources in root project
-    unmanagedSourceDirectories in Test := Nil
-  )
+//lazy val root = (project in file(".")).
+//  settings(publishArtifact := false).
+//  aggregate(gnafCommon, gnafIndexer, gnafService)
 
 lazy val gnafCommon = (project in file("gnaf-common")).
   settings(commonSettings: _*)
 
 lazy val gnafIndexer = (project in file("gnaf-indexer")).
-  // dependsOn(gnafCommon). // with this the one-jar excludes the gnaf-common jar
+  dependsOn(gnafCommon).
   settings(commonSettings: _*).
-  settings(com.github.retronym.SbtOneJar.oneJarSettings: _*). // `oneJar` task
+  settings(com.github.retronym.SbtOneJar.oneJarSettings: _*).
   settings(
     mainClass in run in Compile := Some("au.csiro.data61.gnaf.indexer.Indexer")
   )
   
 lazy val gnafService = (project in file("gnaf-service")).
-  // dependsOn(gnafCommon). // with this the one-jar excludes the gnaf-common jar
+  dependsOn(gnafCommon).
   settings(commonSettings: _*).
-  settings(com.github.retronym.SbtOneJar.oneJarSettings: _*). // `oneJar` task
+  settings(com.github.retronym.SbtOneJar.oneJarSettings: _*).
   settings(
     mainClass in run in Compile := Some("au.csiro.data61.gnaf.service.GnafService")
   )
- 
+  

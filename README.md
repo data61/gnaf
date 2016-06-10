@@ -27,12 +27,11 @@ Automatic builds are available at: https://t3as-jenkins.it.csiro.au/job/gnaf-mas
 
 The command:
 
-    sbt clean publish-local one-jar dumpLicenseReport
+    sbt clean one-jar dumpLicenseReport
 
-from the project's top level directory cleans out previous build products, builds and deploys artifacts to the local ivy repository (`~/.ivy2`),
-creates one-jar files (which include all dependencies) for stand-alone executables and creates license reports on dependencies.
-
-The local ivy repository is the mechanism used to include gnaf-common in the one-jars for gnaf-indexer and gnaf-service.
+from the project's top level directory cleans out previous build products,
+builds one-jar files (which include all dependencies) for stand-alone executables and 
+creates license reports on dependencies.
 
 ### Run
 
@@ -51,12 +50,17 @@ This section provides a very brief summary of how to run the project. Detailed i
 	
 	cd ../gnaf-indexer
 	# start Elasticsearch - see README.md (the one under gnaf-indexer) and Elasticsearch documentation
-	# run indexer (which uses the database in embedded mode so will fail if the above h2 process is still running; requires jq)
+	# run indexer (which uses the database in embedded mode so will fail if the above h2 process is still running; requires jq; takes about 2 hours)
 	src/main/script/loadElasticsearch.sh
+	# test Elasticsearch index (or open this URL in browser)
+	curl 'localhost:9200/gnaf/?pretty'
 	
 	cd ../gnaf-service
 	# start gnaf database web service (uses the database in embedded mode)
 	java -jar target/scala-2.11/gnaf-service_2.11-0.1-SNAPSHOT-one-jar.jar &> gnaf-service.log &
+	# test gnaf-service (or open URL in browser)
+	curl 'http://localhost:9000/addressGeocode/GASA_414912543'
+	curl 'http://localhost:9000/addressType/GANSW716635201'
 	
 Test with the demonstration web user interface by opening the file `gnaf-ui/html/index.html` in a recent version of Chrome, Firefox or Edge.
 	

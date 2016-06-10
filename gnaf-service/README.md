@@ -11,3 +11,9 @@ Configuration is in [application.conf](src/main/resources/application.conf) and 
 ## Running
 
     nohup java -jar target/scala-2.11/gnaf-service_2.11-0.1-SNAPSHOT-one-jar.jar >& gnaf-service.log &
+
+## Usage
+The service supports GET requests on two routes, with the last portion of the URL being an ADDRESS_DETAIL_PID:
+
+	curl 'http://localhost:9000/addressGeocode/GASA_414912543'
+	curl 'http://localhost:9000/addressType/GANSW716635201'
