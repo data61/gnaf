@@ -23,9 +23,11 @@ import au.csiro.data61.gnaf.common.util.Util
 import ch.megard.akka.http.cors.CorsDirectives.cors
 
 case class Geocode(geocodeTypeCode: Option[String], geocodeTypeDescription: Option[String], reliabilityCode: Option[Int], isDefault: Boolean, latitude: Option[BigDecimal], longitude: Option[BigDecimal])
+case class AddressType(addressType: Option[String])
 
 trait Protocols extends DefaultJsonProtocol {
   implicit val geocodeFormat = jsonFormat6(Geocode.apply)
+  implicit val addressTypeFormat = jsonFormat1(AddressType.apply)
 }
 
 trait Service extends Protocols {
@@ -83,11 +85,11 @@ trait Service extends Protocols {
     Compiled(q _)
   }
   
-  def addressType(addressDetailPid: String)(implicit db: Database) = {
+  def addressType(addressDetailPid: String)(implicit db: Database): Future[AddressType] = {
     for {
       typ <- addressTypesFuture
       cod <- db.run(qAddressType(addressDetailPid).result.headOption).map(_.flatten)
-    } yield cod.map(typ)
+    } yield AddressType(cod.map(typ))
   }
 
   val routes = { cors() {
