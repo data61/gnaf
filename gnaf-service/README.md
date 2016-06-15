@@ -1,6 +1,6 @@
 # gnaf-service
 ## Introduction
-This project provides a [Scala](http://scala-lang.org/) [RESTful](https://en.wikipedia.org/wiki/Representational_state_transfer) web service providing access to the database.
+This project provides a [Scala](http://scala-lang.org/) [RESTful](https://en.wikipedia.org/wiki/Representational_state_transfer) web service providing access to the G-NAF database.
 
 This is a stand-alone webapp and does not run in a servlet container.
 

@@ -1,12 +1,41 @@
 # gnaf-contrib
-
 ## Introduction
+This project provides a [Scala](http://scala-lang.org/) [RESTful](https://en.wikipedia.org/wiki/Representational_state_transfer) web service providing access to the
+G-NAF Contributed database of user supplied geocodes.
+
+This is a stand-alone webapp and does not run in a servlet container.
+
+## Configuration
+
+Configuration is in [application.conf](src/main/resources/application.conf) and most settings can be overriden with environment variables.
+
+## Running
+
+    nohup java -jar target/scala-2.11/gnaf-contrib_2.11-0.1-SNAPSHOT-one-jar.jar >& gnaf-contrib.log &
+
+## Usage
+The service supports CRUD operations on user contributed geocodes. Examples:
+
+	# list contributed geocodes for an addressSitePid
+	curl 'http://gnaf.it.csiro.au:9010/contrib/712279621'
+	# create a contributed geocode
+	curl -XPOST -H 'Content-Type:application/json; charset=UTF-8' http://gnaf.it.csiro.au:9010/contrib/ -d '{"contribStatus":"Submitted","addressSitePid":"712279621","geocodeTypeCode":"GCP","longitude":149.1213974,"latitude":-35.2809942,"dateCreated":0,"version":0}'
+	# delete a contributed geocode (doesn't work with curl)
+	curl -XDELETE -H 'Content-Type:application/json; charset=UTF-8' http://gnaf.it.csiro.au:9010/contrib/ -d '{"id":18,"version":1}'
+	# update a contributed geocode
+	curl -XPUT -H 'Content-Type:application/json; charset=UTF-8' http://gnaf.it.csiro.au:9010/contrib/ -d '{"contribStatus":"FredWasHere","addressSitePid":"712279621","geocodeTypeCode":"GCP","longitude":149.1213974,"latitude":-35.2809942,"dateCreated":0,"id":19,"version":1}'
+	
+## To Do
+
+Have the service create the database table on start up if it doesn't already exist.
+
+## Database Mapping
 
 [Slick](http://slick.typesafe.com/) provides "Functional Relational Mapping for Scala".
 This project provides a Slick mapping for the GNAF Contrib database.
 The mappings are not tied to any particular relational database.
 
-## Generate Slick bindings
+### Generate Slick bindings
 
 Create and connect to a new database with dburl `jdbc:h2:file:~/gnafContrib`, username `gnaf` and password `gnaf`.
 Create a table from which the bindings will be generated:
