@@ -12,7 +12,7 @@ access to the G_NAF database.
 access to the gnafContrib database of user supplied geocodes.
 6. gnaf-ui: static files providing a demonstration web user interface using the Elasticsearch, gnaf-service and gnaf-contrib.
 
-The top level directory contains no code, but contains the [sbt](http://www.scala-sbt.org/) build for 2, 3 & 4 (no build is required for 1 & 5).
+The top level directory contains no code, but contains the [sbt](http://www.scala-sbt.org/) build for 2-5 (no build is required for 1 & 6).
 
 ## Install Tools
 
