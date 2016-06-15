@@ -1,7 +1,7 @@
 # gnaf-contrib
 ## Introduction
 This project provides a [Scala](http://scala-lang.org/) [RESTful](https://en.wikipedia.org/wiki/Representational_state_transfer) web service providing access to the
-G-NAF Contributed database of user supplied geocodes.
+gnafContrib database of user supplied geocodes.
 
 This is a stand-alone webapp and does not run in a servlet container.
 
