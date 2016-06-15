@@ -105,7 +105,10 @@ trait Service extends Protocols {
   }
   def deleteContrib(key: ContribGeocodeKey) = db.run(qGet(key.id, key.version).delete)
   
-  def updateContrib(c: ContribGeocode) = db.run(qGet(c.id.get, c.version).update(toAddressSiteGeocodeRow(c)))
+  def updateContrib(c: ContribGeocode) = {
+    val c2 = c.copy(version = c.version + 1, dateCreated = System.currentTimeMillis)
+    db.run(qGet(c.id.get, c.version).update(toAddressSiteGeocodeRow(c2))).map(cnt => if (cnt == 1) Some(c2) else None)
+  }
   
   val settings = CorsSettings.defaultSettings.copy(allowedMethods = HttpMethods.DELETE +: CorsSettings.defaultSettings.allowedMethods)
   val routes = {
@@ -138,9 +141,7 @@ trait Service extends Protocols {
         } ~
         (put & entity(as[ContribGeocode])) { c =>
           complete {
-            updateContrib(c).map[ToResponseMarshallable] { cnt =>
-              if (cnt == 1) "OK" else (BadRequest -> s"id = ${c.id}, version = ${c.version} not found")
-            }
+            updateContrib(c).map[ToResponseMarshallable] { x => if (x.isDefined) x.get else BadRequest -> s"id = ${c.id}, version = ${c.version} not found" }
           }
         }
       }
