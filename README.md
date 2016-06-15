@@ -6,8 +6,11 @@ This project provides:
 1. gnaf-createdb: scripts to load the [G-NAF data set](http://www.data.gov.au/dataset/geocoded-national-address-file-g-naf) into a relational database.
 2. gnaf-common: database and utility code shared by 3 & 4.
 3. gnaf-indexer: a [Scala](http://scala-lang.org/) program to query the database to produce JSON and scripts to load this into [Elasticsearch](https://www.elastic.co/).
-4. gnaf-service: a [Scala](http://scala-lang.org/) [RESTful](https://en.wikipedia.org/wiki/Representational_state_transfer) web service providing access to the database.
-5. gnaf-ui: static files providing a demonstration web user interface using the Elasticsearch index and the gnaf-service.
+4. gnaf-service: a [Scala](http://scala-lang.org/) [RESTful](https://en.wikipedia.org/wiki/Representational_state_transfer) web service providing
+access to the G_NAF database.
+5. gnaf-contrib: a [Scala](http://scala-lang.org/) [RESTful](https://en.wikipedia.org/wiki/Representational_state_transfer) web service providing
+access to the gnafContrib database of user supplied geocodes.
+6. gnaf-ui: static files providing a demonstration web user interface using the Elasticsearch, gnaf-service and gnaf-contrib.
 
 The top level directory contains no code, but contains the [sbt](http://www.scala-sbt.org/) build for 2, 3 & 4 (no build is required for 1 & 5).
 

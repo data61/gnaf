@@ -29,6 +29,8 @@ The service supports CRUD operations on user contributed geocodes. Examples:
 
 Have the service create the database table on start up if it doesn't already exist.
 
+Review RESTfullness of API.
+
 ## Database Mapping
 
 [Slick](http://slick.typesafe.com/) provides "Functional Relational Mapping for Scala".
