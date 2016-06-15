@@ -10,7 +10,7 @@ This project provides:
 access to the G_NAF database.
 5. gnaf-contrib: a [Scala](http://scala-lang.org/) [RESTful](https://en.wikipedia.org/wiki/Representational_state_transfer) web service providing
 access to the gnafContrib database of user supplied geocodes.
-6. gnaf-ui: static files providing a demonstration web user interface using the Elasticsearch, gnaf-service and gnaf-contrib.
+6. gnaf-ui: static files providing a demonstration web user interface using Elasticsearch, gnaf-service and gnaf-contrib.
 
 The top level directory contains no code, but contains the [sbt](http://www.scala-sbt.org/) build for 2-5 (no build is required for 1 & 6).
 
