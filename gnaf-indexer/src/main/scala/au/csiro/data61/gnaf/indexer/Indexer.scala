@@ -115,7 +115,7 @@ object Indexer {
         AddressSite on (_._1.addressSitePid === _.addressSitePid) joinLeft
         StreetLocality on (_._1._1.streetLocalityPid === _.streetLocalityPid) joinLeft
         AddressDefaultGeocode on (_._1._1._1.addressDetailPid === _.addressDetailPid)
-      if ad.localityPid === localityPid
+      if (ad.localityPid === localityPid && ad.confidence > -1)
     } yield (
       ad,
       lta.map(_.name),

@@ -19,14 +19,20 @@ import ch.megard.akka.http.cors.CorsDirectives.cors
 import spray.json.DefaultJsonProtocol
 
 case class Geocode(geocodeTypeCode: Option[String], geocodeTypeDescription: Option[String], reliabilityCode: Option[Int], isDefault: Boolean, latitude: Option[BigDecimal], longitude: Option[BigDecimal])
-case class AddressType(addressType: Option[String])
+
+case class AddressType(addressSitePid: String, addressType: Option[String])
+case class AddressTypeOpt(addressType: Option[AddressType])
+
 // TODO: next two also needed in gnaf-contrib so maybe move them all to gnaf-common?
 case class GeocodeType(code: String, description: String)
 case class GeocodeTypes(types: Seq[GeocodeType])
 
 trait Protocols extends DefaultJsonProtocol {
   implicit val geocodeFormat = jsonFormat6(Geocode.apply)
-  implicit val addressTypeFormat = jsonFormat1(AddressType.apply)
+  
+  implicit val addressTypeFormat = jsonFormat2(AddressType.apply)
+  implicit val addressTypeOptFormat = jsonFormat1(AddressTypeOpt.apply)
+  
   implicit val geocodeTypeFormat = jsonFormat2(GeocodeType.apply)
   implicit val geocodeTypesFormat = jsonFormat1(GeocodeTypes.apply)
 }
@@ -78,19 +84,19 @@ trait Service extends Protocols {
   }
   lazy val addressTypesFuture = addressTypes
     
-  val qAddressType = {
+  val qAddressSite = {
     def q(addressDetailPid: Rep[String]) = for {
       ad <- AddressDetail if ad.addressDetailPid === addressDetailPid
       as <- AddressSite if as.addressSitePid === ad.addressSitePid
-    } yield as.addressType
+    } yield as
     Compiled(q _)
   }
   
-  def addressType(addressDetailPid: String)(implicit db: Database): Future[AddressType] = {
+  def addressType(addressDetailPid: String)(implicit db: Database): Future[AddressTypeOpt] = {
     for {
       typ <- addressTypesFuture
-      cod <- db.run(qAddressType(addressDetailPid).result.headOption).map(_.flatten)
-    } yield AddressType(cod.map(typ))
+      asOpt <- db.run(qAddressSite(addressDetailPid).result.headOption)
+    } yield AddressTypeOpt(asOpt.map(as => AddressType(as.addressSitePid, as.addressType.map(typ))))
   }
 
   // val corsSettings = CorsSettings.defaultSettings.copy(allowGenericHttpRequests = true, allowedMethods = List(HttpMethods.GET, HttpMethods.OPTIONS), allowedOrigins = HttpOriginRange.*)
@@ -114,7 +120,7 @@ trait Service extends Protocols {
         get {
           complete {
             geocodeTypes.map { x =>
-              GeocodeTypes(x.toSeq.map(b => GeocodeType.apply(b._1, b._2))) // TODO: map(GeocodeType.apply) ?
+              GeocodeTypes(x.toSeq.map(GeocodeType.tupled))
             }
           }
         }

@@ -15,17 +15,19 @@ function initGnaf() {
 }
 
 var esUrl; // Elasticsearch
-var dbUrl; // GNAF (database) Service
+var gnafServiceUrl; // GNAF (database) Service
+var contribServiceUrl; // Contrib (database) Service
 
 function initBaseUrl() {
   var host = window.location.protocol === 'file:' ? 'http://localhost' : window.location.protocol + '//' + window.location.hostname;
   esUrl = host + ':9200/gnaf/';
-  dbUrl = host + ':9000/';
+  gnafServiceUrl = host + ':9000/';
+  contribServiceUrl = host + ':9010/';
 
 // or to use the production servers with the webapp served from a different domain: 
 //  var host = 'http://gnaf.it.csiro.au';
 //  esUrl = host + '/es/'; // nginx proxy for CORS since Elastcsearch CORS appears broken
-//  dbUrl = host + ':9000/'; // CORS out of the box
+//  gnafServiceUrl = host + ':9000/'; // CORS out of the box
 }
 
 var myCoords;
@@ -79,7 +81,7 @@ function createTabs(id, itc) {
 
 
 function createAddressLookup() {
-  var id = 'addr';
+  var id = 'addressInput';
   var lbl = $('<label>').attr('for', id).text('Enter address');
   var inp = $('<input>').attr({ id: id, name: id, type: 'text'});
   var result = $('<div>').attr('id', 'addressLookupResult');
@@ -358,14 +360,14 @@ function runQuery(query, success, error) {
   );
 }
 
-function doAjax(url, data, success, error, typ, contentType, dataType) {
-  if (!typ) typ = data ? 'POST' : 'GET';
+function doAjax(url, data, success, error, method, contentType, dataType) {
+  if (!method) method = data ? 'POST' : 'GET';
   if (!contentType) contentType = 'application/json; charset=utf-8';
   if (!dataType) dataType = 'json';
   try {
     debug('doAjax: url =', url, 'data =', data);
     $.ajax({
-      type: typ,
+      type: method,
       url: url,
       data: data,
       contentType: contentType,
@@ -431,37 +433,135 @@ function streetColHandler(h) {
 function locationColHandler(geoDetail) {
   return function(r) {
     var l = r.location
-    return [ $('<span>').text(l.lat + ', ' + l.lon), $('<a>').attr('href', '#').addClass('showGeoDetail').text('…').click(stopPropagation(showGeoDetail(geoDetail, r.addressDetailPid))) ];
+    return [ $('<span>').text(l.lat + ', ' + l.lon), $('<a>').attr('href', '#').addClass('showGeoDetail').text('…').click(stopPropagation(showGeoDetail(geoDetail, r))) ];
   };
 }
 
-function showGeoDetail(elem, addressDetailPid) {
+var existingGeocodeTypes = new Set();
+
+function showGeoDetail(elem, r) { // addressDetailPid
   return function() {
     var addrType = $('<div>').addClass('addrType');
-    var geoDetail = $('<div>').addClass('addrType');
-    elem.empty().append(addrType).append(geoDetail);
+    var gnafGeocodes = $('<div>').addClass('gnafGeocodes');
+    var contribGeocodes = $('<div>').addClass('contribGeocodes');
+    elem.empty().append([addrType, gnafGeocodes, contribGeocodes]);
     showLoading(addrType);
-    showLoading(geoDetail);
+    showLoading(gnafGeocodes);
+    existingGeocodeTypes = new Set();
     
-    doAjax(dbUrl + 'addressGeocode/' + addressDetailPid, null,
-      data => geoDetail.empty().append(genTable(data, [
-          new Col('Default', 'isDefault', d => d ? '*' : ''),
-          new Col('Latitude', 'latitude'),
-          new Col('Longitude', 'longitude'),
-          new Col('Reliability', 'reliabilityCode'),
-          new Col('Type', 'geocodeTypeDescription')
-      ])), 
-      err => geoDetail.empty()
-    );
-    
-    doAjax(dbUrl + 'addressType/' + addressDetailPid, null,
-      data => addrType.empty().append([
+    doAjax(gnafServiceUrl + 'addressType/' + r.addressDetailPid, null,
+      data => {
+        addrType.empty().append([
           $('<label>').text('Address type'),
-          $('<span>').text(data.addressType ? data.addressType : 'none')
-      ]), 
+          $('<span>').text(data.addressType && data.addressType.addressType ? data.addressType.addressType : 'none')
+        ]);
+        if (data.addressType && data.addressType.addressSitePid) showContrib(contribGeocodes, data.addressType.addressSitePid);
+      }, 
       err => addrType.empty()
     );
+    
+    doAjax(gnafServiceUrl + 'addressGeocode/' + r.addressDetailPid, null,
+      data => { 
+        gnafGeocodes.empty().append([
+          $('<label>').text('G-NAF geocodes'),
+          genTable(data, [
+            new Col('Default', 'isDefault', d => d ? '*' : ''),
+            new Col('Latitude', 'latitude'),
+            new Col('Longitude', 'longitude'),
+            new Col('Reliability', 'reliabilityCode'),
+            new Col('Type', 'geocodeTypeDescription')
+          ])
+        ]);
+        data.forEach(g => existingGeocodeTypes.add(g.geocodeTypeCode));
+      }, 
+      err => gnafGeocodes.empty()
+    );
   }
+}
+
+// TODO: use Promises?
+
+function showContrib(elem, addressSitePid) {
+
+  function step2(geocodeTypes) {
+    
+    function refresh() {
+      showLoading(elem);
+      step2(geocodeTypes);
+    }
+    
+    var typMap = geocodeTypes.reduce((z, x) => {
+      z[x.code] = x.description;
+      return z;
+    }, {});
+    debug('step2: typMap =', typMap);
+    doAjax(contribServiceUrl + 'contrib/' + addressSitePid, null,
+      data => {
+        data.forEach(d => d.record = d);
+        var tbl = genTable(data, [
+          new Col('Latitude', 'latitude'),
+          new Col('Longitude', 'longitude'),
+          new Col('Type', 'geocodeTypeCode', t => typMap[t]),
+          new Col('Status', 'record', r => [
+            $('<span>').text(r.contribStatus), 
+            $('<a>').addClass('delete').attr('href', '#').text('delete').click(stopPropagation(() =>
+              deleteContrib({id: r.id, version: r.version}, refresh)
+            ))
+          ], 'contribStatus')
+        ]);
+        data.forEach(g => existingGeocodeTypes.add(g.geocodeTypeCode));
+        var mkInp = (id, val) => $('<td>').addClass(id).append($('<input>').attr({id: id, name: id, type: 'text'}).val(val));
+        tbl.append($('<tr>').addClass('add').append([
+          mkInp('latitude', myCoords && myCoords.latitude ? myCoords.latitude : ''),
+          mkInp('longitude', myCoords && myCoords.longitude ? myCoords.longitude : ''),
+          $('<td>').addClass('geocodeTypeCode').append($('<select>').attr('id', 'geocodeTypeCode').append(geocodeTypes.filter(t => !existingGeocodeTypes.has(t.code)).map(t => $('<option>').attr('value', t.code).text(t.description)))),
+          $('<td>').addClass('contribStatus').append(
+            $('<a>').addClass('add').attr('href', '#').text('add').click(stopPropagation(() =>
+              addContrib({ contribStatus: 'Submitted', addressSitePid: addressSitePid, geocodeTypeCode: $('#geocodeTypeCode').val(), longitude: Number($('#longitude').val()), latitude: Number($('#latitude').val()), dateCreated: 0, version: 0 }, refresh)
+            ))
+          )
+        ]));
+        elem.empty().append([
+          $('<label>').text('Contributed geocodes'),
+          tbl
+        ]);
+      }, 
+      err => elem.empty()
+    );
+  };
+  
+  showLoading(elem);
+  doAjax(gnafServiceUrl + 'geocodeTypes', null,
+      data => step2(data.types),
+      err => elem.empty()
+  );
+}
+
+function addContrib(contribGeocode, refresh) {
+  debug('addContrib: contribGeocode =', contribGeocode);
+  doAjax(
+    contribServiceUrl + 'contrib/',
+    JSON.stringify(contribGeocode),
+    data => {
+      debug('addContrib: OK');
+      refresh();
+    },
+    msg => {}
+  );
+}
+
+function deleteContrib(contribGeocodeKey, refresh) {
+  debug('addContrib: contribGeocodeKey =', contribGeocodeKey);
+  doAjax(
+    contribServiceUrl + 'contrib/',
+    JSON.stringify(contribGeocodeKey),
+    data => {
+      debug('deleteContrib: OK');
+      refresh();
+    },
+    msg => {},
+    'DELETE'
+  );
 }
 
 function hitToAddress(h) {
@@ -519,7 +619,7 @@ function genTable(data, cols) {
   t.append(tr);
   for (var i = 0; i < cols.length; i++) {
     var col = cols[i];
-    tr.append($('<th>').attr('class', col.tdClass).text(cols[i].label));
+    tr.append($('<th>').addClass(col.tdClass).text(cols[i].label));
   }
   // make a row from each element in 'data'
   // 'fields' gives the properties to use and their order
@@ -533,7 +633,7 @@ function genRow(x, cols) {
   var tr = $('<tr>');
   for (var i = 0; i < cols.length; i++) {
     var col = cols[i];
-    tr.append($('<td>').attr('class', col.tdClass).append(col.handler(x[col.field])));
+    tr.append($('<td>').addClass(col.tdClass).append(col.handler(x[col.field])));
   }
   return tr;
 }

@@ -82,16 +82,27 @@ div.location {
   margin-bottom: 10px;
 }
 
-div.location a, #addressNearMe .refresh {
+div.location a, #addressNearMe .refresh, .contribStatus .delete {
   margin-left: 5px;
 }
 
-#addressLookup input {
+#addressInput {
   width: 500px;
 }
 
-#addressLookupResult, #addressNearMeResult, #bulkResult, .geoDetail {
+#addressLookupResult, #addressNearMeResult, #bulkResult, .addrType, .gnafGeocodes, .contribGeocodes {
   margin-top: 15px;
+}
+
+.contribStatus a {
+	
+}
+.contribGeocodes .add input {
+  width: 150px;
+}
+
+.contribGeocodes .geocodeTypeCode select {
+  width: 500px;
 }
 
 .showGeoDetail {
