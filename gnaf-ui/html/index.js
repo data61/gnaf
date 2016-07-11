@@ -19,15 +19,16 @@ var gnafServiceUrl; // GNAF (database) Service
 var contribServiceUrl; // Contrib (database) Service
 
 function initBaseUrl() {
-  var host = window.location.protocol === 'file:' ? 'http://localhost' : window.location.protocol + '//' + window.location.hostname;
-  esUrl = host + ':9200/gnaf/';
-  gnafServiceUrl = host + ':9000/';
-  contribServiceUrl = host + ':9010/';
+//  var host = window.location.protocol === 'file:' ? 'http://localhost' : window.location.protocol + '//' + window.location.hostname;
+//  esUrl = host + ':9200/gnaf/';
+//  gnafServiceUrl = host + ':9000/';
+//  contribServiceUrl = host + ':9010/';
 
 // or to use the production servers with the webapp served from a different domain: 
-//  var host = 'http://gnaf.it.csiro.au';
-//  esUrl = host + '/es/'; // nginx proxy for CORS since Elastcsearch CORS appears broken
-//  gnafServiceUrl = host + ':9000/'; // CORS out of the box
+  var host = 'http://gnaf.it.csiro.au';
+  esUrl = host + '/es/'; // nginx proxy for CORS since Elastcsearch CORS appears broken
+  gnafServiceUrl = host + ':9000/'; // CORS out of the box
+  contribServiceUrl = host + ':9010/';
 }
 
 var myCoords;
@@ -272,11 +273,14 @@ function suggestAddress(req, resp) {
  * Instead of "UNIT 2 12 BLAH STREET" people often use "2 / 12 BLAH STREET".
  * If the shingle filter is used to store 2 & 3-grams "2 12 BLAH" will get a high score, but "2 / 12 BLAH" won't;
  * so we replace the "/" with " ".
+ * 
+ * Also replace commas with space in case anyone pastes CSV data.
+ * 
  * @param addr
  * @returns
  */
-function flatSeparator(addr) {
-  return addr.replace(/\//g, ' ');
+function queryPreProcess(addr) {
+  return addr.replace(/\/|,/g, ' ');
 }
 
 function toQueryLoc(coords, dist) {
@@ -287,13 +291,22 @@ function qDistance(loc, dist) {
   return { geo_distance : { distance : dist, location : loc } };
 }
 
-// filtered by location, but location doesn't affect the score
+// filtered by location (doesn't affect query score)
+// fuzzy matches have inherent scoring issues so we find candidates using fuzzy matching, but then rescore with exact matching  
 function d61AddressQuery(loc, dist, terms, size) {
-  var qArr = [ { match: { d61Address: { query: flatSeparator(terms),  fuzziness: 2, prefix_length: 2 } } } ];
+  var qTerms = queryPreProcess(terms);
+  var qArr = [ { match: { d61Address: { query: qTerms,  fuzziness: 2, prefix_length: 2 } } } ];
   if (loc && dist) {
     qArr.push(qDistance(loc, dist));
   }
-  return { query: qArrToQuery(qArr), size: size };
+  return {
+    query: qArrToQuery(qArr), 
+    rescore: { query: {
+      rescore_query: { match: { d61Address: { query: qTerms } } },
+      query_weight: 0.0
+    } },
+    size: size
+  };
 }
 
 function qArrToQuery(qArr) {
