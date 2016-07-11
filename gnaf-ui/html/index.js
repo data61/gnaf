@@ -19,16 +19,16 @@ var gnafServiceUrl; // GNAF (database) Service
 var contribServiceUrl; // Contrib (database) Service
 
 function initBaseUrl() {
-//  var host = window.location.protocol === 'file:' ? 'http://localhost' : window.location.protocol + '//' + window.location.hostname;
-//  esUrl = host + ':9200/gnaf/';
-//  gnafServiceUrl = host + ':9000/';
-//  contribServiceUrl = host + ':9010/';
+  var host = window.location.protocol === 'file:' ? 'http://localhost' : window.location.protocol + '//' + window.location.hostname;
+  esUrl = host + ':9200/gnaf/';
+  gnafServiceUrl = host + ':9000/';
+  contribServiceUrl = host + ':9010/';
 
 // or to use the production servers with the webapp served from a different domain: 
-  var host = 'http://gnaf.it.csiro.au';
-  esUrl = host + '/es/'; // nginx proxy for CORS since Elastcsearch CORS appears broken
-  gnafServiceUrl = host + ':9000/'; // CORS out of the box
-  contribServiceUrl = host + ':9010/';
+//  var host = 'http://gnaf.it.csiro.au';
+//  esUrl = host + '/es/'; // nginx proxy for CORS since Elastcsearch CORS appears broken
+//  gnafServiceUrl = host + ':9000/'; // CORS out of the box
+//  contribServiceUrl = host + ':9010/';
 }
 
 var myCoords;
