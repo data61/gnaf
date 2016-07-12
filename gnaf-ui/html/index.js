@@ -112,7 +112,7 @@ function createBulkLookup() {
     ]),
     textarea,
     $('<br>'),
-    $('<button>').attr('type', 'button').text('Search').click(stopPropagation(() => bulkSearch(textarea.val().split('\n'), result))),
+    $('<button>').attr('type', 'button').text('Search').click(stopPropagation(() => bulkSearch(textarea.val().split('\n').filter(a => a.trim() != ''), result))),
     result
   ]);
 }
