@@ -71,7 +71,8 @@ object Indexer {
   import MyGnafTables.profile.api._
 
   /** result of command line option processing */
-  case class CliOption(dburl: String = "jdbc:h2:file:~/gnaf")
+  case class CliOption(dburl: String)
+  val defaultCliOption = CliOption(config.getString("gnafDb.url"))
 
   def main(args: Array[String]): Unit = {
     val parser = new scopt.OptionParser[CliOption]("gnaf-indexer") {
@@ -79,10 +80,10 @@ object Indexer {
       note("Creates JSON from gnaf database to load into Elasticsearch.")
       opt[String]('u', "dburl") action { (x, c) =>
         c.copy(dburl = x)
-      } text (s"database URL, default ${CliOption().dburl}")
+      } text (s"database URL, default ${defaultCliOption.dburl}")
       help("help") text ("prints this usage text")
     }
-    parser.parse(args, CliOption()) foreach run
+    parser.parse(args, defaultCliOption) foreach run
 
     pool.shutdown
     pool.awaitTermination(5, TimeUnit.SECONDS)
