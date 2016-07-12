@@ -29,19 +29,20 @@ import akka.http.scaladsl.marshalling.ToResponseMarshallable
 import ch.megard.akka.http.cors.CorsSettings
 import akka.http.scaladsl.model.HttpMethod
 import akka.http.scaladsl.model.HttpMethods
+import slick.dbio.DBIOAction
 
 //import io.swagger.annotations._
 //import javax.ws.rs.{ Consumes, DELETE, GET, POST, PUT, Path, PathParam, Produces, WebApplicationException }
 
-// TODO: next two also needed in gnaf-service so maybe move them all to gnaf-common?
-case class GeocodeType(code: String, description: String)
-case class GeocodeTypes(types: Seq[GeocodeType])
+// // next two also needed in gnaf-service so maybe move them all to gnaf-common?
+// case class GeocodeType(code: String, description: String)
+// case class GeocodeTypes(types: Seq[GeocodeType])
 case class ContribGeocode(id: Option[Long], contribStatus: String, addressSiteGeocodePid: Option[String], dateCreated: Long, version: Int, addressSitePid: String, geocodeTypeCode: String, longitude: scala.math.BigDecimal, latitude: scala.math.BigDecimal)
 case class ContribGeocodeKey(id: Long, version: Int)
 
 trait Protocols extends DefaultJsonProtocol {
-  implicit val geocodeTypeFormat = jsonFormat2(GeocodeType.apply)
-  implicit val geocodeTypesFormat = jsonFormat1(GeocodeTypes.apply)
+//  implicit val geocodeTypeFormat = jsonFormat2(GeocodeType.apply)
+//  implicit val geocodeTypesFormat = jsonFormat1(GeocodeTypes.apply)
   implicit val contribGeocodeFormat = jsonFormat9(ContribGeocode.apply)
   implicit val contribGeocodeKeyFormat = jsonFormat2(ContribGeocodeKey.apply)
 }
@@ -56,32 +57,45 @@ trait Service extends Protocols {
   val config = ConfigFactory.load
   val logger: LoggingAdapter
   
+//  // how to call other services, not needed here
+//  
+//  // make HTTP JSON request to gnafService
+//  lazy val gnafServiceFlow: Flow[HttpRequest, HttpResponse, Any] = Http().outgoingConnection(config.getString("services.gnafService.interface"), config.getInt("services.gnafService.port"))
+//  def gnafServiceRequest(request: HttpRequest): Future[HttpResponse] = Source.single(request).via(gnafServiceFlow).runWith(Sink.head)
+//  
+//  def geocodeTypes: Future[GeocodeTypes] = {
+//    gnafServiceRequest(RequestBuilding.Get("/geocodeTypes")).flatMap { response =>
+//      response.status match {
+//        case OK => Unmarshal(response.entity).to[GeocodeTypes]
+//        case _ => Unmarshal(response.entity).to[String].flatMap { entity =>
+//          val error = s"GnafService request failed with status code ${response.status} and entity $entity"
+//          logger.error(error)
+//          Future.failed(new IOException(error))
+//        }
+//      }
+//    }
+//  }
+  
   object MyContribTables extends {
     val profile = Util.getObject[slick.driver.JdbcProfile](config.getString("gnafContribDb.slickDriver")) // e.g. slick.driver.{H2Driver,PostgresDriver}
   } with ContribTables
-  val contribTables = MyContribTables
-  import contribTables._
-  import contribTables.profile.api._
+  import MyContribTables._
+  import MyContribTables.profile.api._
   
   implicit val db = Database.forConfig("gnafContribDb", config)
     
-  // TODO: nice to be able to call other services, but don't think this is needed here
-  
-  // make HTTP JSON request to gnafService
-  lazy val gnafServiceFlow: Flow[HttpRequest, HttpResponse, Any] = Http().outgoingConnection(config.getString("services.gnafService.host"), config.getInt("services.gnafService.port"))
-  def gnafServiceRequest(request: HttpRequest): Future[HttpResponse] = Source.single(request).via(gnafServiceFlow).runWith(Sink.head)
-  
-  def geocodeTypes: Future[GeocodeTypes] = {
-    gnafServiceRequest(RequestBuilding.Get("/geocodeTypes")).flatMap { response =>
-      response.status match {
-        case OK => Unmarshal(response.entity).to[GeocodeTypes]
-        case _ => Unmarshal(response.entity).to[String].flatMap { entity =>
-          val error = s"GnafService request failed with status code ${response.status} and entity $entity"
-          logger.error(error)
-          Future.failed(new IOException(error))
-        }
-      }
+  def createSchemaIfNotExists = {
+    import slick.jdbc.ResultSetAction
+    import slick.jdbc.GetResult._
+    import scala.concurrent.Await
+    import scala.concurrent.duration._
+    
+    val listTablesAction = ResultSetAction[(String, String, String, String)](_.conn.getMetaData.getTables("", "", null, null)).map(_.filter(_._4 == "TABLE").map(_._3))
+    val createIfNotExistsAction = listTablesAction.flatMap { tbls => 
+      if (tbls.isEmpty) schema.create.map(_ => "createSchemaIfNotExists: schema created")
+      else DBIOAction.successful(s"createSchemaIfNotExists: pre-existing tables = $tbls") 
     }
+    logger.info(Await.result(db.run(createIfNotExistsAction), 15.seconds))
   }
   
   val qList = {
@@ -113,13 +127,13 @@ trait Service extends Protocols {
   val settings = CorsSettings.defaultSettings.copy(allowedMethods = HttpMethods.DELETE +: CorsSettings.defaultSettings.allowedMethods)
   val routes = {
     logRequestResult("GnafContrib") {  cors(settings) {
-      pathPrefix("geocodeTypes") {
-        get {
-          complete {
-            geocodeTypes
-          }
-        }
-      } ~
+//      pathPrefix("geocodeTypes") {
+//        get {
+//          complete {
+//            geocodeTypes
+//          }
+//        }
+//      } ~
       pathPrefix("contrib") {
         (post & entity(as[ContribGeocode])) { contribGeocode =>
           logger.info(s"POST contrib: contribGeocode = $contribGeocode")
@@ -157,6 +171,7 @@ object ContribService extends Service {
   override val logger = Logging(system, getClass)
   
   def main(args: Array[String]): Unit = {
+    createSchemaIfNotExists
     Http().bindAndHandle(routes, config.getString("http.interface"), config.getInt("http.port"))
   }
 }
