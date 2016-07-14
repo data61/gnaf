@@ -2,7 +2,6 @@ package au.csiro.data61.gnaf.contrib.service
 
 import scala.concurrent.ExecutionContextExecutor
 import scala.concurrent.duration.DurationInt
-import scala.reflect.runtime.universe
 
 import com.github.swagger.akka.{ HasActorSystem, SwaggerHttpService }
 import com.github.swagger.akka.model.Info
@@ -13,13 +12,9 @@ import akka.event.{ Logging, LoggingAdapter }
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport.{ sprayJsonMarshaller, sprayJsonUnmarshaller }
 import akka.http.scaladsl.marshalling.ToResponseMarshallable
-import akka.http.scaladsl.marshalling.ToResponseMarshallable.apply
 import akka.http.scaladsl.model.HttpMethods
 import akka.http.scaladsl.model.StatusCodes.BadRequest
-import akka.http.scaladsl.server.Directive.{ addByNameNullaryApply, addDirectiveApply }
-import akka.http.scaladsl.server.Directives.{ Segment, _enhanceRouteWithConcatenation, _segmentStringToPathMatcher, as, complete, delete, entity, get, logRequestResult, path, pathPrefix, post, put }
-import akka.http.scaladsl.server.RouteResult.route2HandlerFlow
-import akka.http.scaladsl.server.directives.LoggingMagnet.forRequestResponseFromMarker
+import akka.http.scaladsl.server.Directives._
 import akka.stream.{ ActorMaterializer, Materializer }
 import au.csiro.data61.gnaf.common.util.Util
 import au.csiro.data61.gnaf.contrib.db.ContribTables
@@ -160,11 +155,7 @@ object ContribService { self =>
     override val host = interface + ":" + port
     override val info = Info(version = "1.0")
 
-    val myRoutes = logRequestResult("Swagger") { 
-      cors() {
-        routes
-      }
-    }
+    val myRoutes = logRequestResult("Swagger") {  cors() { routes } }
   }
 
   def main(args: Array[String]): Unit = {

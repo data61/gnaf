@@ -3,19 +3,21 @@ package au.csiro.data61.gnaf.service
 import scala.concurrent.{ ExecutionContextExecutor, Future }
 import scala.math.BigDecimal
 
-import com.typesafe.config.ConfigFactory
+import com.github.swagger.akka.{ HasActorSystem, SwaggerHttpService }
+import com.github.swagger.akka.model.Info
+import com.typesafe.config.{ Config, ConfigFactory }
 
 import akka.actor.ActorSystem
 import akka.event.{ Logging, LoggingAdapter }
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport.sprayJsonMarshaller
-import akka.http.scaladsl.marshalling.ToResponseMarshallable.apply
-import akka.http.scaladsl.server.Directives.{ Segment, complete, enhanceRouteWithConcatenation, get, logRequestResult, path, pathPrefix, segmentStringToPathMatcher }
-import akka.http.scaladsl.server.RouteResult.route2HandlerFlow
+import akka.http.scaladsl.server.Directives.{ Segment, _enhanceRouteWithConcatenation, _segmentStringToPathMatcher, complete, get, logRequestResult, path, pathPrefix }
 import akka.stream.{ ActorMaterializer, Materializer }
 import au.csiro.data61.gnaf.common.db.GnafTables
 import au.csiro.data61.gnaf.common.util.Util
 import ch.megard.akka.http.cors.CorsDirectives.cors
+import io.swagger.annotations.{ Api, ApiOperation }
+import javax.ws.rs.Path
 import spray.json.DefaultJsonProtocol
 
 case class Geocode(geocodeTypeCode: Option[String], geocodeTypeDescription: Option[String], reliabilityCode: Option[Int], isDefault: Boolean, latitude: Option[BigDecimal], longitude: Option[BigDecimal])
@@ -36,14 +38,10 @@ trait Protocols extends DefaultJsonProtocol {
   implicit val geocodeTypesFormat = jsonFormat1(GeocodeTypes.apply)
 }
 
-trait Service extends Protocols {
-  implicit val system: ActorSystem
-  implicit def executor: ExecutionContextExecutor
-  implicit val materializer: Materializer
+@Path("/gnaf")
+@Api(value = "/gnaf", produces = "application/json")
+class GnafService(logger: LoggingAdapter, config: Config)(implicit system: ActorSystem, executor: ExecutionContextExecutor, materializer: Materializer) extends Protocols {
 
-  val config = ConfigFactory.load
-  val logger: LoggingAdapter
-  
   object MyGnafTables extends {
     val profile = Util.getObject[slick.driver.JdbcProfile](config.getString("gnafDb.slickDriver")) // e.g. slick.driver.{H2Driver,PostgresDriver}
   } with GnafTables
@@ -54,10 +52,14 @@ trait Service extends Protocols {
   implicit val db = Database.forConfig("gnafDb", config)
     
   // map code -> description
-  def geocodeTypes()(implicit db: Database): Future[Map[String, String]] = {
-    db.run(GeocodeTypeAut.result).map(_.map(t => t.code -> t.description.getOrElse(t.code)).toMap)
+  lazy val geocodeTypesFuture: Future[Map[String, String]] = db.run(GeocodeTypeAut.result).map(_.map(t => t.code -> t.description.getOrElse(t.code)).toMap)
+  
+  @ApiOperation(value = "List geocode types", nickname = "geocodeType", httpMethod = "GET", response = classOf[GeocodeType], responseContainer = "List")
+  def geocodeType = complete {
+    geocodeTypesFuture.map { x =>
+      GeocodeTypes(x.toSeq.map(GeocodeType.tupled))
+    }
   }
-  lazy val geocodeTypesFuture = geocodeTypes
   
   // left join because some addressDetailPid have no AddressSiteGeocode
   val qGeocodes = {
@@ -68,20 +70,20 @@ trait Service extends Protocols {
     Compiled(q _)
   }
   
-  def geocodes(addressDetailPid: String)(implicit db: Database): Future[Seq[Geocode]] = {
-    for {
+  @ApiOperation(value = "List geocodes for an addressSitePid", nickname = "addressGeocode", httpMethod = "GET", response = classOf[Geocode], responseContainer = "List")
+  def addressGeocode(addressDetailPid: String) = {
+    val f = for {
       typ <- geocodeTypesFuture
       seq <- db.run(qGeocodes(addressDetailPid).result)
     } yield seq.map { case (dg, sg) =>
       sg.map { x => Geocode(x.geocodeTypeCode, x.geocodeTypeCode.map(typ), Some(x.reliabilityCode), Some(dg.geocodeTypeCode) == x.geocodeTypeCode && dg.latitude == x.latitude && dg.longitude == x.longitude, x.latitude, x.longitude) }
         .getOrElse(Geocode(Some(dg.geocodeTypeCode), Some(typ(dg.geocodeTypeCode)), None, true, dg.latitude, dg.longitude)) // handle the no AddressSiteGeocode case
     }.sortBy(!_.isDefault)
+    
+    complete { f }
   }
-  
-  def addressTypes()(implicit db: Database): Future[Map[String, String]] = {
-    db.run(AddressTypeAut.result).map(_.map(t => t.code -> t.description.getOrElse(t.code)).toMap)
-  }
-  lazy val addressTypesFuture = addressTypes
+    
+  lazy val addressTypesFuture = db.run(AddressTypeAut.result).map(_.map(t => t.code -> t.description.getOrElse(t.code)).toMap)
     
   val qAddressSite = {
     def q(addressDetailPid: Rep[String]) = for {
@@ -91,50 +93,57 @@ trait Service extends Protocols {
     Compiled(q _)
   }
   
-  def addressType(addressDetailPid: String)(implicit db: Database): Future[AddressTypeOpt] = {
-    for {
+  @ApiOperation(value = "AddressType for an addressSitePid", nickname = "addressType", httpMethod = "GET", response = classOf[AddressTypeOpt])
+  def addressType(addressDetailPid: String) = {
+    val f = for {
       typ <- addressTypesFuture
       asOpt <- db.run(qAddressSite(addressDetailPid).result.headOption)
     } yield AddressTypeOpt(asOpt.map(as => AddressType(as.addressSitePid, as.addressType.map(typ))))
+    
+    complete { f }
   }
 
-  // val corsSettings = CorsSettings.defaultSettings.copy(allowGenericHttpRequests = true, allowedMethods = List(HttpMethods.GET, HttpMethods.OPTIONS), allowedOrigins = HttpOriginRange.*)
-  val routes = {
-    logRequestResult("GnafService") {  cors() {
+  val routes = pathPrefix("gnaf") {
+      pathPrefix("geocodeType") {
+        get { geocodeType }
+      } ~
       pathPrefix("addressGeocode") {
-        (get & path(Segment)) { addressDetailPid =>
-          complete {
-            geocodes(addressDetailPid)
-          }
-        }
+        (get & path(Segment)) { addressGeocode }
       } ~
       pathPrefix("addressType") {
-        (get & path(Segment)) { addressDetailPid =>
-          complete {
-            addressType(addressDetailPid)
-          }
-        }
-      } ~
-      pathPrefix("geocodeTypes") {
-        get {
-          complete {
-            geocodeTypes.map { x =>
-              GeocodeTypes(x.toSeq.map(GeocodeType.tupled))
-            }
-          }
-        }
+        (get & path(Segment)) { addressType }
       }
-    } }
   }
 }
 
-object GnafService extends Service {
-  override implicit val system = ActorSystem()
-  override implicit val executor = system.dispatcher
-  override implicit val materializer = ActorMaterializer()
-  override val logger = Logging(system, getClass)
+object GnafService { self =>
+  implicit val system = ActorSystem()
+  implicit val executor = system.dispatcher
+  implicit val materializer = ActorMaterializer()
   
+  val logger = Logging(system, getClass)
+  val config = ConfigFactory.load
+  val interface = config.getString("http.interface")
+  val port = config.getInt("http.port")
+  
+  object MyService extends GnafService(logger, config) {    
+    val myRoutes = logRequestResult("GnafService") { cors() { routes } }
+  }
+  
+  // route: /api-docs/swagger.json
+  object SwaggerService extends SwaggerHttpService with HasActorSystem {
+    import scala.reflect.runtime.{ universe => ru }
+
+    override implicit val actorSystem = self.system
+    override implicit val materializer = self.materializer
+    override val apiTypes = Seq(ru.typeOf[GnafService])
+    override val host = interface + ":" + port
+    override val info = Info(version = "1.0")
+
+    val myRoutes = logRequestResult("Swagger") { cors() { routes } }
+  }
+
   def main(args: Array[String]): Unit = {
-    Http().bindAndHandle(routes, config.getString("http.interface"), config.getInt("http.port"))
+    Http().bindAndHandle(MyService.myRoutes ~ SwaggerService.myRoutes, interface, port)
   }
 }
