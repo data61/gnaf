@@ -23,7 +23,6 @@ case class Geocode(geocodeTypeCode: Option[String], geocodeTypeDescription: Opti
 case class AddressType(addressSitePid: String, addressType: Option[String])
 case class AddressTypeOpt(addressType: Option[AddressType])
 
-// TODO: next two also needed in gnaf-contrib so maybe move them all to gnaf-common?
 case class GeocodeType(code: String, description: String)
 case class GeocodeTypes(types: Seq[GeocodeType])
 
