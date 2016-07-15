@@ -46,7 +46,7 @@ This section provides a very brief summary of how to run the project. Detailed i
 	# run h2 with postgres protocol
 	java -Xmx3G -jar ~/.ivy2/cache/com.h2database/h2/jars/h2-1.4.191.jar -web -pg &
 	# create and load database (takes about 90 minutes with a SSD)
-	cat data/createGnafDb.sql | psql --host=localhost --port=5435 --username=gnaf --dbname=~/gnaf
+	psql --host=localhost --port=5435 --username=gnaf --dbname=~/gnaf < data/createGnafDb.sql
 	Password for user gnaf: gnaf
 	# kill h2
 	kill %1
@@ -55,17 +55,42 @@ This section provides a very brief summary of how to run the project. Detailed i
 	# start Elasticsearch - see README.md (the one under gnaf-indexer) and Elasticsearch documentation
 	# run indexer (which uses the database in embedded mode so will fail if the above h2 process is still running; requires jq; takes about 2 hours)
 	src/main/script/loadElasticsearch.sh
-	# test Elasticsearch index (or open this URL in browser)
-	curl 'localhost:9200/gnaf/?pretty'
+	cd ..
 	
-	cd ../gnaf-service
-	# start gnaf database web service (uses the database in embedded mode)
-	java -jar target/scala-2.11/gnaf-service_2.11-0.1-SNAPSHOT-one-jar.jar &> gnaf-service.log &
-	# test gnaf-service (or open URL in browser)
-	curl 'http://localhost:9000/addressGeocode/GASA_414912543'
-	curl 'http://localhost:9000/addressType/GANSW716635201'
+	# test Elasticsearch index (command line or open this URL in browser)
+	curl 'http://localhost:9200/gnaf/?pretty'
 	
-Test with the demonstration web user interface by opening the file `gnaf-ui/html/index.html` in a recent version of Chrome, Firefox or Edge.
+	# start gnaf database web service (uses gnaf database in embedded mode)
+	nohup java -jar gnaf-service/target/scala-2.11/gnaf-service_2.11-0.1-SNAPSHOT-one-jar.jar &> gnaf-service.log &
+	
+	# test gnaf-service
+	# use this in swagger-ui
+	curl 'http://localhost:9000/api-docs/swagger.json
+	# get geocode types and descriptions
+	curl 'http://localhost:9000/gnaf/geocodeType'
+	# get type of address e.g. RURAL, often missing, for an addressDetailPid
+	curl 'http://localhost:9000/gnaf/addressType/GANSW716635201'
+	# get all geocodes for an addressDetailPid, almost always 1, sometimes 2
+	curl 'http://localhost:9000/gnaf/addressGeocode/GASA_414912543'
+	
+	# start contrib database web service (uses gnafContrib database in embedded mode)
+	nohup java -jar gnaf-contrib/target/scala-2.11/gnaf-contrib_2.11-0.1-SNAPSHOT-one-jar.jar &> gnaf-contrib.log &
+	
+	# test gnaf-contrib
+	# use this in swagger-ui
+	curl 'http://localhost:9010/api-docs/swagger.json
+	#  add contributed geocode for an addressSite
+	curl -XPOST 'http://gnaf.it.csiro.au:9010/contrib/' -H 'Content-Type:application/json' -d '{
+	  "contribStatus":"Submitted","addressSitePid":"712279621","geocodeTypeCode":"EM",
+	  "longitude":149.1213974,"latitude":-35.280994199999995,"dateCreated":0,"version":0
+	}'
+	# list contributed geocodes for an addressSite
+	curl 'http://gnaf.it.csiro.au:9010/contrib/712279621'
+	# there are also delete and update methods
+	
+Test with:
+- demonstration web user interface by opening the file `gnaf-ui/html/index.html` in a recent version of Chrome, Firefox or Edge;
+- [swagger-ui](http://swagger.io/swagger-ui/) at http://gnaf.it.csiro.au/swagger-ui/ using one of the above swagger.json URLs.
 	
 
 ### Develop With Eclipse

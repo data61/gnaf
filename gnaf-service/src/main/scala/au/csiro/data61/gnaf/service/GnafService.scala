@@ -17,10 +17,11 @@ import au.csiro.data61.gnaf.common.db.GnafTables
 import au.csiro.data61.gnaf.common.util.Util
 import ch.megard.akka.http.cors.CorsDirectives.cors
 import io.swagger.annotations.{ Api, ApiOperation }
-import javax.ws.rs.Path
+import javax.ws.rs.{ Path, PathParam }
 import spray.json.DefaultJsonProtocol
 
-case class Geocode(geocodeTypeCode: Option[String], geocodeTypeDescription: Option[String], reliabilityCode: Option[Int], isDefault: Boolean, latitude: Option[BigDecimal], longitude: Option[BigDecimal])
+// for latitude: BigDecimal swagger type is number, but for Option[BigDecimal] swagger type is complex internal representation of scala.math.BigDecimal, so we avoid using Option here
+case class Geocode(geocodeTypeCode: Option[String], geocodeTypeDescription: Option[String], reliabilityCode: Option[Int], isDefault: Boolean, latitude: BigDecimal, longitude: BigDecimal)
 
 case class AddressType(addressSitePid: String, addressType: Option[String])
 case class AddressTypeOpt(addressType: Option[AddressType])
@@ -38,8 +39,8 @@ trait Protocols extends DefaultJsonProtocol {
   implicit val geocodeTypesFormat = jsonFormat1(GeocodeTypes.apply)
 }
 
-@Path("/gnaf")
-@Api(value = "/gnaf", produces = "application/json")
+@Api(value = "gnaf", produces = "application/json")
+@Path("gnaf")
 class GnafService(logger: LoggingAdapter, config: Config)(implicit system: ActorSystem, executor: ExecutionContextExecutor, materializer: Materializer) extends Protocols {
 
   object MyGnafTables extends {
@@ -54,6 +55,7 @@ class GnafService(logger: LoggingAdapter, config: Config)(implicit system: Actor
   // map code -> description
   lazy val geocodeTypesFuture: Future[Map[String, String]] = db.run(GeocodeTypeAut.result).map(_.map(t => t.code -> t.description.getOrElse(t.code)).toMap)
   
+  @Path("geocodeType")
   @ApiOperation(value = "List geocode types", nickname = "geocodeType", httpMethod = "GET", response = classOf[GeocodeType], responseContainer = "List")
   def geocodeType = complete {
     geocodeTypesFuture.map { x =>
@@ -70,14 +72,16 @@ class GnafService(logger: LoggingAdapter, config: Config)(implicit system: Actor
     Compiled(q _)
   }
   
+  @Path("addressGeocode/{addressDetailPid}")
   @ApiOperation(value = "List geocodes for an addressSitePid", nickname = "addressGeocode", httpMethod = "GET", response = classOf[Geocode], responseContainer = "List")
-  def addressGeocode(addressDetailPid: String) = {
+  def addressGeocode(@PathParam("addressDetailPid") addressDetailPid: String) = {
     val f = for {
       typ <- geocodeTypesFuture
       seq <- db.run(qGeocodes(addressDetailPid).result)
     } yield seq.map { case (dg, sg) =>
-      sg.map { x => Geocode(x.geocodeTypeCode, x.geocodeTypeCode.map(typ), Some(x.reliabilityCode), Some(dg.geocodeTypeCode) == x.geocodeTypeCode && dg.latitude == x.latitude && dg.longitude == x.longitude, x.latitude, x.longitude) }
-        .getOrElse(Geocode(Some(dg.geocodeTypeCode), Some(typ(dg.geocodeTypeCode)), None, true, dg.latitude, dg.longitude)) // handle the no AddressSiteGeocode case
+      // should either have 1 (dg, None) or 1 or more (dg, Some(addressSiteGeocode)), the latitude & longitude values should not be None
+      sg.map { x => Geocode(x.geocodeTypeCode, x.geocodeTypeCode.map(typ), Some(x.reliabilityCode), Some(dg.geocodeTypeCode) == x.geocodeTypeCode && dg.latitude == x.latitude && dg.longitude == x.longitude, x.latitude.getOrElse(0), x.longitude.getOrElse(0)) }
+        .getOrElse(Geocode(Some(dg.geocodeTypeCode), Some(typ(dg.geocodeTypeCode)), None, true, dg.latitude.getOrElse(0), dg.longitude.getOrElse(0))) // handle the (dg, None) no AddressSiteGeocode case
     }.sortBy(!_.isDefault)
     
     complete { f }
@@ -93,8 +97,9 @@ class GnafService(logger: LoggingAdapter, config: Config)(implicit system: Actor
     Compiled(q _)
   }
   
+  @Path("addressType/{addressDetailPid}")
   @ApiOperation(value = "AddressType for an addressSitePid", nickname = "addressType", httpMethod = "GET", response = classOf[AddressTypeOpt])
-  def addressType(addressDetailPid: String) = {
+  def addressType(@PathParam("addressDetailPid") addressDetailPid: String) = {
     val f = for {
       typ <- addressTypesFuture
       asOpt <- db.run(qAddressSite(addressDetailPid).result.headOption)
