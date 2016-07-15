@@ -20,25 +20,24 @@ var contribServiceUrl; // Contrib (database) Service
 
 function initBaseUrl() {
   var host = window.location.protocol === 'file:' ? 'http://localhost' : window.location.protocol + '//' + window.location.hostname;
-  esUrl = host + ':9200/gnaf/';
-  gnafServiceUrl = host + ':9000/';
-  contribServiceUrl = host + ':9010/';
+//  esUrl = host + ':9200/gnaf/';
 
 // or to use the production servers with the webapp served from a different domain: 
 //  var host = 'http://gnaf.it.csiro.au';
-//  esUrl = host + '/es/'; // nginx proxy for CORS since Elastcsearch CORS appears broken
-//  gnafServiceUrl = host + ':9000/'; // CORS out of the box
-//  contribServiceUrl = host + ':9010/';
-}
+  esUrl = host + '/es/'; // nginx proxy for CORS since Elastcsearch CORS appears broken
 
-var myCoords;
+  gnafServiceUrl = host + ':9000/gnaf/'; // CORS out of the box
+  contribServiceUrl = host + ':9010/contrib/';
+}
 
 var searchDistance = [ 50, 100, 500, 1000, 2000, 5000, 10000, 50000, 100000 ];
 
 function createLocation() {
   return $('<div>').addClass('location').append([ 
-    $('<label>').text('Location'), 
-    $('<span>').attr('id', 'location'), 
+    $('<label>').text('Location'),
+    $('<input>').attr({id: 'latitude', 'type': 'text'}), 
+    $('<input>').attr({id: 'longitude', 'type': 'text'}), 
+    $('<span>').attr({id: 'precision'}), 
     $('<a>').attr('href', '#').text('update').click(stopPropagation(updateLocation)),
     $('<br>'),
     $('<label>').text('Search distance'),
@@ -51,12 +50,20 @@ function createLocation() {
 function updateLocation() {
   navigator.geolocation.getCurrentPosition(pos => {
     debug('updateLocation: coords =', pos.coords);
-    $('#location').text(pos.coords.latitude.toString() + ',' + pos.coords.longitude.toString() + " ±" + pos.coords.accuracy.toString() + 'm');
-    // * 3 because accuracy appears to be overly optimistic
-    var nextHigherDist = searchDistance.find(d => d >= pos.coords.accuracy * 3);
+    $('#latitude').val(pos.coords.latitude.toString());
+    $('#longitude').val(pos.coords.longitude.toString());
+    $('#precision').text("±" + pos.coords.accuracy.toString() + 'm');
+    var nextHigherDist = searchDistance.find(d => d >= pos.coords.accuracy);
     $('#searchDistance').val(nextHigherDist ? nextHigherDist : 5000);
-    myCoords = pos.coords;
   });
+}
+
+function getLatLon() {
+  var lat = Number($('#latitude').val());
+  var lon = Number($('#longitude').val());
+  var r = isNaN(lat + lon) || lat === 0 || lon === 0 ? null : { lat: lat, lon: lon };
+  debug('getLatLon: r =', r);
+  return r;
 }
 
 function getDist() {
@@ -74,7 +81,7 @@ function createTabs(id, itc) {
     activate: function(ev, ui) {
       debug('tabs.activate: ev =', ev, 'ui =', ui);
       var sel = '#' + tabDef[1].id;
-      if (ui.newPanel.selector == sel) searchAddressesNearMe(myCoords, $('#addressNearMe'))
+      if (ui.newPanel.selector == sel) searchAddressesNearMe($('#addressNearMe'))
     } 
   });
   return tabs;
@@ -118,7 +125,7 @@ function createBulkLookup() {
 }
 
 function bulkSearch(addresses, elem) {
-  var loc = toQueryLoc(myCoords);
+  var loc = getLatLon();
   var dist = getDist();
   var queries = addresses.map(a => '{}\n' + JSON.stringify(d61AddressQuery(loc, dist, a, 1)) + '\n').join('');
   debug('bulkSearch: queries =', queries);
@@ -164,14 +171,14 @@ function unique(arr, f) {
 var hitsNearMe;
 var unqStreet; 
 
-function searchAddressesNearMe(coords, elem) {
-  var loc = toQueryLoc(coords);
+function searchAddressesNearMe(elem) {
+  var loc = getLatLon();
   var dist = getDist();
   debug('searchAddressesNearMe: loc =', loc, 'dist =', dist);
   if (!loc || !dist) {
     elem.empty().append([
       $('<span>').text('Please set a Location and Search distance then'),
-      $('<a>').attr('href', '#').addClass('refresh').text('refresh').click(stopPropagation(() => searchAddressesNearMe(myCoords, elem)))
+      $('<a>').attr('href', '#').addClass('refresh').text('refresh').click(stopPropagation(() => searchAddressesNearMe(elem)))
     ]);
   } else {
     runQuery(
@@ -259,7 +266,7 @@ function initAutoCompleteAddress(elem, result) {
 
 function suggestAddress(req, resp) {
   runQuery(
-    d61AddressQuery(toQueryLoc(myCoords), getDist(), req.term, 10),
+    d61AddressQuery(getLatLon(), getDist(), req.term, 10),
     function(data) {
       resp(data.hits.hits.map(i => ({ label: hitToAddress(i._source), payload: i._source }) ));
     },
@@ -281,10 +288,6 @@ function suggestAddress(req, resp) {
  */
 function queryPreProcess(addr) {
   return addr.replace(/\/|,/g, ' ');
-}
-
-function toQueryLoc(coords, dist) {
-  return coords ? { lat: coords.latitude, lon: coords.longitude } : null;
 }
 
 function qDistance(loc, dist) {
@@ -340,7 +343,7 @@ function search(inp, elem) {
   return function() {
     showLoading(elem);
     runQuery(
-      d61AddressQuery(toQueryLoc(myCoords), getDist(), inp.val(), 10),
+      d61AddressQuery(getLatLon(), getDist(), inp.val(), 10),
       function(data, textStatus, jqXHR) {
         elem.empty().append(searchResult(data));
       },
@@ -508,7 +511,7 @@ function showContrib(elem, addressSitePid) {
       return z;
     }, {});
     debug('step2: typMap =', typMap);
-    doAjax(contribServiceUrl + 'contrib/' + addressSitePid, null,
+    doAjax(contribServiceUrl + addressSitePid, null,
       data => {
         data.forEach(d => d.record = d);
         var tbl = genTable(data, [
@@ -524,9 +527,10 @@ function showContrib(elem, addressSitePid) {
         ]);
         data.forEach(g => existingGeocodeTypes.add(g.geocodeTypeCode));
         var mkInp = (id, val) => $('<td>').addClass(id).append($('<input>').attr({id: id, name: id, type: 'text'}).val(val));
+        var latLon = getLatLon();
         tbl.append($('<tr>').addClass('add').append([
-          mkInp('latitude', myCoords && myCoords.latitude ? myCoords.latitude : ''),
-          mkInp('longitude', myCoords && myCoords.longitude ? myCoords.longitude : ''),
+          mkInp('latitude', latLon ? latLon.lat : ''),
+          mkInp('longitude', latLon ? latLon.lon : ''),
           $('<td>').addClass('geocodeTypeCode').append($('<select>').attr('id', 'geocodeTypeCode').append(geocodeTypes.filter(t => !existingGeocodeTypes.has(t.code)).map(t => $('<option>').attr('value', t.code).text(t.description)))),
           $('<td>').addClass('contribStatus').append(
             $('<a>').addClass('add').attr('href', '#').text('add').click(stopPropagation(() =>
@@ -544,7 +548,7 @@ function showContrib(elem, addressSitePid) {
   };
   
   showLoading(elem);
-  doAjax(gnafServiceUrl + 'geocodeTypes', null,
+  doAjax(gnafServiceUrl + 'geocodeType', null,
       data => step2(data.types),
       err => elem.empty()
   );
@@ -553,7 +557,7 @@ function showContrib(elem, addressSitePid) {
 function addContrib(contribGeocode, refresh) {
   debug('addContrib: contribGeocode =', contribGeocode);
   doAjax(
-    contribServiceUrl + 'contrib/',
+    contribServiceUrl,
     JSON.stringify(contribGeocode),
     data => {
       debug('addContrib: OK');
@@ -566,7 +570,7 @@ function addContrib(contribGeocode, refresh) {
 function deleteContrib(contribGeocodeKey, refresh) {
   debug('addContrib: contribGeocodeKey =', contribGeocodeKey);
   doAjax(
-    contribServiceUrl + 'contrib/',
+    contribServiceUrl,
     JSON.stringify(contribGeocodeKey),
     data => {
       debug('deleteContrib: OK');
