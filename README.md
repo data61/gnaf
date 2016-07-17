@@ -50,10 +50,11 @@ This section provides a very brief summary of how to run the project. Detailed i
 	Password for user gnaf: gnaf
 	# kill h2
 	kill %1
+	cd ..
 	
-	cd ../gnaf-indexer
-	# start Elasticsearch - see README.md (the one under gnaf-indexer) and Elasticsearch documentation
+	# start Elasticsearch - see gnaf-indexer/README.md and Elasticsearch documentation
 	# run indexer (which uses the database in embedded mode so will fail if the above h2 process is still running; requires jq; takes about 2 hours)
+	cd gnaf-indexer
 	src/main/script/loadElasticsearch.sh
 	cd ..
 	
@@ -90,7 +91,7 @@ This section provides a very brief summary of how to run the project. Detailed i
 	
 Test with:
 - demonstration web user interface by opening the file `gnaf-ui/html/index.html` in a recent version of Chrome, Firefox or Edge;
-- [swagger-ui](http://swagger.io/swagger-ui/) at http://gnaf.it.csiro.au/swagger-ui/ using one of the above swagger.json URLs.
+- [swagger-ui](http://swagger.io/swagger-ui/) available at http://gnaf.it.csiro.au/swagger-ui/ (only within the CSIRO network) using one of the above swagger.json URLs.
 	
 
 ### Develop With Eclipse
