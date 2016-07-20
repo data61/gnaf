@@ -58,23 +58,19 @@ Search for an exact match, retrieve at most 5 results:
       "size": 5
     }' 
 
-Search for a fuzzy match against all fields:
-        
-    $ curl -XPOST 'localhost:9200/gnaf/_search?pretty' -d '
-    {
-      "query": { "match": { "_all": { "query": "CURRONGT",  "fuzziness": 1, "prefix_length": 2 } } },
-      "size": 5
-    }' 
-
-
-Search for a fuzzy match against the `d61Address` field which uses a shingle filter (n-grams n = 1, 2, 3) set up in the schema/mapping. This strongly rewards terms appearing in the correct order whilst still matching terms out-of-order:
+Search for a fuzzy match against the `d61Address` field which uses a shingle filter (n-grams n = 1, 2, 3) set up in the schema/mapping.
+This strongly rewards terms appearing sequentially in the correct order whilst still matching terms out-of-order.
+The query string:
+- should have commas and other punctuation removed (as they unnecessarily decrease the score with fuzzy matching or non-sequential term penalties);
+- should have a space between the unit/flat/suite number and the street number (e.g. transform "2/7 blah street" to "2 7 blah street");
+- number ranges for both unit/flat/suite numbers and street numbers should use a minus (-) separator (e.g. "2-15 9-11 blah street"). 
 
     curl -XPOST 'localhost:9200/gnaf/_search?pretty' -d '
     {
         "query": {
             "match": {
                 "d61Address": {
-                    "query": "7 LONDON CIRCUIT, CITY ACT 2601",
+                    "query": "7 LONDON CIRCUIT CITY ACT 2601",
                     "fuzziness": 2,
                     "prefix_length": 2
                 }

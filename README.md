@@ -57,9 +57,24 @@ This section provides a very brief summary of how to run the project. Detailed i
 	src/main/script/loadElasticsearch.sh
 	cd ..
 	
-	# test Elasticsearch index (command line or open this URL in browser)
+	# test Elasticsearch index
+	# get index schema
 	curl 'http://localhost:9200/gnaf/?pretty'
-	
+	# search for an address (no punctuation except for '-' as number range separator, see gnaf-indexer/README.md for details)
+	curl -XPOST 'localhost:9200/gnaf/_search?pretty' -d '
+    {
+        "query": {
+            "match": {
+                "d61Address": {
+                    "query": "7 LONDON CIRCUIT CITY ACT 2601",
+                    "fuzziness": 2,
+                    "prefix_length": 2
+                }
+            }
+        },
+        "size": 5
+    }'
+    
 	# start gnaf database web service (uses gnaf database in embedded mode)
 	nohup java -jar gnaf-service/target/scala-2.11/gnaf-service_2.11-0.1-SNAPSHOT-one-jar.jar &> gnaf-service.log &
 	

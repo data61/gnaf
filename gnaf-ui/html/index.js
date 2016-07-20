@@ -20,11 +20,11 @@ var contribServiceUrl; // Contrib (database) Service
 
 function initBaseUrl() {
   var host = window.location.protocol === 'file:' ? 'http://localhost' : window.location.protocol + '//' + window.location.hostname;
-//  esUrl = host + ':9200/gnaf/';
+  esUrl = host + ':9200/gnaf/';
 
 // or to use the production servers with the webapp served from a different domain: 
 //  var host = 'http://gnaf.it.csiro.au';
-  esUrl = host + '/es/'; // nginx proxy for CORS since Elastcsearch CORS appears broken
+//  esUrl = host + '/es/'; // nginx proxy for CORS since Elastcsearch CORS appears broken
 
   gnafServiceUrl = host + ':9000/gnaf/'; // CORS out of the box
   contribServiceUrl = host + ':9010/contrib/';
@@ -111,9 +111,9 @@ function createBulkLookup() {
       $('<label>').attr('for', id).text('Addresses'),
       $('<span>').addClass('example').text('one per line e.g.'),
       $('<span>').addClass('example').addClass('multi-line').append([
-        $('<span>').text('7 London Circuit, ACT 2601'),
+        $('<span>').text('7 London Circuit ACT 2601'),
         $('<br>'),
-        $('<span>').text('18 London Circuit, ACT 2601')
+        $('<span>').text('18 London Circuit ACT 2601')
       ]),
       $('<a>').attr('href', '#').text('clear').click(stopPropagation(() => textarea.val('')))
     ]),
