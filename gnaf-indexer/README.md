@@ -140,7 +140,7 @@ Search for multiple addresses (bulk lookup) retrieving only the top ranked match
 
 The bulk lookup query shown above was used to observe the performance of the index on various hardware.
 A mixture of 307 valid and underspecified (e.g. organisation name instead of street address, missing street number) address queries was formatted as shown above into 3 files of about 100 addresses each.
-These were executed with `curl 'localhost:9200/gnaf/_msearch' -d@filename` either 1, 2 or all 3 at a time to lookup about 100, 200 or 300 addresses concurrently.
+These were executed with `curl 'localhost:9200/gnaf/_msearch' --data-binary @filename` either 1, 2 or all 3 at a time to lookup about 100, 200 or 300 addresses concurrently (`-d` does not work in this case).
 - runtime was proportional to the number of addresses being looked up concurrently
   - c3.2xlarge: 0.24 sec/address
   - c4.xlarge: 0.40 sec/address
