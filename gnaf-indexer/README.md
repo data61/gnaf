@@ -21,7 +21,7 @@ The default search queue size of 1000 is sufficient to handle a bulk lookup of 1
 
     threadpool: search: queue_size: 5000
 
-Access by the client apps requires [CORS](https://en.wikipedia.org/wiki/Cross-origin_resource_sharing) to be configured (note this does not appear to work and we are currently using an nginx proxy to add a CORS header):
+Access by the client apps requires [CORS](https://en.wikipedia.org/wiki/Cross-origin_resource_sharing) to be configured (note this does not appear to work and we are currently using an nginx proxy to add a CORS header - see below):
 
     http.cors.enabled: true
     http.cors.allow-origin: "*"
@@ -35,7 +35,7 @@ The max heap size should be set to something between 50% larger than these value
 - `ES_HEAP_SIZE=6g` on a c3.2xlarge (15G memory)
 - `ES_HEAP_SIZE=3G` on a c3.xlarge, c4.xlarge or MacBook Pro (7 - 8G memory)
  
-If Elasticsearch is installed from a deb/rpm package set `ES_HEAP_SIZE` in the service startup script `/etc/init.d/elasticsearch`; if installed from a zip/tarball export this shell variable before running the startup script `bin/elasticsearch`.
+If Elasticsearch is installed from a deb/rpm package set `ES_HEAP_SIZE` in the local config script `/etc/default/elasticsearch`; if installed from a zip/tarball export this shell variable before running the startup script `bin/elasticsearch`.
 
 Elasticsearch [configuration](https://www.elastic.co/guide/en/elasticsearch/reference/current/setup-configuration.html) documentation suggests tuning various OS parameters to avoid swapping, lock pages in memory, increase the number of file descriptors etc.; however this application appears to be CPU constrained rather than being limited by memory, files, i/o etc. and this is probably not beneficial.
 
@@ -50,7 +50,7 @@ Elasticsearch configuration specific to the `gnaf` index is in [gnafMapping.json
 
 ### Running
 
-    src/main/script/loadElasticSearch.sh
+    src/main/script/loadElasticsearch.sh
 
 optionally runs the Scala program (check the `if` in the source - takes about 25min with a SSD),
 transforms the output to suit Elasticsearch's 'bulk' API (takes about 32min) and loads the data to create an Elasticsearch index (takes about 60min). Dependencies:

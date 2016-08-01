@@ -24,7 +24,7 @@ To develop [Scala](http://scala-lang.org/) code install:
 - the above items (you may prefer to install the full JDK instead of just the JRE but I think the JRE is sufficient);
 - the [Scala IDE](http://scala-ide.org/download/current.html).
 
-### Build
+## Build
 
 Automatic builds are available at: https://t3as-jenkins.it.csiro.au/job/gnaf-master/ (only within the CSIRO network).
 
@@ -36,7 +36,7 @@ from the project's top level directory cleans out previous build products,
 builds one-jar files (which include all dependencies) for stand-alone executables and 
 creates license reports on dependencies.
 
-### Run
+## Run
 
 This section provides a very brief summary of how to run the project. Detailed information is available in the sub-project README.md files.
 
@@ -108,8 +108,51 @@ Test with:
 - demonstration web user interface by opening the file `gnaf-ui/html/index.html` in a recent version of Chrome, Firefox or Edge;
 - [swagger-ui](http://swagger.io/swagger-ui/) available at http://gnaf.it.csiro.au/swagger-ui/ (only within the CSIRO network) using one of the above swagger.json URLs.
 	
+## Nginx Configuration
 
-### Develop With Eclipse
+The setup described here allows the webapp to be tested on a mobile device (with GPS) by avoiding the csiro/corporate network.
+Firefox on android currently allows access to location by webapps served with HTTP (Chrome only permits this with HTTPS).
+
+Create a file `/etc/nginx/sites-available/gnaf`:
+
+	server {
+	    listen 80 default_server;
+	    listen [::]:80 default_server;
+	    root /var/www/html;
+	    index index.html;
+	    server_name _;
+
+	    # serve elasticsearch with CORS header on port 80 path /es 
+	    location /es {
+			proxy_pass http://127.0.0.1:9200/gnaf;
+			add_header Access-Control-Allow-Headers 'Content-Type';
+	    }
+
+	    location / {
+			# First attempt to serve request as file, then
+			# as directory, then fall back to displaying a 404.
+			try_files $uri $uri/ =404;
+	    }
+	}
+	
+Enable the gnaf config and disable the default config:
+
+	cd /etc/nginx/sites-enabled/
+	sudo ln -s ../sites-available/gnaf .
+	sudo rm default
+	
+Copy content of `gnaf-ui/html` to `/var/www/html`.
+Edit `initBaseUrl()` in the copied `index.js` if necessary to use the above nginx proxy for Elasticsearch. 
+	
+Reload with `sudo /etc/init.d/nginx reload` (or restart).
+
+Now access the webapp from the mobile device:
+
+- start the portable hotspot on the mobile device
+- connect to it from the server noting the server's IP address on the hotspot e.g. 192.168.43.207
+- in Firefox on the mobile device open the root page at the server's IP address e.g.: http://192.168.43.207/
+
+## Develop With Eclipse
 
 The command:
 
