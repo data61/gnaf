@@ -151,6 +151,8 @@ These were executed with `curl 'localhost:9200/gnaf/_msearch' --data-binary @fil
 - buff/cache (as reported by `top` and used by the memory mapped Lucene index for each shard) was around 2G
 - the c4 machine (without local SSDs) was faster than the c3 (using local SSDs), so it appears that performance is not limited by i/o speed (or at least by latency). The bottleneck appears to be CPU.
 
+Performance is about double without the fuzzy query (i.e. not handling spelling mistakes). 
+
 
 ## To Do
 
