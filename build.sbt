@@ -69,6 +69,14 @@ lazy val gnafIndexer = (project in file("gnaf-indexer")).
     mainClass in run in Compile := Some("au.csiro.data61.gnaf.indexer.Indexer")
   )
   
+lazy val gnafTest = (project in file("gnaf-test")).
+  dependsOn(gnafCommon).
+  settings(commonSettings: _*).
+  settings(com.github.retronym.SbtOneJar.oneJarSettings: _*).
+  settings(
+    mainClass in run in Compile := Some("au.csiro.data61.gnaf.test.Main")
+  )
+  
 lazy val gnafService = (project in file("gnaf-service")).
   dependsOn(gnafCommon).
   settings(commonSettings: _*).
