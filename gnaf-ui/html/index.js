@@ -48,14 +48,20 @@ function createLocation() {
 }
 
 function updateLocation() {
-  navigator.geolocation.getCurrentPosition(pos => {
-    debug('updateLocation: coords =', pos.coords);
-    $('#latitude').val(pos.coords.latitude.toString());
-    $('#longitude').val(pos.coords.longitude.toString());
-    $('#precision').text("±" + pos.coords.accuracy.toString() + 'm');
-    var nextHigherDist = searchDistance.find(d => d >= pos.coords.accuracy);
-    $('#searchDistance').val(nextHigherDist ? nextHigherDist : 5000);
-  });
+  if ('geolocation' in navigator) {
+    try {
+      navigator.geolocation.getCurrentPosition(pos => {
+        debug('updateLocation: coords =', pos.coords);
+        $('#latitude').val(pos.coords.latitude.toString());
+        $('#longitude').val(pos.coords.longitude.toString());
+        $('#precision').text("±" + pos.coords.accuracy.toString() + 'm');
+        var nextHigherDist = searchDistance.find(d => d >= pos.coords.accuracy);
+        $('#searchDistance').val(nextHigherDist ? nextHigherDist : 5000);
+      });
+    } catch(e) {
+      debug('updateLocation: error', e);
+    }
+  } else debug('updateLocation: geolocation not available');
 }
 
 function getLatLon() {

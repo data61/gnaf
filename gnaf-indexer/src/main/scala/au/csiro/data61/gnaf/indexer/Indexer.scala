@@ -112,8 +112,8 @@ object Indexer {
   val qAddressDetail = {
     def q(localityPid: Rep[String]) = for {
       ((((ad, lta), as), sl), adg) <- AddressDetail joinLeft
-        LevelTypeAut on (_.levelTypeCode === _.code) joinLeft
-        AddressSite on (_._1.addressSitePid === _.addressSitePid) joinLeft
+        LevelTypeAut on (_.levelTypeCode === _.code) joinLeft  // only 15 rows so keep in memory
+        AddressSite on (_._1.addressSitePid === _.addressSitePid) joinLeft // ADDRESS_DETAIL.ADDRESS_SITE_PID is NON NULL, so no need for LEFT JOIN
         StreetLocality on (_._1._1.streetLocalityPid === _.streetLocalityPid) joinLeft
         AddressDefaultGeocode on (_._1._1._1.addressDetailPid === _.addressDetailPid)
       if (ad.localityPid === localityPid && ad.confidence > -1)
