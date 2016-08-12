@@ -15,6 +15,8 @@ mkdir -p $DIR
 time java -Xmx3G -jar target/scala-2.11/gnaf-indexer_2.11-0.1-SNAPSHOT-one-jar.jar | gzip > $DIR/out.gz
 mv gnaf-indexer.log $DIR
 
+fi
+
 (
   cd $DIR
   
@@ -26,8 +28,6 @@ mv gnaf-indexer.log $DIR
   split -l10000 -a3 bulk chunk-
 )
 
-fi
-
 # backup old index? (for cluster.name: neilsElasSrch set in elasticsearch.yml)
 # tar cvfz index1.tar.gz -C /var/lib/elasticsearch/neilsElasSrch/ nodes
 
@@ -37,8 +37,8 @@ curl -XDELETE 'localhost:9200/gnaf/'
 # create new index with custom field mappings
 curl -XPUT 'localhost:9200/gnaf/' --data-binary @src/main/script/gnafMapping.json
 
-# load the chunks using the Elasticsearch 'bulk' API 
-for i in $DIR/chunk-???
+# load the chunks using the Elasticsearch 'bulk' API, takes about 37min with a SSD
+time for i in $DIR/chunk-???
 do
   echo $i
   curl -s -XPOST localhost:9200/_bulk --data-binary @$i

@@ -106,6 +106,8 @@ Although data quality is generally very good, this shows some dodgy STREET_LOCAL
 	REED | STREET | S | REED | STREET | SOUTH | null
 	REED | STREET | N | REED | STREET | NORTH | null
 
+There are inconsistencies in the usage of LOCALITY.LOCALITY_NAME and LOCALITY_ALIAS.NAME (some addresses have them reversed compared to others).
+
 Here is an example showing a cul-de-sac with some even numbered houses:
 
     SELECT

@@ -19,7 +19,7 @@
     "filter": {
       "filter_shingle": {
         "type": "shingle",
-        "max_shingle_size": 3,
+        "max_shingle_size": 2,
         "min_shingle_size": 2,
         "output_unigrams": "true"
       }
@@ -38,15 +38,20 @@
     // composite for numeric fields that are mostly null (mapped to -1 in the index to make them searchable)
     // "d61NullInt": { "type": "string", "analyzer": "d61Whitespace", "null_value": "-1" },
     
-    // composites for search
+    // composites
     // "d61SiteBuilding": { "type": "string", "analyzer": "d61Whitespace", "null_value": "D61_NULL" },
     // "d61Level": { "type": "string", "analyzer": "d61Whitespace", "null_value": "D61_NULL" },
     // "d61Flat": { "type": "string", "analyzer": "d61Whitespace", "null_value": "D61_NULL" },
     // "d61Street": { "type": "string", "analyzer": "d61Whitespace", "null_value": "D61_NULL" },
-    // "d61Locality": { "type": "string", "analyzer": "d61Whitespace", "null_value": "D61_NULL" },
-    
-    // suggesters
+    // "d61Locality": { "type": "string", "analyzer": "d61Whitespace", "null_value": "D61_NULL" },    
     "d61Address": { "type": "string", "position_increment_gap": 100, "analyzer": "d61Shingle" },
+    // , "fields": {
+	//    "raw": { 
+	//      "type":  "string",
+	//      "analyzer": "d61Whitespace"
+	//    }
+	//  }},
+    "d61AddressNoAlias": { "type": "string", "index": "no" },
     
     "addressDetailPid": { "type": "string", "index": "not_analyzed" },
     "addressSiteName": { "type": "string", "analyzer": "d61Whitespace", "null_value": "D61_NULL" },

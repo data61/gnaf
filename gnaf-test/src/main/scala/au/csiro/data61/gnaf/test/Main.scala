@@ -259,7 +259,7 @@ object Main {
     println(mapper.writeValueAsString(addresses))
   }
       
-  case class Addr(addressDetailPid: String, address: String)
+  case class Addr(query: String, addressDetailPid: String, address: String)
 
   def getRandomElement[T](s: Seq[T]): T = s(Random.nextInt(s.size))
   
@@ -302,7 +302,7 @@ object Main {
           (sla.streetName, sla.streetTypeCode, sla.streetSuffixCode)
         } else (sl.streetName, sl.streetTypeCode, sl.streetSuffixCode)
         
-        val addr = join(Seq(
+        val query = join(Seq(
             as.addressSiteName,
             buildingName,
             flatTypeCode.map(flatTypeMap), preNumSuf(flatNumberPrefix, flatNumber, flatNumberSuffix),
@@ -312,7 +312,18 @@ object Main {
             Some(localityName), Some(stateMap(statePid)), postcode
         ), " ").getOrElse("")
         
-        Addr(addressDetailPid, addr)
+        // as above but not using locality and street aliases
+        val address = join(Seq(
+            as.addressSiteName,
+            buildingName,
+            flatTypeCode.map(flatTypeMap), preNumSuf(flatNumberPrefix, flatNumber, flatNumberSuffix),
+            levelTypeCode.map(levelTypeMap), preNumSuf(levelNumberPrefix, levelNumber, levelNumberSuffix),
+            join(Seq(preNumSuf(numberFirstPrefix, numberFirst, numberFirstSuffix), preNumSuf(numberLastPrefix, numberLast, numberLastSuffix)), "-"),
+            Some(sl.streetName), sl.streetTypeCode, sl.streetSuffixCode.map(streetSuffixMap),
+            Some(loc.localityName), Some(stateMap(loc.statePid)), postcode
+        ), " ").getOrElse("")
+        
+        Addr(query, addressDetailPid, address)
       }
     }
   }

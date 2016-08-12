@@ -18,9 +18,18 @@ var d61Address = a =>
     [ d61StreetNum(a), a.street.name, a.street.typeCode, a.street.suffixName ],
     [ a.localityName, a.stateAbbreviation, a.postcode ]
   ].concat(
-    a.streetVariant.map( x => [ x.name, x.typeCode, x.suffixName ]), 
+    a.streetVariant.map( x => [ d61StreetNum(a), x.name, x.typeCode, x.suffixName ]), 
     a.localityVariant.map( x => [ x.localityName, a.stateAbbreviation, a.postcode ])
   ).map(x => x.filter(x => x != "" && x != null && x != "D61_NULL").join(" ")).filter(x => x != "");
+
+var d61AddressNoAlias = a =>
+  [
+    a.addressSiteName, a.buildingName,
+    a.flatTypeName, d61Num(a.flat), 
+    a.levelTypeName, d61Num(a.level),
+    d61StreetNum(a), a.street.name, a.street.typeCode, a.street.suffixName,
+    a.localityName, a.stateAbbreviation, a.postcode
+  ].filter(x => x != "" && x != null && x != "D61_NULL").join(" ");
 
 var rl = readline.createInterface({
   input: process.stdin,
@@ -31,6 +40,7 @@ var rl = readline.createInterface({
 rl.on('line', function (l) {
   var a = JSON.parse(l);
   a["d61Address"] = d61Address(a);
+  a["d61AddressNoAlias"] = d61AddressNoAlias(a);
   console.log(
     JSON.stringify({ index: { _index: "gnaf", _type: "gnaf", _id: a.addressDetailPid } }) // one line of elasticsearch indexing metadata
     + '\n' + JSON.stringify(a) // next line is document to index
