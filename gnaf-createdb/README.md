@@ -71,40 +71,42 @@ On a macbook-pro (with SSD) it takes 26 min to load the data and another 53 min 
 The script creates a user `READONLY` with password `READONLY` that has only the `SELECT` right. This user should be used for read-only access.
 
 ## Exploring Address Data
-Find me (fast):
+Find an address (fast):
 
     SELECT SL.*, AD.*
     FROM
         STREET_LOCALITY SL
-        LEFT JOIN ADDRESS_DETAIL AD ON AD.STREET_LOCALITY_PID = SL.STREET_LOCALITY_PID  
-    WHERE SL.STREET_NAME = 'TYTHERLEIGH'
+        JOIN ADDRESS_DETAIL AD ON AD.STREET_LOCALITY_PID = SL.STREET_LOCALITY_PID  
+    WHERE SL.STREET_NAME = 'BARRGANA'
         AND AD.NUMBER_FIRST = 14
 
-Although `ADDRESS_DETAIL.STREET_LOCALITY_PID` is not declared `NOT NULL` it contains no `NULL`s so an `INNER JOIN` can be used here instead of `LEFT JOIN`.
+The nullable type of `ADDRESS_DETAIL.STREET_LOCALITY_PID` would indicate use of a `LEFT JOIN`, however the column contains no `NULL` values so `(INNER) JOIN` can be used instead.
 
-This is slow (45892 ms):
+The same thing using the view is very slow (45892 ms):
 
     SELECT * FROM ADDRESS_VIEW 
-    WHERE STREET_NAME = 'TYTHERLEIGH'
+    WHERE STREET_NAME = 'BARRGANA'
     AND NUMBER_FIRST = 14
 
 but at least this is fast:
 
     SELECT * FROM ADDRESS_VIEW 
-    WHERE ADDRESS_DETAIL_PID = 'GAACT714928273'
+    WHERE ADDRESS_DETAIL_PID = 'GAWA_162637248'
 
-Although data quality is generally very good, this shows some dodgy STREET_LOCALITY_ALIAS records:
+Although data quality is generally very good, this shows some dodgy `STREET_LOCALITY_ALIAS` records:
 
     SELECT sl.STREET_NAME, sl.STREET_TYPE_CODE, sl.STREET_SUFFIX_CODE,
       sla.STREET_NAME, sla.STREET_TYPE_CODE , sla.STREET_SUFFIX_CODE 
     FROM STREET_LOCALITY_ALIAS sla, STREET_LOCALITY sl
     WHERE sla.STREET_LOCALITY_PID = sl.STREET_LOCALITY_PID
     AND sl.STREET_NAME = 'REED'
-        
-	STREET_NAME | STREET_TYPE_CODE | STREET_SUFFIX_CODE | STREET_NAME | STREET_TYPE_CODE | STREET_SUFFIX_CODE
-	-----|--------|---|------|--------|-------|-----
-	REED | STREET | S | REED | STREET | SOUTH | null
-	REED | STREET | N | REED | STREET | NORTH | null
+
+STREET_NAME | STREET_TYPE_CODE | STREET_SUFFIX_CODE | STREET_NAME | STREET_TYPE_CODE | STREET_SUFFIX_CODE
+-----|--------|---|------|--------|-------
+REED | STREET | S | REED STREET | SOUTH | NULL
+REED | STREET | N | REED STREET | NORTH | NULL
+
+The corresponding row in `STREET_TYPE_AUT` with `CODE` = 'SOUTH' is possibly erroneous and likewise for the other compass points.
 
 There are inconsistencies in the usage of LOCALITY.LOCALITY_NAME and LOCALITY_ALIAS.NAME (some addresses have them reversed compared to others).
 
@@ -118,23 +120,21 @@ Here is an example showing a cul-de-sac with some even numbered houses:
       left join STREET_LOCALITY_ALIAS as SLA on SL.STREET_LOCALITY_PID = SLA.STREET_LOCALITY_PID
     WHERE SL.STREET_NAME = 'OFFICER'
 
-	STREET_NAME | STREET_TYPE_CODE | STREET_SUFFIX_CODE | STREET_LOCALITY_PID | STREET_NAME | STREET_TYPE_CODE | STREET_SUFFIX_CODE | ALIAS_TYPE_CODE
-	--------|----------|------|------------|------|------|------|-----
-	OFFICER | CRESCENT | null | ACT3379850 | null | null | null | null
- 	OFFICER | CRESCENT | null | ACT253 | null | null | null | null
-	OFFICER | PLACE | null | ACT254 | OFFICER | CRESCENT | null | SYN
+STREET_NAME | STREET_TYPE_CODE | STREET_SUFFIX_CODE | STREET_LOCALITY_PID | STREET_NAME | STREET_TYPE_CODE | STREET_SUFFIX_CODE | ALIAS_TYPE_CODE
+--------|----------|------|------------|------|------|------|-----
+OFFICER | CRESCENT | null | ACT3379850 | null | null | null | null
+OFFICER | CRESCENT | null | ACT253 | null | null | null | null
+OFFICER | PLACE | null | ACT254 | OFFICER | CRESCENT | null | SYN
 
-STREET_LOCALITY_PID `ACT3379850` not used in any ADDRESS_DETAIL. `ACT253` is used for all numbers on this street except `ACT254` used for even nos from [80 – 98].
+`STREET_LOCALITY_PID` `ACT3379850` not used in any `ADDRESS_DETAIL`. `ACT253` is used for all numbers on this street except `ACT254` used for even nos from [80 – 98].
 So for most numbers only CRESCENT is acceptable, for these even nos 'PLACE' is correct but 'CRESCENT' is also acceptable.
 
 Looking at cases where the alias has a different STREET_NAME (27119 cases):
 
 - the vast majority appear to be spelling variants with an edit distance of 1 - exception FLAGSTONE -> WHISKEY BAY
-- our queries will match with an edit distance of 2 (after an initial 2 character match), so these will mostly match
-  however O'Farrel -> OFarrel won't match (tried prefix_length = 1 but that made "18 London circuit" match some other number first)
-- in some cases the number of tokens is different e.g. DE CHAIR -> DECHAIR, TWELVETREES -> TWELVE TREES,
-  however the combination of the shingle filter (1 - 3-grams) and edit distance matching will make these match
-- there are aliases for SAINT X -> ST X (237), ST X -> SAINT X (26), MOUNT X -> MT X (577) and MT X -> MOUNT X (110)
+- in some cases the number of tokens is different e.g. DE CHAIR -> DECHAIR, TWELVETREES -> TWELVE TREES
+- there are aliases for SAINT X -> ST X (237), ST X -> SAINT X (26), MOUNT X -> MT X (577) and MT X -> MOUNT X (110).
+Perhaps G-NAF could impose some simplifying standardisation, using SAINT/MOUNT in the main record and abreviations in the aliases? 
 
 The following columns are always NULL:
  - ADDRESS_SITE_GEOCODE columns: BOUNDARY_EXTENT, PLANIMETRIC_ACCURACY, ELEVATION, GEOCODE_SITE_NAME and GEOCODE_SITE_DESCRIPTION;
@@ -142,7 +142,7 @@ The following columns are always NULL:
  - DATE_RETIRED in all tables.
 
 `ADDRESS_DETAIL.POSTCODE` is not declared `NOT NULL`, but has no `NULL` values.
-`LOCALITY.PRIMARY_POSTCODE` is null for 16,029 out of 16,398 rows and '9999' for 9 rows - so probably not useful.
+`LOCALITY.PRIMARY_POSTCODE` is null for 16,029 out of 16,398 rows and '9999' for 9 rows - possibly erroneous?
 
 There are `LOCALITY` rows:
 - with duplicate `LOCALITY_NAME`; and
@@ -150,12 +150,13 @@ There are `LOCALITY` rows:
   
 	SELECT * FROM LOCALITY where LOCALITY_NAME = 'VERRAN'
 
-	LOCALITY_PID | DATE_CREATED | DATE_RETIRED | LOCALITY_NAME | PRIMARY_POSTCODE | LOCALITY_CLASS_CODE | STATE_PID | GNAF_LOCALITY_PID | GNAF_RELIABILITY_CODE
-	---|---|---|---|---|---|---|---|---
-	SA210005965 | 2012-05-16 | null | VERRAN | null | H | 4 | null | 6
-	SA1434 | 2016-01-25 | null | VERRAN | null | G | 4 | 250187718 | 5
-          
-From `LOCALITY_CLASS_AUT`, `H` & `G` mean `HUNDRED` (whatever that means) and `GAZETTED LOCALITY`.
+LOCALITY_PID | DATE_CREATED | DATE_RETIRED | LOCALITY_NAME | PRIMARY_POSTCODE | LOCALITY_CLASS_CODE | STATE_PID | GNAF_LOCALITY_PID | GNAF_RELIABILITY_CODE
+---|---|---|---|---|---|---|---|---
+SA210005965 | 2012-05-16 | null | VERRAN | null | H | 4 | null | 6
+SA1434 | 2016-01-25 | null | VERRAN | null | G | 4 | 250187718 | 5
+
+From `LOCALITY_CLASS_AUT`, `H` & `G` mean `HUNDRED` and `GAZETTED LOCALITY`.
+https://www.psma.com.au/faqs-datagovau-users explains these and suggests usage only of the `G` rows.
 
 ### Code/name Lookup Tables
 
@@ -176,70 +177,70 @@ The following sections show sample rows from these tables and the number of rows
 #### FLAT_TYPE_AUT
 
 	SELECT * FROM FLAT_TYPE_AUT
-	
-	CODE | NAME | DESCRIPTION
-	---|---|---
-	ATM | AUTOMATED TELLER MACHINE | AUTOMATED TELLER MACHINE
-	APT | APARTMENT | APARTMENT
-	FLAT | FLAT | FLAT
-	SE | SUITE | SUITE
-	STU | STUDIO | STUDIO
-	UNIT | UNIT | UNIT
-	... | ... | ...
+
+CODE | NAME | DESCRIPTION
+---|---|---
+ATM | AUTOMATED TELLER MACHINE | AUTOMATED TELLER MACHINE
+APT | APARTMENT | APARTMENT
+FLAT | FLAT | FLAT
+SE | SUITE | SUITE
+STU | STUDIO | STUDIO
+UNIT | UNIT | UNIT
+... | ... | ...
     
 53 rows, many rather obscure.
 
 #### LEVEL_TYPE_AUT
     
 	SELECT * FROM LEVEL_TYPE_AUT
-	
-	CODE | NAME | DESCRIPTION
-	---|---|---
-	B | BASEMENT | BASEMENT
-	FL | FLOOR | FLOOR
-	G | GROUND | GROUND
-	L | LEVEL | LEVEL
-	LB | LOBBY | LOBBY
-	LG | LOWER GROUND FLOOR | LOWER GROUND FLOOR
-	M | MEZZANINE | MEZZANINE
-	... | ... | ...
+
+CODE | NAME | DESCRIPTION
+---|---|---
+B | BASEMENT | BASEMENT
+FL | FLOOR | FLOOR
+G | GROUND | GROUND
+L | LEVEL | LEVEL
+LB | LOBBY | LOBBY
+LG | LOWER GROUND FLOOR | LOWER GROUND FLOOR
+M | MEZZANINE | MEZZANINE
+... | ... | ...
         
 15 rows.
 
 #### STREET_SUFFIX_AUT
 
 	SELECT * FROM STREET_SUFFIX_AUT
-	
-	CODE | NAME | DESCRIPTION | 
-	---|---|---
-	CN | CENTRAL | CENTRAL
-	DE | DEVIATION | DEVIATION
-	NE | NORTH EAST | NORTH EAST
-	EX | EXTENSION | EXTENSION
-	LR | LOWER | LOWER
-	... | ... | ...
+
+CODE | NAME | DESCRIPTION | 
+---|---|---
+CN | CENTRAL | CENTRAL
+DE | DEVIATION | DEVIATION
+NE | NORTH EAST | NORTH EAST
+EX | EXTENSION | EXTENSION
+LR | LOWER | LOWER
+... | ... | ...
         
 19 rows.
 
 #### STREET_TYPE_AUT
        
 	SELECT * FROM STREET_TYPE_AUT
-	
-	CODE | NAME | DESCRIPTION | 
-	---|---|---
-	HIKE | HIKE | HIKE
-	AWLK | AIRWALK | AIRWALK
-	FLATS | FLTS | FLTS
-	BOARDWALK | BWLK | BWLK
-	BOULEVARD | BVD | BVD
-	BOULEVARDE | BVDE | BVDE
-	CLOSE | CL | CL
-	COURT | CT | CT
-	CUL-DE-SAC | CSAC | CSAC
-	DRIVE | DR | DR
-	STREET | ST | ST
-	RIGHT OF WAY | ROFW | ROFW
-	... | ... | ...
+
+CODE | NAME | DESCRIPTION | 
+---|---|---
+HIKE | HIKE | HIKE
+AWLK | AIRWALK | AIRWALK
+FLATS | FLTS | FLTS
+BOARDWALK | BWLK | BWLK
+BOULEVARD | BVD | BVD
+BOULEVARDE | BVDE | BVDE
+CLOSE | CL | CL
+COURT | CT | CT
+CUL-DE-SAC | CSAC | CSAC
+DRIVE | DR | DR
+STREET | ST | ST
+RIGHT OF WAY | ROFW | ROFW
+... | ... | ...
         
 265 rows, many rather obscure. Note reversal of column roles as discussed above and 'AWLK' exception.
 
@@ -269,14 +270,14 @@ close to address site boundary"
         JOIN GEOCODE_TYPE_AUT AS gta ON asg.GEOCODE_TYPE_CODE = gta.CODE
         GROUP BY GEOCODE_TYPE_CODE;
 
-	GEOCODE_TYPE_CODE | NAME | COUNT(*)
-	----|---------|-------
-	BC	 | BUILDING CENTROID | 201520
-	PCM	 | PROPERTY CENTROID MANUAL | 2307
-	PC	 | PROPERTY CENTROID | 9479989
-	PAPS | PROPERTY ACCESS POINT SETBACK | 221312
-	FCS	 | FRONTAGE CENTRE SETBACK | 3464774
-	GG	 | GAP GEOCODE | 186160
+GEOCODE_TYPE_CODE | NAME | COUNT(*)
+----|---------|-------
+BC	 | BUILDING CENTROID | 201520
+PCM	 | PROPERTY CENTROID MANUAL | 2307
+PC	 | PROPERTY CENTROID | 9479989
+PAPS | PROPERTY ACCESS POINT SETBACK | 221312
+FCS	 | FRONTAGE CENTRE SETBACK | 3464774
+GG	 | GAP GEOCODE | 186160
 
 - ADDRESS_SITEs have at most 2 geocodes (58,165 have 2):
 
@@ -284,12 +285,13 @@ close to address site boundary"
         FROM ADDRESS_SITE_GEOCODE
         GROUP BY ADDRESS_SITE_PID
         ORDER BY cnt desc;
-        
-        ADDRESS_SITE_PID  	CNT  
-        415053318			2
-        415095264			2
-        415102559			2
-        ...
+    
+ADDRESS_SITE_PID | 	CNT 
+---|---
+415053318 |	2
+415095264 |	2
+415102559 |	2
+... | ...
 
 Looking at the first of these (ADDRESS_DETAIL_PID: GASA_414912543, 26 STRANGMAN ROAD, WAIKERIE SA 5330):
 
