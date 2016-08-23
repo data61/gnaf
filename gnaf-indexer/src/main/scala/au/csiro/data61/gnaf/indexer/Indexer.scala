@@ -5,7 +5,6 @@ import java.util.concurrent.{ ArrayBlockingQueue, ThreadFactory, ThreadPoolExecu
 import scala.concurrent.{ Await, ExecutionContext, Future }
 import scala.concurrent.duration.DurationInt
 import scala.language.implicitConversions
-import scala.math.BigDecimal
 import scala.util.{ Failure, Success }
 
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -13,8 +12,9 @@ import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
 import com.typesafe.config.{ ConfigFactory, ConfigValueFactory }
 
-import au.csiro.data61.gnaf.common.db.GnafTables
-import au.csiro.data61.gnaf.common.util.Util
+import au.csiro.data61.gnaf.db.GnafTables
+import au.csiro.data61.gnaf.util.Gnaf.{ Address, LocalityVariant, Location, PreNumSuf, Street }
+import au.csiro.data61.gnaf.util.Util
 import resource.managed
 import slick.collection.heterogeneous.HNil
 import slick.collection.heterogeneous.syntax.::
@@ -22,6 +22,9 @@ import slick.collection.heterogeneous.syntax.::
 // Organize Imports deletes this, so make it easy to restore ...
 // import slick.collection.heterogeneous.syntax.::
 
+/**
+ * TODO: replace jackson with spray json after we've used it in gnaf-lucene-indexer
+ */
 object Indexer {
   val log = Util.getLogger(getClass)
   
@@ -97,18 +100,6 @@ object Indexer {
     }
   }
 
-  case class PreNumSuf(prefix: Option[String], number: Option[Int], suffix: Option[String])
-  case class Street(name: String, typeCode: Option[String], typeName: Option[String], suffixCode: Option[String], suffixName: Option[String])
-  case class LocalityVariant(localityName: String)
-  case class Location(lat: BigDecimal, lon: BigDecimal)
-  case class Address(addressDetailPid: String, addressSiteName: Option[String], buildingName: Option[String],
-                     flatTypeCode: Option[String], flatTypeName: Option[String], flat: PreNumSuf,
-                     levelTypeCode: Option[String], levelTypeName: Option[String], level: PreNumSuf,
-                     numberFirst: PreNumSuf, numberLast: PreNumSuf,
-                     street: Option[Street], localityName: String, stateAbbreviation: String, stateName: String, postcode: Option[String],
-                     aliasPrincipal: Option[Char], primarySecondary: Option[Char],
-                     location: Option[Location], streetVariant: Seq[Street], localityVariant: Seq[LocalityVariant])
-
   val qAddressDetail = {
     def q(localityPid: Rep[String]) = for {
       ((((ad, lta), as), sl), adg) <- AddressDetail joinLeft
@@ -153,7 +144,7 @@ object Indexer {
     val streetTypeMap: FutStrMap = db.run((for (s <- StreetTypeAut) yield s.code -> s.name).result).map(_.toMap)
     val streetSuffixMap: FutStrMap = db.run((for (s <- StreetSuffixAut) yield s.code -> s.name).result).map(_.toMap)
 
-    val localities: Future[Seq[(String, String, String)]] = db.run((for (loc <- Locality) yield (loc.localityPid, loc.localityName, loc.statePid)).result)
+    val localities: Future[Seq[(String, String, String)]] = db.run((for (loc <- Locality if loc.localityClassCode === 'G') yield (loc.localityPid, loc.localityName, loc.statePid)).result)
     val done: Future[Unit] = localities.flatMap { seq =>
       log.info("got all localities")
       val seqFut: Seq[Future[Unit]] = seq.map {
@@ -202,17 +193,6 @@ object Indexer {
   concurrency of processing the rows.
  */
 
-  /*
-   * When we search for an address with no values specified for fields like flatTypeName and flatNumber,
-   * we'd like Elasticsearch results with nulls for these fields to be ranked higher than results with spurious values,
-   * be we can't search for nulls because they aren't in the index.
-   * So we substitute a value for the nulls. Adding this value to the search will penalize non-null values, but only slightly because there are many null values.
-	 * 
-	 * https://www.elastic.co/guide/en/elasticsearch/guide/current/_dealing_with_null_values.html
-	 * TODO: Mapping has been modified to do this null substitution, so we can do away with this from the Scala code.
-	 * However, it might be handy if we shift from Elasticsearch to raw Lucene.
-   */
-  import scala.language.implicitConversions
   class D61Null[T](s: Option[T], default: T) {
     def d61null(): Option[T] = s.orElse(Some(default))
   }

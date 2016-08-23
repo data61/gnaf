@@ -1,122 +1,137 @@
 var request = require('request');
 var fs = require('fs');
+var maps = require('./Maps.js');
 
 Array.prototype.flatMap = function(f) {
-  return Array.prototype.concat.apply([], this.map(f));
+  return this.map(f).flatten();
+}
+Array.prototype.flatten = function() {
+  return Array.prototype.concat.apply([], this);
 }
 
 /**
- * Usage: node src/main/node/search.js input.json [fuzzy]
+ * Usage: node src/main/node/search.js input.json
  * TODO: add proper command line option handling, add options to set numHits and bulk
  */
 var path = process.argv[2]; // 0 -> node; 1 -> src/main/script/search.js; 2 -> input.json
-var fuzzy = process.argv.length > 3;
 var numHits = 10;
 
 var addr = JSON.parse(fs.readFileSync(path, "utf8"));
 // console.log('addr', addr);
 
-var bulk = 10;
+var bulk = 3;
 var batches = [];
 for (i = 0; i < addr.length; i += bulk) batches.push(addr.slice(i, Math.min(i + bulk, addr.length)));
 // console.log('batches', batches);
 
+/** return array[i] = index j where esHits.responses[i].hits.hits[j].fields.d61AddressNoAlias[0] contains qBatch[i].tc.address */
+var findHitIndices = (qBatch, esHits) => qBatch.map( (q, i) =>
+  esHits.responses[i].hits.hits.findIndex(h => h.fields.d61AddressNoAlias[0].indexOf(q.tc.address) != -1)
+);
+
 /**
+ * @return non-fuzzy elasticsearch query
+ * 
+ * @param qstr a query address string
+ * 
  * If we don't specify "fields" we get _source.d61AddressNoAlias as a String
  * however if we do specify "fields" _source is omitted and we get fields.d61AddressNoAlias as an array of Strings (with just 1 element).
  */
-var query = fuzzy ? a =>
+var esNoFuz = qstr =>
 ({
-  query:{ match:{ d61Address:{ query: a, fuzziness: 2, prefix_length: 2 }}},
-  rescore:{ query:{ rescore_query:{ match:{ d61Address:{ query: a }}}, query_weight: 0 }},
-  fields: [ "d61AddressNoAlias" ],
-  size: numHits
-})
-                  : a =>
-({
-  query:{ match:{ d61Address: a }},
+  query:{ match:{ d61Address: qstr }},
   fields:[ "d61AddressNoAlias" ],
   size:numHits
 });
 
-/** return array[i] = index j where esHits.responses[i].hits.hits[j]._id == batch[i].addressDetailPid */
-var compare = (batch, esHits) => batch.map( (x, i) =>
-  esHits.responses[i].hits.hits.findIndex(h => h.fields.d61AddressNoAlias[0].indexOf(x.address) != -1)
-);
-
-/** add histogram of values from arr into Map m (and return m)
- *  map keys are values from arr and map values are the occurrence count of the value in arr
- *  e.g. histogram(new Map(), arr) returns the histogram of arr
+/**
+ * @return fuzzy elasticsearch query
+ * 
+ * @param qstr a query address string
  */
-function histogram(m, arr) {
-  return arr.reduce((m, x) => {
-    var n = m.get(x);
-    m.set(x, n ? n + 1 : 1);
-    return m;
-  }, m);
-}
+var esFuz = qstr =>
+({
+  query:{ match:{ d61Address:{ query: qstr, fuzziness: 2, prefix_length: 2 }}},
+  // rescore:{ query:{ rescore_query:{ match:{ d61Address:{ query: qstr }}}, query_weight: 0 }}, why did I think this was a good idea???
+  fields: [ "d61AddressNoAlias" ],
+  size: numHits
+});
+
+/** @return array elements for a non-fuzzy and a fuzzy search */
+var mkEs = (tc, qstr, desc) => 
+[
+  { tc: tc, qstr: qstr, qes: esNoFuz(qstr), desc: 'nofuz' + desc },
+  { tc: tc, qstr: qstr, qes: esFuz(qstr),   desc: 'fuz' + desc }
+];
 
 /**
- * 
- * @param map updated map: key -> array of value
- * @param key
- * @param value
+ * 6 combinations of queries: 3 different queries with and without fuzzy search
+ * @return array of { tc: tc, qstr: query address string, qes: elasticsearch query, desc: description }
+ * @param tc a test case
  */
-function multiMapAppend(map, key, value) {
-  var arr = map.get(key);
-  if (!arr) {
-    arr = [];
-    map.set(key, arr);
-  };
-  arr.push(value);
-}
+var queries = tc => [
+  mkEs(tc, tc.query, ''), 
+  mkEs(tc, tc.queryPostcodeBeforeState, 'PostcodeBeforeState'), 
+  mkEs(tc, tc.queryTypo, 'Typo')
+].flatten();
 
-function mapToArr(m) {
-  var a = [];
-  for (e of m) a.push(e);
-  return a;
-} 
 
-/** print Map m as tab separated values: {key}\t{value} */
-function done(histMap, errMap) {
-  console.log(JSON.stringify({ histogram: mapToArr(histMap), errors: mapToArr(errMap) }));
-}
+// comparitor to sort by score then shortest d61AddressNoAlias first
+var scoreThenLength = (a, b) =>
+  b._score != a._score ? b._score - a._score
+                       : a.fields.d61AddressNoAlias[0].length - b.fields.d61AddressNoAlias[0].length;
+
+// sort each esHits.responses[i].hits.hits according to comparitor cmp
+var sortHits = (esHits, cmp) => {
+  esHits.responses.forEach(r => r.hits.hits.sort(cmp));
+  return esHits;
+};
+
+var done = (histMap, errMap) => console.log(JSON.stringify({ histogram: histMap.object(), errors: errMap.object() }));
 
 /**
- * 
- * @param i process addresses from batches[i]
- * @param histMap updated histogram (index of correct hit (0 in good cases) -> occurrence count for this index)
- * @param errMap (index of correct hit (only for non-zero cases) -> array of addresses with this index)
+ * Process a batch and on completion recursively do the next.
+ * @param iter provides next batch
+ * @param histMap test description -> histogram
+ *       where histogram is (index of correct hit (0 in best case) -> occurrence count for this index)
+ * @param errMap test description -> index of correct hit -> array of addresses with this index
  */
-function doBatch(i, histMap, errMap) {
-  var batch = batches[i];
+function doBatch(iter, histMap, errMap) {
+  var x = iter.next();
+  if (x.done) done(histMap, errMap);
+  else {    
+    var batch = x.value;
+    
+    // array of batch.length * 6:
+    //   { tc: tc, qstr: query address string, qes: elasticsearch query, desc: description }
+    var qBatch = batch.flatMap(queries);
+    // console.log('qBatch', qBatch);
+    
+    var esBulk = qBatch.flatMap(q => [ '{}', JSON.stringify(q.qes) ]).join('\n') + '\n';
+    // console.log('esBulk', esBulk);
   
-  var rescore = esHits => {
-    esHits.responses.forEach(r => r.hits.hits.sort( (a, b) =>
-      b._score != a._score ? b._score - a._score : a.fields.d61AddressNoAlias[0].length - b.fields.d61AddressNoAlias[0].length
-    ));
-    return esHits;
+    request.post( { url: 'http://localhost:9200/gnaf/_msearch', body: esBulk }, (error, response, body) => {
+      if (error) console.log('error', error)
+      else {
+        // console.log('statusCode', response.statusCode, 'body', body);
+        var esHits = sortHits(JSON.parse(body), scoreThenLength);
+        // console.log('esHits', JSON.stringify(esHits));
+        var idxs = findHitIndices(qBatch, esHits);
+        // console.log('idxs', idxs);
+        // histogram(histMap, idxs);
+        // console.log('histMap', histMap);
+        idxs.forEach((v, i) => {
+          var q = qBatch[i];
+          histMap.inc(q.desc, v);
+          if (v != 0) errMap.get(q.desc).append(v, q.qstr);
+        });
+        doBatch(iter, histMap, errMap);
+      }
+    });
   };
-  
-  // console.log('batch', batch);
-  var data = batch.flatMap(a => [ '{}', JSON.stringify(query(a.query)) ]).join('\n') + '\n';
-  // console.log('data', data);
-
-  request.post( { url: 'http://localhost:9200/gnaf/_msearch', body: data }, (error, response, body) => {
-    if (error) console.log('error', error)
-    else {
-      // console.log('statusCode', response.statusCode, 'body', body);
-      var esHits = rescore(JSON.parse(body));
-      // console.log('esHits', JSON.stringify(esHits));
-      var idxs = compare(batch, esHits);
-      // console.log('idxs', idxs);
-      histogram(histMap, idxs);
-      // console.log('histMap', histMap);
-      idxs.forEach((v, i) => { if (v != 0) multiMapAppend(errMap, v, batch[i].query) });
-      if (i + 1 < batches.length) doBatch(i + 1, histMap, errMap);
-      else done(histMap, errMap);
-    }
-  });
 }
 
-doBatch(0, new Map(), new Map());
+
+doBatch(batches[Symbol.iterator](), new maps.MapHist(), new maps.MapMapCont(maps.ctorMapArr));
+
+

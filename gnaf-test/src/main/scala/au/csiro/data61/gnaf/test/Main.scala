@@ -15,8 +15,8 @@ import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
 import com.typesafe.config.{ ConfigFactory, ConfigValueFactory }
 
-import au.csiro.data61.gnaf.common.db.GnafTables
-import au.csiro.data61.gnaf.common.util.Util
+import au.csiro.data61.gnaf.db.GnafTables
+import au.csiro.data61.gnaf.util.Util
 import resource.managed
 import slick.collection.heterogeneous._
 import slick.collection.heterogeneous.syntax._
@@ -47,21 +47,15 @@ object Main {
       dburl: String,
       sampleSize: Int,
       numberAdornments: Boolean = false, // with number prefix, suffix or range
-      unitLevel: Boolean = false, // with unit or level number
+      unit: Boolean = false, // with unit number
+      level: Boolean = false, // with level number
       streetAlias: Boolean = false,
       localityAlias: Boolean = false
       )
   val defaultCliOption = CliOption(config.getString("gnafDb.url"), config.getInt("gnafTest.sampleSize"))
 
   /**
-   * Generate addresses for testing:
-   * <ol>
-   * <li> addresses without number prefix, suffix or range, unit, level, street alias, or locality alias
-   * <li> addresses with number prefix, suffix or range
-   * <li> as 1, but with unit or level or both
-   * <li> as 2, but with unit or level or both
-   * <li> repeat 1-4 with street alias or locality alias or both
-   * </ol>
+   * Generate addresses for testing.
    */
   def main(args: Array[String]): Unit = {
     val parser = new scopt.OptionParser[CliOption]("gnaf-indexer") {
@@ -76,9 +70,12 @@ object Main {
      opt[Unit]('n', "numberAdornments") action { (_, c) =>
         c.copy(numberAdornments = true)
       } text (s"addresses with number prefix, suffix or range, default ${defaultCliOption.numberAdornments}")
-     opt[Unit]('u', "unitLevel") action { (_, c) =>
-        c.copy(unitLevel = true)
-      } text (s"addresses with unit or level number, default ${defaultCliOption.unitLevel}")
+     opt[Unit]('u', "unit") action { (_, c) =>
+        c.copy(unit = true)
+      } text (s"addresses with unit number, default ${defaultCliOption.unit}")
+     opt[Unit]('l', "level") action { (_, c) =>
+        c.copy(level = true)
+      } text (s"addresses with level number, default ${defaultCliOption.level}")
      opt[Unit]('x', "streetAlias") action { (_, c) =>
         c.copy(streetAlias = true)
       } text (s"addresses with street alias, default ${defaultCliOption.streetAlias}")
@@ -107,7 +104,7 @@ object Main {
 //      if la.isEmpty && ad.nonEmpty
       (l, la) <- Locality joinLeft 
       LocalityAlias on (_.localityPid === _.localityPid)
-      if la.isEmpty
+      if l.localityClassCode === 'G' && la.isEmpty
     } yield l
     Compiled(q)
   }
@@ -121,6 +118,7 @@ object Main {
 //      if ad.nonEmpty
       (l, la) <- Locality join 
       LocalityAlias on (_.localityPid === _.localityPid)
+      if l.localityClassCode === 'G'
     } yield (l, la)
     Compiled(q)
   }
@@ -187,21 +185,28 @@ object Main {
   }
 
   val qAddressDetailWithNumberAdornments = {
-    def q(localityPid: Rep[String]) = qAddressDetailBase(localityPid).filter { case (ad, as, sl, sla) =>
+    def q(localityPid: Rep[String]) = qAddressDetailBase(localityPid).filter { case (ad, _, _, _) =>
       ad.numberFirstPrefix.nonEmpty || ad.numberFirstSuffix.nonEmpty || ad.numberLast.nonEmpty
     }
     Compiled(q _)
   }
   
-  val qAddressDetailWithUnitOrLevel = {
-    def q(localityPid: Rep[String]) = qAddressDetailBase(localityPid).filter { case (ad, as, sl, sla) =>
-      ad.flatNumber.nonEmpty || ad.levelNumber.nonEmpty
+  val qAddressDetailWithUnit = {
+    def q(localityPid: Rep[String]) = qAddressDetailBase(localityPid).filter { case (ad, _, _, _) =>
+      ad.flatNumber.nonEmpty
+    }
+    Compiled(q _)
+  }
+  
+  val qAddressDetailWithLevel = {
+    def q(localityPid: Rep[String]) = qAddressDetailBase(localityPid).filter { case (ad, _, _, _) =>
+      ad.levelNumber.nonEmpty
     }
     Compiled(q _)
   }
   
   val qAddressDetailWithStreetAlias = {
-    def q(localityPid: Rep[String]) = qAddressDetailBase(localityPid).filter { case (ad, as, sl, sla) =>
+    def q(localityPid: Rep[String]) = qAddressDetailBase(localityPid).filter { case (_, _, _, sla) =>
       sla.nonEmpty
     }
     Compiled(q _)
@@ -211,7 +216,8 @@ object Main {
   : Future[Seq[(AddressDetailRow, AddressSiteRow, StreetLocalityRow, Seq[StreetLocalityAliasRow])]]
   = {
     val q = if (c.numberAdornments) qAddressDetailWithNumberAdornments(localityPid)
-      else if (c.unitLevel) qAddressDetailWithUnitOrLevel(localityPid)
+      else if (c.unit) qAddressDetailWithUnit(localityPid)
+      else if (c.level) qAddressDetailWithLevel(localityPid)
       else if (c.streetAlias) qAddressDetailWithStreetAlias(localityPid)
       else qAddressDetailWithoutNumberAdornments(localityPid)
     db.run(q.result).map(
@@ -259,7 +265,7 @@ object Main {
     println(mapper.writeValueAsString(addresses))
   }
       
-  case class Addr(query: String, addressDetailPid: String, address: String)
+  case class Addr(query: String, queryPostcodeBeforeState: String, queryTypo: String, addressDetailPid: String, address: String)
 
   def getRandomElement[T](s: Seq[T]): T = s(Random.nextInt(s.size))
   
@@ -270,6 +276,24 @@ object Main {
   
   def preNumSuf(p: Option[String], n: Option[Int], s: Option[String]): Option[String] = join(Seq(p, n.map(_.toString), s), "")
         
+  /** change a random char after the 2nd to "~" */ 
+  def wordTypo(s: String) = {
+    val idx = 2 + Random.nextInt(s.size - 2)
+    s.substring(0, idx) + "~" + s.substring(idx + 1)
+  }
+  
+  /** add a typo to a random word longer than 4 chars */
+  def mkTypo(seq: Seq[Option[String]]) = {
+    val idxNotTooShort = for {
+      (o, i) <- seq.zipWithIndex
+      s <- o if s.length > 4
+    } yield i
+    val idxRandomNotTooShort = getRandomElement(idxNotTooShort)
+    for {
+      z@(o, i) <- seq.zipWithIndex
+    } yield if (i == idxRandomNotTooShort) o.map(wordTypo) else o
+  }
+  
   def toAddresses(c: CliOption, loc: LocalityRow, seqLocAlias: Seq[LocalityAliasRow], numAddr: Int)(implicit db: Database, lookups: Lookups): Future[Seq[Addr]] = {
     for {
       seqAddr <- addressDetail(c, loc.localityPid)
@@ -278,7 +302,8 @@ object Main {
       levelTypeMap <- lookups.levelTypeMap
       streetSuffixMap <- lookups.streetSuffixMap
     } yield {
-      if (seqAddr.size < numAddr) log.warn(s"addresses for locality ${loc.localityPid} ${loc.localityName}: want $numAddr, got ${seqAddr.size}")
+      if (seqAddr.size >= numAddr) log.info(s"addresses for locality ${loc.localityPid} ${loc.localityName}: got $numAddr")
+      else log.warn(s"addresses for locality ${loc.localityPid} ${loc.localityName}: want $numAddr, got ${seqAddr.size}")
       Random.shuffle(seqAddr).take(numAddr).map { case (
         // copied from AddressDetail.*
         addressDetailPid :: dateCreated :: dateLastModified :: dateRetired :: buildingName :: lotNumberPrefix :: lotNumber :: lotNumberSuffix ::
@@ -302,15 +327,21 @@ object Main {
           (sla.streetName, sla.streetTypeCode, sla.streetSuffixCode)
         } else (sl.streetName, sl.streetTypeCode, sl.streetSuffixCode)
         
-        val query = join(Seq(
-            as.addressSiteName,
-            buildingName,
-            flatTypeCode.map(flatTypeMap), preNumSuf(flatNumberPrefix, flatNumber, flatNumberSuffix),
-            levelTypeCode.map(levelTypeMap), preNumSuf(levelNumberPrefix, levelNumber, levelNumberSuffix),
-            join(Seq(preNumSuf(numberFirstPrefix, numberFirst, numberFirstSuffix), preNumSuf(numberLastPrefix, numberLast, numberLastSuffix)), "-"),
-            Some(streetName), streetTypeCode, streetSuffixCode.map(streetSuffixMap),
-            Some(localityName), Some(stateMap(statePid)), postcode
-        ), " ").getOrElse("")
+        val qSeq = Seq(
+          as.addressSiteName,
+          buildingName,
+          flatTypeCode.map(flatTypeMap), preNumSuf(flatNumberPrefix, flatNumber, flatNumberSuffix),
+          levelTypeCode.map(levelTypeMap), preNumSuf(levelNumberPrefix, levelNumber, levelNumberSuffix),
+          join(Seq(preNumSuf(numberFirstPrefix, numberFirst, numberFirstSuffix), preNumSuf(numberLastPrefix, numberLast, numberLastSuffix)), "-"),
+          Some(streetName), streetTypeCode, streetSuffixCode.map(streetSuffixMap),
+          Some(localityName)
+        )
+        
+        
+        val state = Some(stateMap(statePid))
+        val query = join(qSeq ++ Seq(state, postcode), " ").getOrElse("")
+        val queryPostcodeBeforeState = join(qSeq ++ Seq(postcode, state), " ").getOrElse("")
+        val queryTypo = join(mkTypo(qSeq) ++ Seq(state, postcode), " ").getOrElse("")
         
         // as above but not using locality and street aliases
         val address = join(Seq(
@@ -323,7 +354,7 @@ object Main {
             Some(loc.localityName), Some(stateMap(loc.statePid)), postcode
         ), " ").getOrElse("")
         
-        Addr(query, addressDetailPid, address)
+        Addr(query, queryPostcodeBeforeState, queryTypo, addressDetailPid, address)
       }
     }
   }
