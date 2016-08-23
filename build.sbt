@@ -58,6 +58,7 @@ lazy val gnafUtil = (project in file("gnaf-util")).
   settings(commonSettings: _*)
 
 lazy val gnafDb = (project in file("gnaf-db")).
+  dependsOn(gnafUtil).
   settings(commonSettings: _*)
 
 lazy val gnafIndexer = (project in file("gnaf-indexer")).
@@ -89,7 +90,7 @@ lazy val gnafLuceneService = (project in file("gnaf-lucene-service")).
   )
 
 lazy val gnafTest = (project in file("gnaf-test")).
-  dependsOn(gnafUtil, gnafDb).
+  dependsOn(gnafDb).
   settings(commonSettings: _*).
   settings(com.github.retronym.SbtOneJar.oneJarSettings: _*).
   settings(
@@ -97,7 +98,6 @@ lazy val gnafTest = (project in file("gnaf-test")).
   )
   
 lazy val gnafDbService = (project in file("gnaf-db-service")).
-  dependsOn(gnafUtil).
   dependsOn(gnafDb).
   settings(commonSettings: _*).
   settings(com.github.retronym.SbtOneJar.oneJarSettings: _*).
