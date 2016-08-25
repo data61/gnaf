@@ -10,6 +10,7 @@ import org.apache.lucene.analysis.shingle.ShingleFilter
 import org.apache.lucene.index.IndexOptions
 
 import LuceneUtil.Indexing.mkFieldType
+import org.apache.lucene.search.similarities.ClassicSimilarity
 
 
 /**
@@ -39,7 +40,31 @@ object GnafLucene {
       new TokenStreamComponents(source, result)
     }
   }
+  
+  /** count occurrences of x in s, x must be non-empty */
+  def countOccurrences(s: String, x: String) = {
+    assert(x.nonEmpty)
+    var n = 0
+    var i = 0
+    while (i < s.length - x.length) {
+      i = s.indexOf(x, i)
+      if (i == -1) i = s.length
+      else {
+        n += 1
+        i += x.length
+      }
+    }
+    n
+  }
+  
+  /** get n-gram size n */
+  def shingleSize(s: String) = countOccurrences(s, ShingleFilter.DEFAULT_TOKEN_SEPARATOR)
     
+  class AddressSimilarity extends ClassicSimilarity {
+    override def tf(freq: Float): Float = 1.0f
+    override def idf(docFreq: Long, docCount: Long): Float = 1.0f
+  }
+  
   // shouldn't be essential as "d61Address" is the only tokenized (analyzed) field
   // val analyzer = new PerFieldAnalyzerWrapper(new KeywordAnalyzer, Map(F_D61ADDRESS -> shingleWhiteLowerAnalyzer))
   val analyzer = shingleWhiteLowerAnalyzer

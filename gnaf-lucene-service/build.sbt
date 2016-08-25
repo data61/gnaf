@@ -3,11 +3,18 @@ name := "gnaf-lucene-service"
 libraryDependencies ++= Seq(
   "com.github.scopt" %% "scopt" % "3.3.0",
   "com.jsuereth" %% "scala-arm" % "2.0.0-M1",
-  "au.csiro.data61.gnaf" %% "gnaf-lucene-util" % "0.1-SNAPSHOT"
-  // "com.github.swagger-akka-http" %% "swagger-akka-http" % "0.7.0", // adding swagger brings in all the horrible old javax.ws & Jackson dependencies!
-  // "io.swagger" % "swagger-annotations" % "1.5.9"
+  "au.csiro.data61.gnaf" %% "gnaf-lucene-util" % "0.1-SNAPSHOT",
+  "ch.megard" %% "akka-http-cors" % "0.1.2",
+  "com.github.swagger-akka-http" %% "swagger-akka-http" % "0.7.0", // adding swagger brings in all the horrible old javax.ws & Jackson dependencies!
+  "io.swagger" % "swagger-annotations" % "1.5.9"
   )
 
 libraryDependencies ++= Seq(
-  "lucene-queryparser"
-) map ("org.apache.lucene" % _ % "6.1.0")
+  "akka-actor",
+  "akka-stream",
+  "akka-http-experimental",
+  "akka-http-spray-json-experimental",
+  "akka-http-testkit"
+  ) map ("com.typesafe.akka" %% _ % "2.4.3")
+
+ 

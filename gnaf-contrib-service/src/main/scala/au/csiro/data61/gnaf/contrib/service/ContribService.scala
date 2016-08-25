@@ -30,14 +30,15 @@ import spray.json.DefaultJsonProtocol
 case class ContribGeocode(id: Option[Long], contribStatus: String, addressSiteGeocodePid: Option[String], dateCreated: Long, version: Int, addressSitePid: String, geocodeTypeCode: String, longitude: BigDecimal, latitude: BigDecimal)
 case class ContribGeocodeKey(id: Long, version: Int)
 
-trait Protocols extends DefaultJsonProtocol {
+object JsonProtocol extends DefaultJsonProtocol {
   implicit val contribGeocodeFormat = jsonFormat9(ContribGeocode.apply)
   implicit val contribGeocodeKeyFormat = jsonFormat2(ContribGeocodeKey.apply)
 }
+import JsonProtocol._
 
 @Api(value = "contrib", produces = "application/json")
 @Path("contrib")
-class ContribService(logger: LoggingAdapter, config: Config)(implicit system: ActorSystem, executor: ExecutionContextExecutor, materializer: Materializer) extends Protocols {
+class ContribService(logger: LoggingAdapter, config: Config)(implicit system: ActorSystem, executor: ExecutionContextExecutor, materializer: Materializer) {
   object MyContribTables extends {
     val profile = Util.getObject[slick.driver.JdbcProfile](config.getString("gnafContribDb.slickDriver")) // e.g. slick.driver.{H2Driver,PostgresDriver}
   } with ContribTables
