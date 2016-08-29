@@ -10,7 +10,8 @@ Array.prototype.flatten = function() {
 }
 
 /**
- * Usage: node src/main/node/search.js input.json
+ * Usage: node src/main/node/searchEs.js input.json
+ * Input: one address per line. Performs bulk lookup using Elasticsearch index created by gnaf-indexer.
  * TODO: add proper command line option handling, add options to set numHits and bulk
  */
 var path = process.argv[2]; // 0 -> node; 1 -> src/main/script/search.js; 2 -> input.json
@@ -19,7 +20,7 @@ var numHits = 10;
 var addr = JSON.parse(fs.readFileSync(path, "utf8"));
 // console.log('addr', addr);
 
-var bulk = 3;
+var bulk = 10;
 var batches = [];
 for (i = 0; i < addr.length; i += bulk) batches.push(addr.slice(i, Math.min(i + bulk, addr.length)));
 // console.log('batches', batches);

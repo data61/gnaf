@@ -80,7 +80,6 @@ object LuceneService {
       help("help") text ("prints this usage text")
     }
     parser.parse(args, defaultCliOption) foreach run
-    log.info("done")
   }
   
   val fieldToLoad = Set(F_JSON, F_D61ADDRESS, F_D61ADDRESS_NOALIAS)
@@ -135,17 +134,20 @@ object LuceneService {
     s
   }
   
-  def mkQuery(c: QueryParam): Query =
-    tokenIter(analyzer, F_D61ADDRESS, c.addr).foldLeft(new BooleanQuery.Builder){ (b, t) =>
+  def mkQuery(c: QueryParam): Query = {
+    val q = tokenIter(analyzer, F_D61ADDRESS, c.addr).foldLeft(new BooleanQuery.Builder){ (b, t) =>
       val q = {
         val term = new Term(F_D61ADDRESS, t)
         val q = if (c.fuzzyMaxEdits > 0 && t.length >= c.minFuzzyLength) new FuzzyQuery(term, c.fuzzyMaxEdits, c.fuzzyPrefixLength) else new TermQuery(term)
         val n = shingleSize(t)
-        if (n < 2) q else new BoostQuery(q, Math.pow(3.0, n).toFloat)
+        if (n < 2) q else new BoostQuery(q, Math.pow(3.0, n-1).toFloat)
       }
       b.add(new BooleanClause(q, SHOULD))
       b
     }.build
+    log.debug(s"mkQuery: bool query = ${q.toString(F_D61ADDRESS)}")
+    q
+  }
 
   def run(c: CliOption) = {
     implicit val sys = ActorSystem()
@@ -189,7 +191,6 @@ class LuceneService(c: CliOption, searcher: Searcher[Hit, Result])
     @ApiParam(value = "queryParam", required = true) q: QueryParam
   ) = {
     val err = q.validationError(c)
-    log.debug(s"searchRoute: err = $err")
     validate(err.isEmpty, err) { complete { Future { 
       searcher.search(mkQuery(q), None, q.numHits, 0)
     }}}
@@ -202,7 +203,7 @@ class LuceneService(c: CliOption, searcher: Searcher[Hit, Result])
   ) = {
     val err = q.validationError(c)
     validate(err.isEmpty, err) { complete { Future {
-      def seqop(z: Seq[Result], addr: String) = searcher.search(mkQuery(QueryParam(addr, q.numHits, q.minFuzzyLength, q.fuzzyMaxEdits, q.fuzzyPrefixLength)), None, q.numHits, 0) +: z
+      def seqop(z: Seq[Result], addr: String) = z :+ searcher.search(mkQuery(QueryParam(addr, q.numHits, q.minFuzzyLength, q.fuzzyMaxEdits, q.fuzzyPrefixLength)), None, q.numHits, 0)
       q.addresses.par.aggregate(Seq.empty[Result])(seqop, _ ++ _)
     }}}
   }

@@ -6,8 +6,14 @@ var fs = require('fs');
 var m = new Map();
 for (i = 2; i < process.argv.length; ++i) { // 0 -> node; 1 -> src/main/script/summary.js; 2 -> file1 ...
   var stats = JSON.parse(fs.readFileSync(process.argv[i], "utf8"));
-  stats.histogram.forEach(a => histAdd(m, a[0], a[1]));
+  for (desc in stats.histogram) {
+    if (desc != 'nofuzTypo') { // skip because we cannot match types without fuz
+      var o = stats.histogram[desc];
+      for (p in o) histAdd(m, p, o[p]);
+    }
+  }
 }
+
 var sum = 0;
 for (i of m.values()) sum += i;
 console.log(JSON.stringify({ samples: sum, histogram: mapToArr(m) }));

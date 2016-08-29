@@ -11,6 +11,7 @@ import org.apache.lucene.index.IndexOptions
 
 import LuceneUtil.Indexing.mkFieldType
 import org.apache.lucene.search.similarities.ClassicSimilarity
+import org.apache.lucene.document.TextField
 
 
 /**
@@ -31,6 +32,9 @@ object GnafLucene {
   }
   
   val shingleWhiteLowerAnalyzer = new Analyzer {
+    
+    override def getPositionIncrementGap(fieldName: String) = 100 // stop shingles matching across boundaries
+    
     override protected def createComponents(fieldName: String) = {
       val source = new WhitespaceTokenizer()
       // ShingleFilter defaults are:
@@ -58,8 +62,12 @@ object GnafLucene {
   }
   
   /** get n-gram size n */
-  def shingleSize(s: String) = countOccurrences(s, ShingleFilter.DEFAULT_TOKEN_SEPARATOR)
-    
+  def shingleSize(s: String) = countOccurrences(s, ShingleFilter.DEFAULT_TOKEN_SEPARATOR) + 1
+  
+  /**
+   * This Similarity used at query time, is compatible with ClassicSimilarity at indexing time, because we don't change computeNorm().
+   * From Similarity: "At indexing time, the indexer calls computeNorm(FieldInvertState)"
+   */
   class AddressSimilarity extends ClassicSimilarity {
     override def tf(freq: Float): Float = 1.0f
     override def idf(docFreq: Long, docCount: Long): Float = 1.0f
@@ -74,7 +82,7 @@ object GnafLucene {
     //   tokenized: Boolean = false, stored: Boolean = true, indexed: Boolean = true,
     //   termVectors: Boolean = false, opt: IndexOptions = DOCS_AND_FREQS
     F_JSON -> mkFieldType(indexed = false),
-    F_D61ADDRESS -> mkFieldType(tokenized = true, opt = IndexOptions.DOCS),
+    F_D61ADDRESS -> mkFieldType(tokenized = true),
     F_D61ADDRESS_NOALIAS -> mkFieldType(indexed = false)
     )
     

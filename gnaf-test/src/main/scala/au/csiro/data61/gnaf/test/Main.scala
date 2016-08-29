@@ -275,10 +275,13 @@ object Main {
   }
   
   def preNumSuf(p: Option[String], n: Option[Int], s: Option[String]): Option[String] = join(Seq(p, n.map(_.toString), s), "")
-        
+  
+  val word5 = "\\S{5,}".r
+  
   /** change a random char after the 2nd to "~" */ 
   def wordTypo(s: String) = {
-    val idx = 2 + Random.nextInt(s.size - 2)
+    val (str, end) = getRandomElement(word5.findAllIn(s).matchData.map(m => (m.start, m.end)).toSeq)
+    val idx = 2 + str + Random.nextInt(end - str - 2)
     s.substring(0, idx) + "~" + s.substring(idx + 1)
   }
   
@@ -286,11 +289,11 @@ object Main {
   def mkTypo(seq: Seq[Option[String]]) = {
     val idxNotTooShort = for {
       (o, i) <- seq.zipWithIndex
-      s <- o if s.length > 4
+      s <- o if word5.findAllIn(s).nonEmpty
     } yield i
     val idxRandomNotTooShort = getRandomElement(idxNotTooShort)
     for {
-      z@(o, i) <- seq.zipWithIndex
+      (o, i) <- seq.zipWithIndex
     } yield if (i == idxRandomNotTooShort) o.map(wordTypo) else o
   }
   

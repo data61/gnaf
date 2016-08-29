@@ -4,6 +4,9 @@ concat() {
   if [[ -n "$2" ]]; then echo "$1-$2"; else echo "$1"; fi
 }
 
+# search="src/main/script/searchEs.js"
+search="src/main/script/searchLucene.js"
+
 for opt1 in "" "--localityAlias"
 do
   filePrefix=`concat "address" "${opt1#--}"` 
@@ -16,9 +19,9 @@ do
     if false
     then
       time java -jar target/scala-2.11/gnaf-test_2.11-0.1-SNAPSHOT-one-jar.jar --sampleSize 200 $opt1 $opt2 > $file
-      node src/main/script/search.js $file > stats${file#address} &
+      node $search $file > stats${file#address} &
     else
-      node src/main/script/search.js $file > stats${file#address}
+      node $search $file > stats${file#address}
     fi
   done
 done
