@@ -8,7 +8,7 @@ import scala.reflect.runtime.universe
 
 import org.apache.lucene.document.Document
 import org.apache.lucene.index.Term
-import org.apache.lucene.search.{ BooleanClause, BooleanQuery, BoostQuery, FuzzyQuery, Query, Sort, TermQuery }
+import org.apache.lucene.search.{ BooleanClause, BooleanQuery, BoostQuery, FuzzyQuery, Query, Sort, TermQuery, ScoreDoc }
 import org.apache.lucene.search.BooleanClause.Occur.SHOULD
 
 import com.github.swagger.akka.{ HasActorSystem, SwaggerHttpService }
@@ -82,11 +82,9 @@ object LuceneService {
     parser.parse(args, defaultCliOption) foreach run
   }
   
-  val fieldToLoad = Set(F_JSON, F_D61ADDRESS, F_D61ADDRESS_NOALIAS)
-  
   case class Hit(score: Float, json: String, d61Address: List[String], d61AddressNoAlias: String)
-  def toHit(score: Float, doc: Document) = {
-    Hit(score, doc.get(F_JSON), doc.getValues(F_D61ADDRESS).toList, doc.get(F_D61ADDRESS_NOALIAS))
+  def toHit(scoreDoc: ScoreDoc, doc: Document) = {
+    Hit(scoreDoc.score, doc.get(F_JSON), doc.getValues(F_D61ADDRESS).toList, doc.get(F_D61ADDRESS_NOALIAS))
   }
   
   case class Result(totalHits: Int, elapsedSecs: Float, hits: Seq[Hit], error: Option[String])
@@ -179,6 +177,8 @@ object LuceneService {
 }
 import LuceneService._
 import LuceneService.JsonProtocol._
+import org.apache.lucene.search.ScoreDoc
+import org.apache.lucene.search.ScoreDoc
 
 @Api(value = "lucene", produces = "application/json")
 @Path("lucene")

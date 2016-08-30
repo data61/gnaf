@@ -280,7 +280,8 @@ object Main {
   
   /** change a random char after the 2nd to "~" */ 
   def wordTypo(s: String) = {
-    val (str, end) = getRandomElement(word5.findAllIn(s).matchData.map(m => (m.start, m.end)).toSeq)
+    val words = word5.findAllIn(s).matchData.map(m => (m.start, m.end)).toSeq
+    val (str, end) = getRandomElement(words)
     val idx = 2 + str + Random.nextInt(end - str - 2)
     s.substring(0, idx) + "~" + s.substring(idx + 1)
   }
@@ -291,10 +292,13 @@ object Main {
       (o, i) <- seq.zipWithIndex
       s <- o if word5.findAllIn(s).nonEmpty
     } yield i
-    val idxRandomNotTooShort = getRandomElement(idxNotTooShort)
-    for {
-      (o, i) <- seq.zipWithIndex
-    } yield if (i == idxRandomNotTooShort) o.map(wordTypo) else o
+    if (idxNotTooShort.isEmpty) seq // no word longer than 4 chars so no typo
+    else {
+      val idx = getRandomElement(idxNotTooShort)
+      for {
+        (o, i) <- seq.zipWithIndex
+      } yield if (i == idx) o.map(wordTypo) else o
+    }
   }
   
   def toAddresses(c: CliOption, loc: LocalityRow, seqLocAlias: Seq[LocalityAliasRow], numAddr: Int)(implicit db: Database, lookups: Lookups): Future[Seq[Addr]] = {

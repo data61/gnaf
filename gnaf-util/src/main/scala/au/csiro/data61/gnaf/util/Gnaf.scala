@@ -28,7 +28,7 @@ object Gnaf {
                      location: Option[Location], streetVariant: Seq[Street], localityVariant: Seq[LocalityVariant]) {
         
     def toD61Address: D61Address = {
-      val streetNum = numberFirst.toOptStr.map(f => f + numberLast.toOptStr.map("_" + _).getOrElse(""))
+      val streetNum = numberFirst.toOptStr.map(f => f + numberLast.toOptStr.map("-" + _).getOrElse(""))
       val seqNoAlias = Seq(
         Seq( addressSiteName, buildingName ), // each inner Seq optionally produces a String in the final Seq
         Seq( flatTypeName, flat.toOptStr ), 

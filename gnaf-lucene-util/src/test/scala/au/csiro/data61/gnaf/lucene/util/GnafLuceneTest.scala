@@ -1,7 +1,7 @@
 package au.csiro.data61.gnaf.lucene.util
 
-import org.scalatest.FlatSpec
-import org.scalatest.Matchers
+import org.scalatest.{ FlatSpec, Matchers }
+
 import GnafLucene.countOccurrences
 
 class GnafLuceneTest extends FlatSpec with Matchers {
@@ -21,4 +21,5 @@ class GnafLuceneTest extends FlatSpec with Matchers {
       countOccurrences(s, "")
     } 
   }
+  
 }

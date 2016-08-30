@@ -1,21 +1,21 @@
 package au.csiro.data61.gnaf.lucene.util
 
-import scala.collection.JavaConversions.mapAsJavaMap
+import scala.annotation.elidable
+import scala.annotation.elidable.ASSERTION
 
 import org.apache.lucene.analysis.Analyzer
 import org.apache.lucene.analysis.Analyzer.TokenStreamComponents
-import org.apache.lucene.analysis.core.{ KeywordAnalyzer, LowerCaseFilter, WhitespaceTokenizer }
-import org.apache.lucene.analysis.miscellaneous.PerFieldAnalyzerWrapper
+import org.apache.lucene.analysis.LowerCaseFilter
+import org.apache.lucene.analysis.core.WhitespaceTokenizer
 import org.apache.lucene.analysis.shingle.ShingleFilter
-import org.apache.lucene.index.IndexOptions
+import org.apache.lucene.index.FieldInvertState
+import org.apache.lucene.search.similarities.ClassicSimilarity
 
 import LuceneUtil.Indexing.mkFieldType
-import org.apache.lucene.search.similarities.ClassicSimilarity
-import org.apache.lucene.document.TextField
 
 
 /**
- * GNAF specific field names and analyzers for Lucene.
+ * GNAF specific field names, analyzers and scoring for Lucene.
  */
 object GnafLucene {
   
@@ -24,16 +24,17 @@ object GnafLucene {
   val F_D61ADDRESS_NOALIAS = "d61AddressNoAlias"
   
   val whiteLowerAnalyzer = new Analyzer {
+    
     override protected def createComponents(fieldName: String) = {
       val source = new WhitespaceTokenizer()
       val result = new LowerCaseFilter(source)
       new TokenStreamComponents(source, result)
     }
+    
+    override protected def getPositionIncrementGap(fieldName: String): Int = 100
   }
   
   val shingleWhiteLowerAnalyzer = new Analyzer {
-    
-    override def getPositionIncrementGap(fieldName: String) = 100 // stop shingles matching across boundaries
     
     override protected def createComponents(fieldName: String) = {
       val source = new WhitespaceTokenizer()
@@ -43,6 +44,8 @@ object GnafLucene {
       val result = new ShingleFilter(new LowerCaseFilter(source), 2, 2)
       new TokenStreamComponents(source, result)
     }
+    
+    override def getPositionIncrementGap(fieldName: String): Int = 100 // stop shingles matching across boundaries
   }
   
   /** count occurrences of x in s, x must be non-empty */
@@ -64,13 +67,11 @@ object GnafLucene {
   /** get n-gram size n */
   def shingleSize(s: String) = countOccurrences(s, ShingleFilter.DEFAULT_TOKEN_SEPARATOR) + 1
   
-  /**
-   * This Similarity used at query time, is compatible with ClassicSimilarity at indexing time, because we don't change computeNorm().
-   * From Similarity: "At indexing time, the indexer calls computeNorm(FieldInvertState)"
-   */
   class AddressSimilarity extends ClassicSimilarity {
-    override def tf(freq: Float): Float = 1.0f
-    override def idf(docFreq: Long, docCount: Long): Float = 1.0f
+    override def lengthNorm(state: FieldInvertState) = state.getBoost // no length norm, don't penalize multiple aliases
+    override def tf(freq: Float): Float = 1.0f // don't boost street and locality name being the same
+    override def idf(docFreq: Long, docCount: Long): Float = 1.0f // don't penalize SMITH STREET for being common
+    // coord factor boosts docs that match more query terms, so correct match scores higher than spuriously same street and locality name
   }
   
   // shouldn't be essential as "d61Address" is the only tokenized (analyzed) field

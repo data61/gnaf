@@ -11,6 +11,7 @@ import au.csiro.data61.gnaf.util.Gnaf.JsonProtocol.addressFormat
 import au.csiro.data61.gnaf.util.Util.getLogger
 import resource.managed
 import spray.json.pimpString
+import au.csiro.data61.gnaf.lucene.util.GnafLucene.AddressSimilarity
 
 
 object LuceneIndexer {
@@ -34,15 +35,20 @@ object LuceneIndexer {
 
   def run(c: CliOption) = {
     for {
-      indexer <- managed(new Indexer(c.indexDir, true, analyzer))
+      indexer <- managed(new Indexer(c.indexDir, true, analyzer) { override protected def indexWriterConfig = {
+        val c = super.indexWriterConfig
+        c.setSimilarity(new AddressSimilarity)
+        c
+      } } )
       line <- Source.fromInputStream(System.in, "UTF-8").getLines
     } {
       val addr = line.parseJson.convertTo[Address]
-      val D61Address(d61Address, d61AddressNoAlias) = addr.toD61Address
+      val x = addr.toD61Address
+      log.debug(s"addr = $addr, x = $x")
       val (doc, add) = docAdder(indexingFieldTypes)
       add(F_JSON, line, false)
-      d61Address foreach { a => add(F_D61ADDRESS, a, false) }
-      add(F_D61ADDRESS_NOALIAS, d61AddressNoAlias, false)
+      x.d61Address foreach { a => add(F_D61ADDRESS, a, false) }
+      add(F_D61ADDRESS_NOALIAS, x.d61AddressNoAlias, false)
       indexer.add(doc)
     }
   }

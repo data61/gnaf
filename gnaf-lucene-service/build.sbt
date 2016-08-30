@@ -6,7 +6,8 @@ libraryDependencies ++= Seq(
   "au.csiro.data61.gnaf" %% "gnaf-lucene-util" % "0.1-SNAPSHOT",
   "ch.megard" %% "akka-http-cors" % "0.1.2",
   "com.github.swagger-akka-http" %% "swagger-akka-http" % "0.7.0", // adding swagger brings in all the horrible old javax.ws & Jackson dependencies!
-  "io.swagger" % "swagger-annotations" % "1.5.9"
+  "io.swagger" % "swagger-annotations" % "1.5.9",
+  "org.scalatest" %% "scalatest" % "3.0.0" % "test"
   )
 
 libraryDependencies ++= Seq(

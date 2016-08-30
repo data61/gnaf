@@ -2,23 +2,20 @@ package au.csiro.data61.gnaf.lucene.util
 
 import java.io.{ Closeable, File }
 
-import scala.collection.JavaConversions.{ asScalaBuffer, setAsJavaSet }
 import scala.util.Try
 
-import org.apache.lucene.analysis.Analyzer
+import org.apache.lucene.analysis.{ Analyzer, TokenStream }
+import org.apache.lucene.analysis.tokenattributes.CharTermAttribute
 import org.apache.lucene.document.{ Document, Field, FieldType, SortedDocValuesField }
 import org.apache.lucene.index.{ DirectoryReader, IndexOptions }
 import org.apache.lucene.index.{ IndexWriter, IndexWriterConfig }
 import org.apache.lucene.index.IndexOptions.DOCS_AND_FREQS
-import org.apache.lucene.search.{ IndexSearcher, Query, Sort }
-import org.apache.lucene.store.FSDirectory
+import org.apache.lucene.search.{ IndexSearcher, Query, ScoreDoc, Sort }
+import org.apache.lucene.store.{ Directory, FSDirectory }
 import org.apache.lucene.util.BytesRef
-import org.slf4j.LoggerFactory
 
 import au.csiro.data61.gnaf.util.Timer
 import au.csiro.data61.gnaf.util.Util.getLogger
-import org.apache.lucene.analysis.TokenStream
-import org.apache.lucene.analysis.tokenattributes.CharTermAttribute
 
 
 /**
@@ -30,8 +27,6 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute
  */
 object LuceneUtil {
 
-  def directoryReader(indexDir: File) = DirectoryReader.open(FSDirectory.open(indexDir.toPath))
-  
   def tokenIter(ts: TokenStream): Iterator[String] = {
     ts.reset
     Iterator.continually {
@@ -73,10 +68,9 @@ object LuceneUtil {
     class Indexer(indexDir: File, create: Boolean, analyzer: Analyzer) extends Closeable {
       val log = getLogger(getClass)
   
-      val writer = indexWriter(indexDir)
-  
-      protected def indexWriter(indexDir: File) = new IndexWriter(FSDirectory.open(indexDir.toPath), indexWriterConfig)
-  
+      val writer = indexWriter  
+      protected def indexWriter = new IndexWriter(directory, indexWriterConfig)
+      protected def directory: Directory = FSDirectory.open(indexDir.toPath)
       protected def indexWriterConfig = {
         import IndexWriterConfig.OpenMode._
         val c = new IndexWriterConfig(analyzer)
@@ -97,15 +91,16 @@ object LuceneUtil {
   object Searching {
     class Searcher[Hit, Results](
         indexDir: File,
-        toHit: (Float, Document) => Hit, // convert score and map of fields to Hit
+        toHit: (ScoreDoc, Document) => Hit, // convert score and map of fields to Hit
         toResults: (Int, Float, Seq[Hit], Option[String]) => Results, // convert totalHits, elapsedSecs, Seq[Hit], Option[error] to Results
         toSort: (Option[String], Boolean) => Option[Sort]
     ) extends Closeable {      
       val log = getLogger(getClass)
   
-      protected def open = new IndexSearcher(directoryReader(indexDir))
       val searcher = open
-        
+      protected def open = new IndexSearcher(DirectoryReader.open(directory))
+      protected def directory: Directory = FSDirectory.open(indexDir.toPath)
+          
       def search(q: Query, sort: Option[Sort], numHits: Int = 20, firstHit: Int = 0) = {
         val timer = Timer()
         
@@ -117,14 +112,14 @@ object LuceneUtil {
           }
           hits <- Try {
             topDocs.scoreDocs.slice(firstHit, numHits + firstHit) map { scoreDoc =>
-              toHit(scoreDoc.score, searcher.doc(scoreDoc.doc))
+              toHit(scoreDoc, searcher.doc(scoreDoc.doc))
             }
           }
         } yield toResults(topDocs.totalHits, timer.elapsedSecs.toFloat, hits, None)
         
         result.recover { case e => toResults(0, timer.elapsedSecs.toFloat, List(), Some(e.getMessage)) }.get
       }
-    
+      
       def close = searcher.getIndexReader.close
       
     }
