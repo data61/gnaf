@@ -144,7 +144,6 @@ object Search {
       logRequestResult("LuceneService") { luceneService.routes } ~ 
       logRequestResult("Swagger") { swaggerService.routes }
     }
-    
     log.info("starting service ...")
     Http().bindAndHandle(routes, c.interface, c.port)
   }
@@ -161,9 +160,10 @@ import LuceneService.JsonProtocol._
 
 import Search._
 import Search.JsonProtocol._
+import ch.megard.akka.http.cors.CorsSettings
 
 @Api(value = "search", produces = "application/json")
-@Path("search")
+@Path("gnaf")
 class LuceneService(c: CliOption, searcher: Searcher[Hit, Result])
 (implicit system: ActorSystem, executor: ExecutionContextExecutor, materializer: Materializer) {
   
@@ -190,7 +190,7 @@ class LuceneService(c: CliOption, searcher: Searcher[Hit, Result])
     }}}
   }
   
-  val routes = pathPrefix("search") {
+  val routes = pathPrefix("gnaf") { 
     pathPrefix("search")     { (post & entity(as[QueryParam]))     { searchRoute     } } ~
     pathPrefix("bulkSearch") { (post & entity(as[BulkQueryParam])) { bulkSearchRoute } }
   }
