@@ -14,8 +14,6 @@ object Gnaf {
     def toOptStr = join(Seq(prefix, d61Num(number), suffix), "")
   }
   
-  case class D61Address(d61Address: Seq[String], d61AddressNoAlias: String)
-
   case class Street(name: String, typeCode: Option[String], typeName: Option[String], suffixCode: Option[String], suffixName: Option[String])
   case class LocalityVariant(localityName: String)
   case class Location(lat: BigDecimal, lon: BigDecimal)
@@ -27,7 +25,7 @@ object Gnaf {
                      aliasPrincipal: Option[Char], primarySecondary: Option[Char],
                      location: Option[Location], streetVariant: Seq[Street], localityVariant: Seq[LocalityVariant]) {
         
-    def toD61Address: D61Address = {
+    def toD61Address = {
       val streetNum = numberFirst.toOptStr.map(f => f + numberLast.toOptStr.map("-" + _).getOrElse(""))
       val seqNoAlias = Seq(
         Seq( addressSiteName, buildingName ), // each inner Seq optionally produces a String in the final Seq
@@ -41,7 +39,7 @@ object Gnaf {
         localityVariant.map(v => Seq( Some(v.localityName), Some(stateAbbreviation), postcode ))
       val d61Address = seqWithAlias.map(inner => join(inner, " ")).flatten
       val d61AddressNoAlias = join(seqNoAlias.map(inner => join(inner, " ")), " ").getOrElse("")
-      D61Address(d61Address, d61AddressNoAlias)
+      (d61Address, d61AddressNoAlias)
     }
   }
 

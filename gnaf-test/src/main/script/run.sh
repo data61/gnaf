@@ -7,7 +7,7 @@ concat() {
 # search="src/main/script/searchEs.js"
 search="src/main/script/searchLucene.js"
 
-for opt1 in "" "--localityAlias"
+time for opt1 in "" "--localityAlias"
 do
   filePrefix=`concat "address" "${opt1#--}"` 
   for opt2 in "" "--numberAdornments" "--unit" "--level" "--streetAlias"

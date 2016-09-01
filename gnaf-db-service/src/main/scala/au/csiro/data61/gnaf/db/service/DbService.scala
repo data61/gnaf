@@ -1,4 +1,4 @@
-package au.csiro.data61.gnaf.service
+package au.csiro.data61.gnaf.db.service
 
 import scala.concurrent.{ ExecutionContextExecutor, Future }
 import scala.math.BigDecimal
@@ -41,7 +41,7 @@ trait Protocols extends DefaultJsonProtocol {
 
 @Api(value = "gnaf", produces = "application/json")
 @Path("gnaf")
-class GnafService(logger: LoggingAdapter, config: Config)(implicit system: ActorSystem, executor: ExecutionContextExecutor, materializer: Materializer) extends Protocols {
+class DbService(logger: LoggingAdapter, config: Config)(implicit system: ActorSystem, executor: ExecutionContextExecutor, materializer: Materializer) extends Protocols {
 
   object MyGnafTables extends {
     val profile = Util.getObject[slick.driver.JdbcProfile](config.getString("gnafDb.slickDriver")) // e.g. slick.driver.{H2Driver,PostgresDriver}
@@ -121,7 +121,7 @@ class GnafService(logger: LoggingAdapter, config: Config)(implicit system: Actor
   }
 }
 
-object GnafService { self =>
+object DbService { self =>
   implicit val system = ActorSystem()
   implicit val executor = system.dispatcher
   implicit val materializer = ActorMaterializer()
@@ -131,8 +131,8 @@ object GnafService { self =>
   val interface = config.getString("http.interface")
   val port = config.getInt("http.port")
   
-  object MyService extends GnafService(logger, config) {    
-    val myRoutes = logRequestResult("GnafService") { cors() { routes } }
+  object MyService extends DbService(logger, config) {    
+    val myRoutes = logRequestResult("DbService") { cors() { routes } }
   }
   
   // route: /api-docs/swagger.json
@@ -141,7 +141,7 @@ object GnafService { self =>
 
     override implicit val actorSystem = self.system
     override implicit val materializer = self.materializer
-    override val apiTypes = Seq(ru.typeOf[GnafService])
+    override val apiTypes = Seq(ru.typeOf[DbService])
     override val host = interface + ":" + port
     override val info = Info(version = "1.0")
 

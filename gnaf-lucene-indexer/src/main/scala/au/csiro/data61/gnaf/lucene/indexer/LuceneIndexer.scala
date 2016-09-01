@@ -4,14 +4,15 @@ import java.io.File
 
 import scala.io.Source
 
-import au.csiro.data61.gnaf.lucene.util.GnafLucene.{ F_D61ADDRESS, F_D61ADDRESS_NOALIAS, F_JSON, analyzer, indexingFieldTypes }
-import au.csiro.data61.gnaf.lucene.util.LuceneUtil.Indexing.{ Indexer, docAdder }
-import au.csiro.data61.gnaf.util.Gnaf.{ Address, D61Address }
+import org.apache.lucene.document.{ Document, DoublePoint, Field }
+
+import au.csiro.data61.gnaf.lucene.util.GnafLucene.{ F_D61ADDRESS, F_D61ADDRESS_NOALIAS, F_JSON, F_LOCATION, d61AddrFieldType, mkIndexer, storedNotIndexedFieldType }
+import au.csiro.data61.gnaf.lucene.util.LuceneUtil.directory
+import au.csiro.data61.gnaf.util.Gnaf.Address
 import au.csiro.data61.gnaf.util.Gnaf.JsonProtocol.addressFormat
 import au.csiro.data61.gnaf.util.Util.getLogger
 import resource.managed
 import spray.json.pimpString
-import au.csiro.data61.gnaf.lucene.util.GnafLucene.AddressSimilarity
 
 
 object LuceneIndexer {
@@ -33,23 +34,23 @@ object LuceneIndexer {
     log.info("done")
   }
 
+  def addrToDoc(line: String) = {
+    val addr = line.parseJson.convertTo[Address]
+    val (d61Address, d61AddressNoAlias) = addr.toD61Address
+    val doc = new Document
+    doc.add(new Field(F_JSON, line, storedNotIndexedFieldType))
+    addr.location.foreach { l => doc.add(new DoublePoint(F_LOCATION, l.lat.toDouble, l.lon.toDouble)) }
+    d61Address.foreach { a => doc.add(new Field(F_D61ADDRESS, a, d61AddrFieldType)) }
+    doc.add(new Field(F_D61ADDRESS_NOALIAS, d61AddressNoAlias, storedNotIndexedFieldType))
+    doc
+  }
+  
   def run(c: CliOption) = {
     for {
-      indexer <- managed(new Indexer(c.indexDir, true, analyzer) { override protected def indexWriterConfig = {
-        val c = super.indexWriterConfig
-        c.setSimilarity(new AddressSimilarity)
-        c
-      } } )
+      indexer <- managed(mkIndexer(directory(c.indexDir)))
       line <- Source.fromInputStream(System.in, "UTF-8").getLines
     } {
-      val addr = line.parseJson.convertTo[Address]
-      val x = addr.toD61Address
-      log.debug(s"addr = $addr, x = $x")
-      val (doc, add) = docAdder(indexingFieldTypes)
-      add(F_JSON, line, false)
-      x.d61Address foreach { a => add(F_D61ADDRESS, a, false) }
-      add(F_D61ADDRESS_NOALIAS, x.d61AddressNoAlias, false)
-      indexer.add(doc)
+      indexer.addDocument(addrToDoc(line))
     }
   }
 }

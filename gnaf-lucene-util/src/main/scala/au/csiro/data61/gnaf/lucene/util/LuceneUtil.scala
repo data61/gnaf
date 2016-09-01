@@ -1,31 +1,29 @@
 package au.csiro.data61.gnaf.lucene.util
 
-import java.io.{ Closeable, File }
+import java.io.Closeable
 
 import scala.util.Try
 
 import org.apache.lucene.analysis.{ Analyzer, TokenStream }
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute
-import org.apache.lucene.document.{ Document, Field, FieldType, SortedDocValuesField }
-import org.apache.lucene.index.{ DirectoryReader, IndexOptions }
-import org.apache.lucene.index.{ IndexWriter, IndexWriterConfig }
-import org.apache.lucene.index.IndexOptions.DOCS_AND_FREQS
-import org.apache.lucene.search.{ IndexSearcher, Query, ScoreDoc, Sort }
-import org.apache.lucene.store.{ Directory, FSDirectory }
-import org.apache.lucene.util.BytesRef
+import org.apache.lucene.document.Document
+import org.apache.lucene.index.DirectoryReader
+import org.apache.lucene.search.{ IndexSearcher, Query, ScoreDoc }
+import org.apache.lucene.store.Directory
 
 import au.csiro.data61.gnaf.util.Timer
 import au.csiro.data61.gnaf.util.Util.getLogger
+import java.io.File
+import org.apache.lucene.store.FSDirectory
 
 
 /**
  * Non GNAF specific code for Lucene indexing and searching.
  * 
  * simplified from: https://github.csiro.au/bac003/social-watch/blob/master/analytics/src/main/scala/org/t3as/socialWatch/analytics/LuceneUtil.scala
- * removed highlighting and query parsing from Searching
- * removed term freq utils, suggesting, analyzing
  */
 object LuceneUtil {
+  val log = getLogger(getClass)
 
   def tokenIter(ts: TokenStream): Iterator[String] = {
     ts.reset
@@ -42,88 +40,36 @@ object LuceneUtil {
   def tokenIter(analyzer: Analyzer, fieldName: String, text: String): Iterator[String]
     = tokenIter(analyzer.tokenStream(fieldName, text))
     
-  object Indexing {
-    /** Create an indexing FieldType. Default suitable for keyword (untokenized) fields */
-    def mkFieldType(tokenized: Boolean = false, stored: Boolean = true, indexed: Boolean = true, termVectors: Boolean = false, opt: IndexOptions = DOCS_AND_FREQS) = {
-      val t = new FieldType
-      t.setTokenized(tokenized)
-      t.setIndexOptions(opt)
-      t.setStored(stored)
-      t.setStoreTermVectors(termVectors)
-      t.freeze()
-      t
-    }
+  def directory(indexDir: File) = FSDirectory.open(indexDir.toPath)
   
-    /** Facilitate populating a Lucene Document.
-     *  @return (Lucene doc, function to add a field to the doc) 
-     */
-    def docAdder(fieldType: String => FieldType) = {
-      val d = new Document
-      (d, (k: String, v: String, sorted: Boolean) => if (!v.isEmpty()) {
-        d.add(new Field(k, v, fieldType(k)))
-        if (sorted) d.add(new SortedDocValuesField(k, new BytesRef(v)))
-      })
-    }
+  class Searcher[Hit, Results](
+    directory: Directory,
+    toHit: (ScoreDoc, Document) => Hit, // convert score and map of fields to Hit
+    toResults: (Int, Float, Seq[Hit], Option[String]) => Results // convert totalHits, elapsedSecs, Seq[Hit], Option[error] to Results
+  ) extends Closeable {      
+    val log = getLogger(getClass)
 
-    class Indexer(indexDir: File, create: Boolean, analyzer: Analyzer) extends Closeable {
-      val log = getLogger(getClass)
-  
-      val writer = indexWriter  
-      protected def indexWriter = new IndexWriter(directory, indexWriterConfig)
-      protected def directory: Directory = FSDirectory.open(indexDir.toPath)
-      protected def indexWriterConfig = {
-        import IndexWriterConfig.OpenMode._
-        val c = new IndexWriterConfig(analyzer)
-        c.setOpenMode(if (create) CREATE else APPEND)
-        c
-      }
-  
-      def add(d: Document) = writer.addDocument(d)
-  
-      def close = {
-        log.debug(s"numDocs = ${writer.numDocs}")
-        writer.close
-      }
-      
-    }
-  }
-  
-  object Searching {
-    class Searcher[Hit, Results](
-        indexDir: File,
-        toHit: (ScoreDoc, Document) => Hit, // convert score and map of fields to Hit
-        toResults: (Int, Float, Seq[Hit], Option[String]) => Results, // convert totalHits, elapsedSecs, Seq[Hit], Option[error] to Results
-        toSort: (Option[String], Boolean) => Option[Sort]
-    ) extends Closeable {      
-      val log = getLogger(getClass)
-  
-      val searcher = open
-      protected def open = new IndexSearcher(DirectoryReader.open(directory))
-      protected def directory: Directory = FSDirectory.open(indexDir.toPath)
-          
-      def search(q: Query, sort: Option[Sort], numHits: Int = 20, firstHit: Int = 0) = {
-        val timer = Timer()
+    val searcher = open
+    protected def open = new IndexSearcher(DirectoryReader.open(directory))
+    
+    log.debug(s"Searcher: numDocs = ${searcher.getIndexReader.numDocs}")
         
-        val result = for {
-          // q <- parseQuery(query)
-          topDocs <- Try {
-            if (sort.isDefined) searcher.search(q, numHits + firstHit, sort.get, true, true)
-            else searcher.search(q, numHits + firstHit)
-          }
-          hits <- Try {
-            topDocs.scoreDocs.slice(firstHit, numHits + firstHit) map { scoreDoc =>
-              toHit(scoreDoc, searcher.doc(scoreDoc.doc))
-            }
-          }
-        } yield toResults(topDocs.totalHits, timer.elapsedSecs.toFloat, hits, None)
-        
-        result.recover { case e => toResults(0, timer.elapsedSecs.toFloat, List(), Some(e.getMessage)) }.get
-      }
+    def search(q: Query, numHits: Int = 20) = {
+      val timer = Timer()
       
-      def close = searcher.getIndexReader.close
+      val result = for {
+        topDocs <- Try {
+          searcher.search(q, numHits)
+        }
+        hits <- Try {
+          topDocs.scoreDocs map { scoreDoc => toHit(scoreDoc, searcher.doc(scoreDoc.doc)) }
+        }
+      } yield toResults(topDocs.totalHits, timer.elapsedSecs.toFloat, hits, None)
       
+      result.recover { case e => toResults(0, timer.elapsedSecs.toFloat, List(), Some(e.getMessage)) }.get
     }
     
+    def close = searcher.getIndexReader.close
   }
 
 }

@@ -2,41 +2,32 @@ package au.csiro.data61.gnaf.lucene.service
 
 import java.io.File
 
+import scala.collection.mutable.ListBuffer
 import scala.concurrent.{ ExecutionContextExecutor, Future }
-import scala.io.Source
 import scala.reflect.runtime.universe
 
 import org.apache.lucene.document.Document
-import org.apache.lucene.index.Term
-import org.apache.lucene.search.{ BooleanClause, BooleanQuery, BoostQuery, FuzzyQuery, Query, Sort, TermQuery, ScoreDoc }
-import org.apache.lucene.search.BooleanClause.Occur.SHOULD
+import org.apache.lucene.search.{ ScoreDoc, Sort }
 
 import com.github.swagger.akka.{ HasActorSystem, SwaggerHttpService }
 import com.github.swagger.akka.model.Info
-import com.typesafe.config.{ Config, ConfigFactory }
+import com.typesafe.config.ConfigFactory
 
 import akka.actor.ActorSystem
-import akka.event.{ Logging, LoggingAdapter }
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport.{ sprayJsonMarshaller, sprayJsonUnmarshaller }
-import akka.http.scaladsl.marshalling.ToResponseMarshallable
-import akka.http.scaladsl.model.StatusCodes.BadRequest
+import akka.http.scaladsl.marshalling.ToResponseMarshallable.apply
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.RouteResult.route2HandlerFlow
 import akka.http.scaladsl.server.directives.LoggingMagnet.forRequestResponseFromMarker
 import akka.stream.{ ActorMaterializer, Materializer }
-import au.csiro.data61.gnaf.lucene.util.GnafLucene.{ AddressSimilarity, F_D61ADDRESS, F_D61ADDRESS_NOALIAS, F_JSON, analyzer, shingleSize }
-import au.csiro.data61.gnaf.lucene.util.LuceneUtil.Searching.Searcher
-import au.csiro.data61.gnaf.lucene.util.LuceneUtil.tokenIter
-import au.csiro.data61.gnaf.util.Util
+import au.csiro.data61.gnaf.lucene.util.GnafLucene._
+import au.csiro.data61.gnaf.lucene.util.LuceneUtil.{ Searcher, directory }
 import au.csiro.data61.gnaf.util.Util.getLogger
 import ch.megard.akka.http.cors.CorsDirectives.cors
-import ch.megard.akka.http.cors.CorsSettings.defaultSettings
 import io.swagger.annotations.{ Api, ApiOperation, ApiParam }
 import javax.ws.rs.Path
-import resource.managed
-import spray.json.{ DefaultJsonProtocol, pimpAny }
-import scala.collection.mutable.ListBuffer
+import spray.json.DefaultJsonProtocol
 
 object LuceneService {
   val log = getLogger(getClass)
@@ -93,60 +84,44 @@ object LuceneService {
   
   def toSort(f: Option[String], asc: Boolean): Option[Sort] = None
   
-  case class QueryParam(addr: String, numHits: Int, minFuzzyLength: Int, fuzzyMaxEdits: Int, fuzzyPrefixLength: Int) {
-    def validationBuf(c: CliOption) = {
-      val b = new ListBuffer[String]()
-      if (numHits > c.numHits) b += s"numHits = $numHits exceeds max of ${c.numHits}"
-      if (fuzzyMaxEdits > 0) {
-        if (minFuzzyLength < c.minFuzzyLength) b += s"minFuzzyLength = $minFuzzyLength less than min of ${c.minFuzzyLength}"
-        if (fuzzyMaxEdits > c.fuzzyMaxEdits) b += s"fuzzyMaxEdits = $fuzzyMaxEdits exceeds max of ${c.fuzzyMaxEdits}"
-        if (fuzzyPrefixLength < c.fuzzyPrefixLength) b += s"fuzzyPrefixLength = $fuzzyPrefixLength less than min of ${c.fuzzyPrefixLength}"
-        if (fuzzyPrefixLength >= minFuzzyLength) b += s"fuzzyPrefixLength = $fuzzyPrefixLength not less than minFuzzyLength = $minFuzzyLength"
-      }
-      b
+  def validationBuf(c: CliOption, qp: QueryParam): ListBuffer[String] = {
+    val b = new ListBuffer[String]()
+    if (qp.numHits > c.numHits) b += s"numHits = ${qp.numHits} exceeds max of ${c.numHits}"
+    qp.fuzzy.foreach { f =>
+      if (f.minLength < c.minFuzzyLength) b += s"fuzzy minLength = ${f.minLength} less than min of ${c.minFuzzyLength}"
+      if (f.maxEdits > c.fuzzyMaxEdits) b += s"fuzzy maxEdits = ${f.maxEdits} exceeds max of ${c.fuzzyMaxEdits}"
+      if (f.prefixLength < c.fuzzyPrefixLength) b += s"fuzzy prefixLength = ${f.prefixLength} less than min of ${c.fuzzyPrefixLength}"
+      if (f.prefixLength >= f.minLength) b += s"fuzzy prefixLength = ${f.prefixLength} not less than minLength = ${f.minLength}"
     }
-    /** validation error message or empty for no error */
-    def validationError(c: CliOption) = validationBuf(c).mkString("\n")
+    b
   }
   
-  case class BulkQueryParam(addresses: Seq[String], numHits: Int, minFuzzyLength: Int, fuzzyMaxEdits: Int, fuzzyPrefixLength: Int) {
-    def validationBuf(c: CliOption) = {
-      val b = QueryParam("", numHits, minFuzzyLength, fuzzyMaxEdits, fuzzyPrefixLength).validationBuf(c)
-      if (addresses.size > c.bulk) b += s"addresses.size = ${addresses.size} exceeds max of ${c.bulk}"
-      b
-    }
-    /** validation error message or empty for no error */
-    def validationError(c: CliOption) = validationBuf(c).mkString("\n")
+  /** validation error message or empty for no error */
+  def validationError(b: ListBuffer[String]) = b.mkString("\n")
+  
+  case class BulkQueryParam(addresses: Seq[String], numHits: Int, fuzzy: Option[FuzzyParam], box: Option[BoundingBox])
+
+  def validationBuf(c: CliOption, bqp: BulkQueryParam): ListBuffer[String] = {
+    val b = validationBuf(c, QueryParam("", bqp.numHits, bqp.fuzzy, bqp.box))
+    if (bqp.addresses.size > c.bulk) b += s"addresses.size = ${bqp.addresses.size} exceeds max of ${c.bulk}"
+    b
   }
   
   object JsonProtocol extends DefaultJsonProtocol {
     implicit val hitFormat = jsonFormat4(Hit)
     implicit val resultFormat = jsonFormat4(Result)
-    implicit val queryParamFormat = jsonFormat5(QueryParam)
-    implicit val bulkQueryParamFormat = jsonFormat5(BulkQueryParam)
+    implicit val fuzzyParamFormat = jsonFormat3(FuzzyParam)
+    implicit val boundingBoxFormat = jsonFormat4(BoundingBox)
+    implicit val queryParamFormat = jsonFormat4(QueryParam)
+    implicit val bulkQueryParamFormat = jsonFormat4(BulkQueryParam)
   }
   
   def mkSearcher(c: CliOption) = {
-    val s = new Searcher(c.indexDir, toHit, toResult, toSort)
-    s.searcher.setSimilarity(new AddressSimilarity)
+    val s = new Searcher(directory(c.indexDir), toHit, toResult)
+    s.searcher.setSimilarity(AddressSimilarity)
     s
   }
   
-  def mkQuery(c: QueryParam): Query = {
-    val q = tokenIter(analyzer, F_D61ADDRESS, c.addr).foldLeft(new BooleanQuery.Builder){ (b, t) =>
-      val q = {
-        val term = new Term(F_D61ADDRESS, t)
-        val q = if (c.fuzzyMaxEdits > 0 && t.length >= c.minFuzzyLength) new FuzzyQuery(term, c.fuzzyMaxEdits, c.fuzzyPrefixLength) else new TermQuery(term)
-        val n = shingleSize(t)
-        if (n < 2) q else new BoostQuery(q, Math.pow(3.0, n-1).toFloat)
-      }
-      b.add(new BooleanClause(q, SHOULD))
-      b
-    }.build
-    log.debug(s"mkQuery: bool query = ${q.toString(F_D61ADDRESS)}")
-    q
-  }
-
   def run(c: CliOption) = {
     implicit val sys = ActorSystem()
     implicit val exec = sys.dispatcher
@@ -175,10 +150,17 @@ object LuceneService {
   }
     
 }
+
+/*
+ * Stuff that can get wiped out by Eclipse organize imports:
 import LuceneService._
 import LuceneService.JsonProtocol._
-import org.apache.lucene.search.ScoreDoc
-import org.apache.lucene.search.ScoreDoc
+
+@Api(value = "lucene", produces = "application/json")
+ */
+
+import LuceneService._
+import LuceneService.JsonProtocol._
 
 @Api(value = "lucene", produces = "application/json")
 @Path("lucene")
@@ -190,9 +172,9 @@ class LuceneService(c: CliOption, searcher: Searcher[Hit, Result])
   def searchRoute(
     @ApiParam(value = "queryParam", required = true) q: QueryParam
   ) = {
-    val err = q.validationError(c)
+    val err = validationError(validationBuf(c, q))
     validate(err.isEmpty, err) { complete { Future { 
-      searcher.search(mkQuery(q), None, q.numHits, 0)
+      searcher.search(q.toQuery, q.numHits)
     }}}
   }
   
@@ -201,9 +183,9 @@ class LuceneService(c: CliOption, searcher: Searcher[Hit, Result])
   def bulkSearchRoute(
     @ApiParam(value = "bulkQueryParam", required = true) q: BulkQueryParam
   ) = {
-    val err = q.validationError(c)
+    val err = validationError(validationBuf(c, q))
     validate(err.isEmpty, err) { complete { Future {
-      def seqop(z: Seq[Result], addr: String) = z :+ searcher.search(mkQuery(QueryParam(addr, q.numHits, q.minFuzzyLength, q.fuzzyMaxEdits, q.fuzzyPrefixLength)), None, q.numHits, 0)
+      def seqop(z: Seq[Result], addr: String) = z :+ searcher.search(QueryParam(addr, q.numHits, q.fuzzy, q.box).toQuery, q.numHits)
       q.addresses.par.aggregate(Seq.empty[Result])(seqop, _ ++ _)
     }}}
   }
