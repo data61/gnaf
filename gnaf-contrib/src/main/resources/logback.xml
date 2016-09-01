@@ -1,15 +1,16 @@
 <configuration>
 
   <appender name="LOG" class="ch.qos.logback.core.ConsoleAppender">
-    <!-- encoders are assigned the type ch.qos.logback.classic.encoder.PatternLayoutEncoder by default -->
+<!--   <appender name="LOG" class="ch.qos.logback.core.FileAppender"> -->
+<!--     <file>gnaf-contrib.log</file> -->
     <encoder>
       <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
     </encoder>
   </appender>
 
-  <logger name="au.csiro.data61.gnaf.db.service" level="DEBUG" />
+<!--   <logger name="au.csiro.data61.gnaf.contrib" level="DEBUG" /> -->
   
-  <root level="DEBUG">
+  <root level="INFO">
     <appender-ref ref="LOG" />
   </root>
 </configuration>

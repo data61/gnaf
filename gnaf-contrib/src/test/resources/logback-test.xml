@@ -7,7 +7,7 @@
     </encoder>
   </appender>
 
-  <logger name="au.csiro.data61.gnaf.db.service" level="DEBUG" />
+  <logger name="au.csiro.data61.gnaf.contrib" level="DEBUG" />
   
   <root level="DEBUG">
     <appender-ref ref="LOG" />

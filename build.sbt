@@ -61,32 +61,32 @@ lazy val gnafDb = (project in file("gnaf-db")).
   dependsOn(gnafUtil).
   settings(commonSettings: _*)
 
+lazy val gnafExtractor = (project in file("gnaf-extractor")).
+  dependsOn(gnafDb).
+  settings(commonSettings: _*).
+  settings(com.github.retronym.SbtOneJar.oneJarSettings: _*).
+  settings(
+    mainClass in run in Compile := Some("au.csiro.data61.gnaf.extractor.Extractor")
+  )
+  
+lazy val gnafLucene = (project in file("gnaf-lucene")).
+  dependsOn(gnafUtil).
+  settings(commonSettings: _*)
+  
 lazy val gnafIndexer = (project in file("gnaf-indexer")).
-  dependsOn(gnafUtil, gnafDb).
+  dependsOn(gnafLucene).
   settings(commonSettings: _*).
   settings(com.github.retronym.SbtOneJar.oneJarSettings: _*).
   settings(
     mainClass in run in Compile := Some("au.csiro.data61.gnaf.indexer.Indexer")
   )
   
-lazy val gnafLuceneUtil = (project in file("gnaf-lucene-util")).
-  dependsOn(gnafUtil).
-  settings(commonSettings: _*)
-  
-lazy val gnafLuceneIndexer = (project in file("gnaf-lucene-indexer")).
-  dependsOn(gnafLuceneUtil).
+lazy val gnafSearch = (project in file("gnaf-search")).
+  dependsOn(gnafLucene).
   settings(commonSettings: _*).
   settings(com.github.retronym.SbtOneJar.oneJarSettings: _*).
   settings(
-    mainClass in run in Compile := Some("au.csiro.data61.gnaf.lucene.indexer.LuceneIndexer")
-  )
-  
-lazy val gnafLuceneService = (project in file("gnaf-lucene-service")).
-  dependsOn(gnafLuceneUtil).
-  settings(commonSettings: _*).
-  settings(com.github.retronym.SbtOneJar.oneJarSettings: _*).
-  settings(
-    mainClass in run in Compile := Some("au.csiro.data61.gnaf.lucene.service.LuceneService")
+    mainClass in run in Compile := Some("au.csiro.data61.gnaf.search.Search")
   )
 
 lazy val gnafTest = (project in file("gnaf-test")).
@@ -105,7 +105,7 @@ lazy val gnafDbService = (project in file("gnaf-db-service")).
     mainClass in run in Compile := Some("au.csiro.data61.gnaf.db.service.DbService")
   )
 
-lazy val gnafContribService = (project in file("gnaf-contrib-service")).
+lazy val gnafContrib = (project in file("gnaf-contrib")).
   dependsOn(gnafUtil).
   settings(commonSettings: _*).
   settings(com.github.retronym.SbtOneJar.oneJarSettings: _*).
