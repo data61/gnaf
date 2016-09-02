@@ -1,7 +1,8 @@
 # gnaf-contrib
 
 ## Introduction
-This project provides a [Scala](http://scala-lang.org/) [RESTful](https://en.wikipedia.org/wiki/Representational_state_transfer) web service providing access to the
+This project provides a [Scala](http://scala-lang.org/) [RESTful](https://en.wikipedia.org/wiki/Representational_state_transfer) JSON
+web service providing access to the
 gnafContrib database of user supplied geocodes.
 
 This is a stand-alone webapp and does not run in a servlet container.
@@ -9,27 +10,12 @@ On startup the database schema is created if it doesn't already exist.
 
 ## Configuration
 
-Configuration is in [application.conf](src/main/resources/application.conf) and most settings can be overriden with environment variables.
+Configuration is in [application.conf](src/main/resources/application.conf) and most settings can be overridden with environment variables.
 
-## Running
+## Running and Usage
 
-    nohup java -jar target/scala-2.11/gnaf-contrib_2.11-0.1-SNAPSHOT-one-jar.jar >& gnaf-contrib.log &
+See `gnaf/src/main/script/run.sh`.
 
-## Usage
-
-	# use this in swagger-ui
-	curl 'http://localhost:9010/api-docs/swagger.json
-	
-	#  add contributed geocode for an addressSite
-	curl -XPOST 'http://gnaf.it.csiro.au:9010/contrib/' -H 'Content-Type:application/json' -d '{
-	  "contribStatus":"Submitted","addressSitePid":"712279621","geocodeTypeCode":"EM",
-	  "longitude":149.1213974,"latitude":-35.280994199999995,"dateCreated":0,"version":0
-	}'
-	
-	# list contributed geocodes for an addressSite
-	curl 'http://gnaf.it.csiro.au:9010/contrib/712279621'
-	
-	# there are also delete and update methods
 
 ### Generate Slick bindings
 
@@ -53,7 +39,7 @@ Create a table from which the bindings will be generated:
 Disconnect the SQL client from the database then, from the top level gnaf directory:
 
     sbt
-    > project gnafContribService
+    > project gnafContrib
     > console
     slick.codegen.SourceCodeGenerator.main(
         Array("slick.driver.H2Driver", "org.h2.Driver", "jdbc:h2:file:~/gnafContrib", "generated", "au.csiro.data61.gnaf.contrib.db", "gnaf", "gnaf")

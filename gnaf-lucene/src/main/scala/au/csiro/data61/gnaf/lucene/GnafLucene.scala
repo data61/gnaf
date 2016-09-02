@@ -5,14 +5,15 @@ import org.apache.lucene.analysis.Analyzer.TokenStreamComponents
 import org.apache.lucene.analysis.LowerCaseFilter
 import org.apache.lucene.analysis.core.WhitespaceTokenizer
 import org.apache.lucene.analysis.shingle.ShingleFilter
-import org.apache.lucene.document.FieldType
+import org.apache.lucene.document.{ DoublePoint, FieldType }
 import org.apache.lucene.index.{ FieldInvertState, IndexOptions, IndexWriter, IndexWriterConfig, Term }
 import org.apache.lucene.search.{ BooleanClause, BooleanQuery, BoostQuery, FuzzyQuery, Query, TermQuery }
 import org.apache.lucene.search.similarities.ClassicSimilarity
 import org.apache.lucene.store.Directory
+
 import LuceneUtil.tokenIter
+import au.csiro.data61.gnaf.util.Gnaf.D61_NO_NUM
 import au.csiro.data61.gnaf.util.Util.getLogger
-import org.apache.lucene.document.DoublePoint
 
 /**
  * GNAF specific field names, analyzers and scoring for Lucene.
@@ -106,6 +107,8 @@ object GnafLucene {
     def toQuery: Query = {
       val q = tokenIter(shingleWhiteLowerAnalyzer, F_D61ADDRESS, addr).foldLeft {
         val b = new BooleanQuery.Builder
+        // small score increment for addresses with no number (smaller than for a number match)
+        b.add(new BooleanClause(new BoostQuery(new TermQuery(new Term(F_D61ADDRESS, D61_NO_NUM)), 0.1f), BooleanClause.Occur.SHOULD))
         box.foreach(x => b.add(new BooleanClause(x.toQuery, BooleanClause.Occur.FILTER)))
         b
       }{ (b, t) =>

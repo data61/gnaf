@@ -92,7 +92,7 @@ function doBatch(iter, histMap, errMap) {
     };
     
     function doRequest(qp) {
-      request.post( { url: 'http://localhost:9040/lucene/bulkSearch', json: true, body: qp }, (error, response, hits) => {
+      request.post( { url: 'http://localhost:9040/bulkSearch', json: true, body: qp }, (error, response, hits) => {
         if (error) console.log('error', error);
         else responseHandler(qp, hits);
       });

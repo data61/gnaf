@@ -67,28 +67,28 @@ class GnafLuceneTest extends FlatSpec with Matchers {
 	  for (dir <- managed(new RAMDirectory)) {
 		  for (indexer <- managed(mkIndexer(dir))) {
 			  Seq(
-				  (Seq("55 UPPER PAPER MILLS ROAD", "FYANSFORD VIC 3218"), "55 UPPER PAPER MILLS ROAD FYANSFORD VIC 321", 1.5d, 11.5d),
-				  (Seq("45 UPPER PAPER MILLS ROAD", "FYANSFORD VIC 3218"), "45 UPPER PAPER MILLS ROAD FYANSFORD VIC 321", 0.5d, 10.5d),
-				  (Seq("155-205 UPPER PAPER MILLS ROAD", "FYANSFORD VIC 3218"), "155-205 UPPER PAPER MILLS ROAD FYANSFORD VIC 321", 0d, 10d)
+				  (Seq("D61_NO_NUM INVERNESS ROAD", "DUMGREE QLD 4715"), "INVERNESS ROAD DUMGREE QLD 4715", 1.5d, 11.5d),
+				  (Seq("3204 INVERNESS ROAD", "DUMGREE QLD 4715"), "3204 INVERNESS ROAD DUMGREE QLD 4715", 0.5d, 10.5d),
+				  (Seq("2400 INVERNESS ROAD", "DUMGREE QLD 4715"), "2400 INVERNESS ROAD DUMGREE QLD 4715", 0d, 10d)
 			  ).foreach(a => indexer.addDocument(mkDoc(a)))
 		  } // indexer.close
 
 		  for (searcher <- managed(mkSearcher(dir))) {
 			  // addr: String, numHits: Int, minFuzzyLength: Int, fuzzyMaxEdits: Int, fuzzyPrefixLength: Int
-			  val q = QueryParam("155-205 UPPER PAPER MILLS ROAD FYANSFORD VIC 321", 3, None, None).toQuery
+			  val q = QueryParam("INVERNESS ROAD DUMGREE QLD 4715", 3, None, None).toQuery
 			  val r = searcher.search(q, 3)
 			  log.debug(r.toString)
 			  for (h <- r.hits) {
 				  log.debug(h.toString)
 				  log.debug(searcher.searcher.explain(q, h.id).toString)
 			  }
-	  	  r.hits(0).d61AddressNoAlias should be("155-205 UPPER PAPER MILLS ROAD FYANSFORD VIC 321")
+	  	  r.hits(0).d61AddressNoAlias should be("INVERNESS ROAD DUMGREE QLD 4715")
 	  	  
 	  	  val gq = DoublePoint.newRangeQuery(F_LOCATION, Array[Double](-0.25, 9.75), Array[Double](0.75, 10.75))
 	  	  val gr = searcher.search(gq, 3)
 			  log.debug(gr.toString)
 			  gr.hits.size should be(2)
-	  	  val expected = Set("155-205 UPPER PAPER MILLS ROAD FYANSFORD VIC 321", "45 UPPER PAPER MILLS ROAD FYANSFORD VIC 321")
+	  	  val expected = Set("2400 INVERNESS ROAD DUMGREE QLD 4715", "3204 INVERNESS ROAD DUMGREE QLD 4715")
 	  	  gr.hits.foreach(h => expected.contains(h.d61AddressNoAlias) should be(true))
 		  } // searcher.close
 	  } // dir.close

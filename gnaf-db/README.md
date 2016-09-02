@@ -3,11 +3,13 @@
 ## Introduction
 
 [Slick](http://slick.typesafe.com/) provides "Functional Relational Mapping for Scala".
-This project provides a Slick mapping for the GNAF database created by the gnaf-createdb project.
-The mappings are not tied to any particular relational database.
+This project provides:
+- scripts to load the [G-NAF data set](http://www.data.gov.au/dataset/geocoded-national-address-file-g-naf) into a relational database;
+- tools to generate a Slick binding from this database; and
+- a pre-generated Slick binding.
+The binding is not tied to any particular relational database.
 
-## Introduction
-This project provides scripts to load the [G-NAF data set](http://www.data.gov.au/dataset/geocoded-national-address-file-g-naf) into an [H2](http://www.h2database.com/) relational database. With minor changes it could load into Postgres or something else.
+See `gnaf/src/main/script/run.sh` for automation of the steps described below.
 
 ## Install Tools
 
@@ -50,7 +52,7 @@ See also https://github.com/minus34/gnaf-loader as an alternative (which makes s
 
 Running:
 
-    script/createGnafDb.sh
+    src/main/script/createGnafDb.sh
 
 - downloads the G-NAF zip file to `data/` (if not found);
 - unzips to `data/unzipped/` (if not found); and
@@ -67,8 +69,6 @@ In the SQL box enter: `RUNSCRIPT FROM '{gnaf}/gnaf-createdb/data/createGnafDb.sq
 1. As above but paste the content of this file into the SQL box. This method displays the SQL being executed.
 
 1. Start H2 with the `-pg` option and run the Postgres client:
-
-.
 
 	psql --host=localhost --port=5435 --username=gnaf --dbname=~/gnaf < data/createGnafDb.sql
 	Password for user gnaf: gnaf
@@ -316,12 +316,12 @@ Note the related address with ADDRESS_DETAIL_PID = 'GASA_424344634' has an ADDRE
 To generate Slick mappings for the database ~/gnaf.mv.db, from the top level gnaf directory:
 
     sbt
-    > project gnafCommon
+    > project gnafDb
     > console
     slick.codegen.SourceCodeGenerator.main(
-        Array("slick.driver.H2Driver", "org.h2.Driver", "jdbc:h2:file:~/gnaf", "generated", "au.csiro.data61.gnaf.common.db", "gnaf", gnaf")
+        Array("slick.driver.H2Driver", "org.h2.Driver", "jdbc:h2:file:~/gnaf", "generated", "au.csiro.data61.gnaf.db", "gnaf", gnaf")
     )
 
-This generates code in: `generated/au/csiro/data61/gnaf/common/db/Tables.scala`.
-The source file `src/main/scala/au/csiro/data61/gnaf/common/db/GnafTables.scala` is a very minor modification of this generated code.
+This generates code in: `generated/au/csiro/data61/gnaf/db/Tables.scala`.
+The source file `src/main/scala/au/csiro/data61/gnaf/db/GnafTables.scala` is a very minor modification of this generated code.
 

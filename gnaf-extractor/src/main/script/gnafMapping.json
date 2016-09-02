@@ -30,29 +30,8 @@
 "mappings": { "gnaf": { 
   "_all": { "enabled": false },
   "properties": {
-    // comments not normally allowed in JSON, but this doesn't appear to break Elasticsearch
-    
-    // composite for string fields that are mostly null (mapped to "D61_NULL" in the index to make them searchable)
-    // "d61NullStr": { "type": "string", "analyzer": "d61Whitespace", "null_value": "D61_NULL" },
-    
-    // composite for numeric fields that are mostly null (mapped to -1 in the index to make them searchable)
-    // "d61NullInt": { "type": "string", "analyzer": "d61Whitespace", "null_value": "-1" },
-    
-    // composites
-    // "d61SiteBuilding": { "type": "string", "analyzer": "d61Whitespace", "null_value": "D61_NULL" },
-    // "d61Level": { "type": "string", "analyzer": "d61Whitespace", "null_value": "D61_NULL" },
-    // "d61Flat": { "type": "string", "analyzer": "d61Whitespace", "null_value": "D61_NULL" },
-    // "d61Street": { "type": "string", "analyzer": "d61Whitespace", "null_value": "D61_NULL" },
-    // "d61Locality": { "type": "string", "analyzer": "d61Whitespace", "null_value": "D61_NULL" },    
-    "d61Address": { "type": "string", "position_increment_gap": 100, "analyzer": "d61Shingle" },
-    // , "fields": {
-	//    "raw": { 
-	//      "type":  "string",
-	//      "analyzer": "d61Whitespace"
-	//    }
-	//  }},
+    // comments not normally allowed in JSON, but this doesn't appear to break Elasticsearch    
     "d61AddressNoAlias": { "type": "string", "index": "no" },
-    
     "addressDetailPid": { "type": "string", "index": "not_analyzed" },
     "addressSiteName": { "type": "string", "analyzer": "d61Whitespace", "null_value": "D61_NULL" },
     "buildingName": { "type": "string", "analyzer": "d61Whitespace", "null_value": "D61_NULL" },

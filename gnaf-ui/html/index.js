@@ -14,20 +14,15 @@ function initGnaf() {
   updateLocation();
 }
 
-var esUrl; // Elasticsearch
-var gnafServiceUrl; // GNAF (database) Service
-var contribServiceUrl; // Contrib (database) Service
+var searchUrl; // search service
+var dbUrl; // GNAF (database) service
+var contribUrl; // contrib (database) Service
 
 function initBaseUrl() {
   var host = window.location.protocol === 'file:' ? 'http://localhost' : window.location.protocol + '//' + window.location.hostname;
-  esUrl = host + ':9200/gnaf/';
-
-// or to use the production servers with the webapp served from a different domain: 
-//  var host = 'http://gnaf.it.csiro.au';
-//  esUrl = host + '/es/'; // nginx proxy for CORS since Elastcsearch CORS appears broken
-
-  gnafServiceUrl = host + ':9000/gnaf/'; // CORS out of the box
-  contribServiceUrl = host + ':9010/contrib/';
+  searchUrl = host + ':9040/gnaf/';
+  dbUrl = host + ':9000/gnaf/';
+  contribUrl = host + ':9010/contrib/';
 }
 
 var searchDistance = [ 50, 100, 500, 1000, 2000, 5000, 10000, 50000, 100000 ];
@@ -137,7 +132,7 @@ function bulkSearch(addresses, elem) {
   debug('bulkSearch: queries =', queries);
   showLoading(elem);
   doAjax(
-    esUrl + '_msearch', 
+    searchUrl + '_msearch', 
     queries,
     data => {
       var hits = data.responses.map(r => replaceNulls(r.hits.hits[0]));
@@ -301,25 +296,11 @@ function qDistance(loc, dist) {
 }
 
 // filtered by location (doesn't affect query score)
-// fuzzy matches have inherent scoring issues so we find candidates using fuzzy matching, but then rescore with exact matching  
 function d61AddressQuery(loc, dist, terms, size) {
-  var qTerms = queryPreProcess(terms);
-  var qArr = [ { match: { d61Address: { query: qTerms,  fuzziness: 2, prefix_length: 2 } } } ];
-  if (loc && dist) {
-    qArr.push(qDistance(loc, dist));
-  }
-  return {
-    query: qArrToQuery(qArr), 
-    rescore: { query: {
-      rescore_query: { match: { d61Address: { query: qTerms } } },
-      query_weight: 0.0
-    } },
-    size: size
-  };
-}
-
-function qArrToQuery(qArr) {
-  return qArr.length == 1 ? qArr[0] : { bool : { must: qArr } };
+  var q = { addr: queryPreProcess(terms), numHits: size, fuzzy: { maxEdits: 2, minLength: 5, prefixLength: 2 } };
+  // TODO: use dist instead of 10
+  if (loc && dist) q["box"] = { minLat: loc.lat - 10, minLon: loc.lon - 10, maxLat: loc.lat + 10, maxLon: loc.lon + 10 };
+  return q;
 }
 
 function locationQuery(loc, dist, street, size) {
@@ -372,7 +353,7 @@ function replaceNulls(h) {
 
 function runQuery(query, success, error) {
   doAjax(
-    esUrl + '_search', 
+    searchUrl + 'search', 
     JSON.stringify(query),
     data => {
       data.hits.hits.forEach(h => replaceNulls(h));
@@ -471,7 +452,7 @@ function showGeoDetail(elem, r) { // addressDetailPid
     showLoading(gnafGeocodes);
     existingGeocodeTypes = new Set();
     
-    doAjax(gnafServiceUrl + 'addressType/' + r.addressDetailPid, null,
+    doAjax(dbUrl + 'addressType/' + r.addressDetailPid, null,
       data => {
         addrType.empty().append([
           $('<label>').text('Address type'),
@@ -482,7 +463,7 @@ function showGeoDetail(elem, r) { // addressDetailPid
       err => addrType.empty()
     );
     
-    doAjax(gnafServiceUrl + 'addressGeocode/' + r.addressDetailPid, null,
+    doAjax(dbUrl + 'addressGeocode/' + r.addressDetailPid, null,
       data => { 
         gnafGeocodes.empty().append([
           $('<label>').text('G-NAF geocodes'),
@@ -517,7 +498,7 @@ function showContrib(elem, addressSitePid) {
       return z;
     }, {});
     debug('step2: typMap =', typMap);
-    doAjax(contribServiceUrl + addressSitePid, null,
+    doAjax(contribUrl + addressSitePid, null,
       data => {
         data.forEach(d => d.record = d);
         var tbl = genTable(data, [
@@ -554,7 +535,7 @@ function showContrib(elem, addressSitePid) {
   };
   
   showLoading(elem);
-  doAjax(gnafServiceUrl + 'geocodeType', null,
+  doAjax(dbUrl + 'geocodeType', null,
       data => step2(data.types),
       err => elem.empty()
   );
@@ -563,7 +544,7 @@ function showContrib(elem, addressSitePid) {
 function addContrib(contribGeocode, refresh) {
   debug('addContrib: contribGeocode =', contribGeocode);
   doAjax(
-    contribServiceUrl,
+    contribUrl,
     JSON.stringify(contribGeocode),
     data => {
       debug('addContrib: OK');
@@ -576,7 +557,7 @@ function addContrib(contribGeocode, refresh) {
 function deleteContrib(contribGeocodeKey, refresh) {
   debug('addContrib: contribGeocodeKey =', contribGeocodeKey);
   doAjax(
-    contribServiceUrl,
+    contribUrl,
     JSON.stringify(contribGeocodeKey),
     data => {
       debug('deleteContrib: OK');

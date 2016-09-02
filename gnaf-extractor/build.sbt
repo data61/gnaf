@@ -1,4 +1,4 @@
-name := "gnaf-indexer"
+name := "gnaf-extractor"
 
 libraryDependencies ++= Seq(
   "com.github.scopt" %% "scopt" % "3.3.0",

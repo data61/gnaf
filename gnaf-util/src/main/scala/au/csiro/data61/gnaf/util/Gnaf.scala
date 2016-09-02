@@ -4,11 +4,13 @@ import spray.json.DefaultJsonProtocol
 
 object Gnaf {
   
+  val D61_NO_NUM = "d61_no_num" // lowercase so query generator doesn't need to 'analyze' it 
+    
   def join(s: Seq[Option[String]], delim: String): Option[String] = {
-    val r = s.flatten.filter(x => x.nonEmpty && x != "D61_NULL").mkString(delim)
+    val r = s.flatten.filter(_.nonEmpty).mkString(delim)
     if (r.nonEmpty) Some(r) else None
   }
-  def d61Num(n: Option[Int]) = n.filter(_ != -1).map(_.toString)
+  def d61Num(n: Option[Int]) = n.map(_.toString)
   
   case class PreNumSuf(prefix: Option[String], number: Option[Int], suffix: Option[String]) {
     def toOptStr = join(Seq(prefix, d61Num(number), suffix), "")
@@ -27,18 +29,18 @@ object Gnaf {
         
     def toD61Address = {
       val streetNum = numberFirst.toOptStr.map(f => f + numberLast.toOptStr.map("-" + _).getOrElse(""))
-      val seqNoAlias = Seq(
+      def seqNoAlias(streetNumDefault: Option[String] = None) = Seq(
         Seq( addressSiteName, buildingName ), // each inner Seq optionally produces a String in the final Seq
         Seq( flatTypeName, flat.toOptStr ), 
         Seq( levelTypeName, level.toOptStr ),
-        Seq( streetNum, street.map(_.name), street.flatMap(_.typeCode), street.flatMap(_.suffixName) ),
+        Seq( streetNum.orElse(streetNumDefault), street.map(_.name), street.flatMap(_.typeCode), street.flatMap(_.suffixName) ),
         Seq( Some(localityName), Some(stateAbbreviation), postcode )
       )
-      val seqWithAlias = seqNoAlias ++
+      val seqWithAlias = seqNoAlias(Some(D61_NO_NUM)) ++
         streetVariant.map(v => Seq( streetNum, Some(v.name), v.typeCode, v.suffixName )) ++
         localityVariant.map(v => Seq( Some(v.localityName), Some(stateAbbreviation), postcode ))
       val d61Address = seqWithAlias.map(inner => join(inner, " ")).flatten
-      val d61AddressNoAlias = join(seqNoAlias.map(inner => join(inner, " ")), " ").getOrElse("")
+      val d61AddressNoAlias = join(seqNoAlias().map(inner => join(inner, " ")), " ").getOrElse("")
       (d61Address, d61AddressNoAlias)
     }
   }

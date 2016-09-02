@@ -21,7 +21,7 @@ import spray.json.pimpAny
 // Organize Imports deletes this, so make it easy to restore ...
 // import slick.collection.heterogeneous.syntax.::
 
-object Indexer {
+object Extractor {
   val log = Util.getLogger(getClass)
   
   // use a bounded blocking queue
@@ -67,9 +67,9 @@ object Indexer {
   val defaultCliOption = CliOption(config.getString("gnafDb.url"))
 
   def main(args: Array[String]): Unit = {
-    val parser = new scopt.OptionParser[CliOption]("gnaf-indexer") {
-      head("gnaf-indexer", "0.x")
-      note("Creates JSON from gnaf database to load into Elasticsearch.")
+    val parser = new scopt.OptionParser[CliOption]("gnaf-extractor") {
+      head("gnaf-extractor", "0.x")
+      note("Creates JSON from gnaf database to load into a search engine.")
       opt[String]('u', "dburl") action { (x, c) =>
         c.copy(dburl = x)
       } text (s"database URL, default ${defaultCliOption.dburl}")
@@ -139,7 +139,7 @@ object Indexer {
       val seqFut: Seq[Future[Unit]] = seq.map {
         case (localityPid, localityName, statePid) =>
           val locDone = doLocality(localityPid, localityName, statePid, stateMap, flatTypeMap, streetTypeMap, streetSuffixMap)
-          Await.result(locDone, 5.minute) // without this it runs out of memory before outputting anything!
+          Await.result(locDone, 10.minute) // without this it runs out of memory before outputting anything!
           locDone
       }
       Future.fold(seqFut)(())((_, _) => ())
@@ -182,13 +182,6 @@ object Indexer {
   concurrency of processing the rows.
  */
 
-  class D61Null[T](s: Option[T], default: T) {
-    def d61null(): Option[T] = s.orElse(Some(default))
-  }
-  implicit def d61NullStr(s: Option[String]) = new D61Null(s, "D61_NULL")
-  implicit def d61NullChr(s: Option[Char]) = new D61Null(s, '0')
-  implicit def d61NullInt(s: Option[Int]) = new D61Null(s, -1)
-  
   def doLocality(
     localityPid: String, localityName: String, statePid: String,
     stateMap: Future[Map[String, (String, String)]], flatTypeMap: FutStrMap, streetTypeMap: FutStrMap, streetSuffixMap: FutStrMap)(
@@ -225,18 +218,18 @@ object Indexer {
             sla <- streetLocalityAlias(streetLocalityPid)
           } yield Address(
             addressDetailPid, addressSiteName.flatten, buildingName,
-            flatTypeCode.d61null, flatTypeCode.map(ftm).d61null, PreNumSuf(flatNumberPrefix.d61null, flatNumber.d61null, flatNumberSuffix.d61null),
-            levelTypeCode.d61null, levelTypeName.d61null, PreNumSuf(levelNumberPrefix.d61null, levelNumber.d61null, levelNumberSuffix.d61null),
-            PreNumSuf(numberFirstPrefix.d61null, numberFirst.d61null, numberFirstSuffix.d61null),
-            PreNumSuf(numberLastPrefix.d61null, numberLast.d61null, numberLastSuffix.d61null),
-            street.map(s => Street(s._1, s._2.d61null, s._2.map(stm).d61null, s._3.d61null, s._3.map(ssm).d61null)),
-            localityName, stateAbbreviation, stateName, postcode.d61null,
-            aliasPrincipal.d61null, primarySecondary.d61null,
+            flatTypeCode, flatTypeCode.map(ftm), PreNumSuf(flatNumberPrefix, flatNumber, flatNumberSuffix),
+            levelTypeCode, levelTypeName, PreNumSuf(levelNumberPrefix, levelNumber, levelNumberSuffix),
+            PreNumSuf(numberFirstPrefix, numberFirst, numberFirstSuffix),
+            PreNumSuf(numberLastPrefix, numberLast, numberLastSuffix),
+            street.map(s => Street(s._1, s._2, s._2.map(stm), s._3, s._3.map(ssm))),
+            localityName, stateAbbreviation, stateName, postcode,
+            aliasPrincipal, primarySecondary,
             location.flatMap {
               case (Some(lat), Some(lon)) => Some(Location(lat, lon))
               case _                      => None
             },
-            sla.map(s => Street(s._1, s._2.d61null, s._2.map(stm).d61null, s._3.d61null, s._3.map(ssm).d61null)),
+            sla.map(s => Street(s._1, s._2, s._2.map(stm), s._3, s._3.map(ssm))),
             locVar)
 
           addr.onComplete {

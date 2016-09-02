@@ -163,7 +163,7 @@ import Search.JsonProtocol._
 import ch.megard.akka.http.cors.CorsSettings
 
 @Api(value = "search", produces = "application/json")
-@Path("gnaf")
+@Path("")
 class LuceneService(c: CliOption, searcher: Searcher[Hit, Result])
 (implicit system: ActorSystem, executor: ExecutionContextExecutor, materializer: Materializer) {
   
@@ -190,7 +190,7 @@ class LuceneService(c: CliOption, searcher: Searcher[Hit, Result])
     }}}
   }
   
-  val routes = pathPrefix("gnaf") { 
+  val routes = { 
     pathPrefix("search")     { (post & entity(as[QueryParam]))     { searchRoute     } } ~
     pathPrefix("bulkSearch") { (post & entity(as[BulkQueryParam])) { bulkSearchRoute } }
   }

@@ -12,7 +12,7 @@ then
 # run Scala program, takes about 25min with a SSD
 rm -f gnaf-indexer.log
 mkdir -p $DIR
-time java -Xmx3G -jar target/scala-2.11/gnaf-indexer_2.11-0.1-SNAPSHOT-one-jar.jar | gzip > $DIR/out.gz
+time java -Xmx3G -jar target/scala-2.11/gnaf-extractor_2.11-0.1-SNAPSHOT-one-jar.jar | gzip > $DIR/out.gz
 mv gnaf-indexer.log $DIR
 
 fi
