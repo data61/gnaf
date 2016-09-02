@@ -29,7 +29,7 @@ These are run as above (not in a servlet container).
 
 The top level directory provides:
 - the [sbt](http://www.scala-sbt.org/) build for the [Scala](http://scala-lang.org/) code in projects 1-9 (no build is required for 10); and
-- [run.sh](blob/master/src/main/script/run.sh) to run everything, but first:
+- [run.sh](src/main/script/run.sh) to run everything, but first:
   - take a look as its intended as executable documentation and you may not wish to run it all each time
   - install tools
 
@@ -46,8 +46,8 @@ To develop [Scala](http://scala-lang.org/) code install:
 ### Dependencies
 
 - scripts assume a *nix environment
-- `run.sh` requires the Postgres client `psql` to load the database (see gnaf-db/README.md for an alternative method using the h2 client)
-- gnaf-test has additional dependencies - see its [README.md](tree/master/gnaf-test)
+- [run.sh](src/main/script/run.sh) requires the Postgres client `psql` to load the database (see [gnaf-db](gnaf-db) for an alternative method using the h2 client)
+- [gnaf-test](gnaf-test) has additional dependencies - see its README
 
 ## Build
 
@@ -62,7 +62,7 @@ builds one-jar files and creates license reports on dependencies.
 
 ## Run
 
-See [run.sh](blob/master/src/main/script/run.sh).
+See [run.sh](src/main/script/run.sh).
 
 ## Develop With Eclipse
 
