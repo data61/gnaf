@@ -2,12 +2,14 @@
 
 ## Introduction
 This project:
+
 - loads the [G-NAF data set](http://www.data.gov.au/dataset/geocoded-national-address-file-g-naf) into a relational database and search engine;
 - provides JSON web services to access the database and search engine; and
 - provides a demonstration web user interface using the web services.
 
 ## Project Structure
 These sub-directories contain sub-projects:
+
 1. gnaf-util: common code
 2. gnaf-db: scripts to load the [G-NAF data set](http://www.data.gov.au/dataset/geocoded-national-address-file-g-naf) into a relational database
 and [Slick](http://slick.typesafe.com/) "Functional Relational Mapping" bindings for the database
@@ -21,6 +23,7 @@ and [Slick](http://slick.typesafe.com/) "Functional Relational Mapping" bindings
 10. gnaf-ui: static files providing a demonstration web user interface using gnaf-search, gnad-db-service and gnaf-contrib.
 
 Nature of Sub-projects:
+
 - 1, 2 & 4 produce a jar file of library code used by other sub-projects
 - 3, 5 & 7 produce command line programs packaged as a [onejar](https://github.com/sbt/sbt-onejar).
 This is a jar file containing all dependencies and run simply with: `java -jar {filename.jar}`
