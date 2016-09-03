@@ -12,7 +12,8 @@ These sub-directories contain sub-projects:
 
 1. gnaf-util: common code
 2. gnaf-db: scripts to load the [G-NAF data set](http://www.data.gov.au/dataset/geocoded-national-address-file-g-naf) into a relational database
-and [Slick](http://slick.typesafe.com/) "Functional Relational Mapping" bindings for the database
+and [Slick](http://slick.typesafe.com/) "Functional Relational Mapping" bindings for the database.
+The README.md discusses the H2 database and G-NAF data.
 3. gnaf-extractor: queries the database to produce JSON address data
 4. gnaf-lucene: common code for indexing and searching G-NAF with [Lucene](https://lucene.apache.org/) 
 5. gnaf-indexer: loads JSON address data into a [Lucene](https://lucene.apache.org/) index
