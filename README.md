@@ -78,7 +78,7 @@ uses the [sbteclipse](https://github.com/typesafehub/sbteclipse/wiki/Using-sbtec
 ## Software License
 
 This software is released under the CSIRO BSD license - see `Licence.txt`.
-Each of the sub-projects 2 - 4 lists its dependencies and their licenses in `3rd-party-licenses.html`.
+Each of the sub-projects lists its dependencies and their licenses in `3rd-party-licenses.html`.
 
 ## Data License
 
