@@ -24,6 +24,7 @@ cd ..
 # run h2 with postgres protocol, remembering its PID
 java -Xmx3G -jar ~/.ivy2/cache/com.h2database/h2/jars/h2-1.4.191.jar -web -pg &
 H2_PID=$!
+sleep 10
 
 # set psql gnaf password to gnaf
 [[ -r ~/.pgpass ]] && grep -q gnaf ~/.pgpass || {
