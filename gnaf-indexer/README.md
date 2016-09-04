@@ -4,7 +4,7 @@
 
 This project loads JSON address data from `gnaf-extractor` into a [Lucene](https://lucene.apache.org/) index.
 Originally Elasticsearch was used, but it was found that significant tweaks to scoring were required for good results
-and this was easiest achieved in raw Lucene (version 6.2 also provided significant speed improvements).
+and this was easiest achieved in raw Lucene (which also provided significant speed improvements).
 
 ## Configuration
 
