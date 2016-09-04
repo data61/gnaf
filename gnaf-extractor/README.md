@@ -9,7 +9,7 @@ This project queries the gnaf database to produce JSON address data (for consump
 If an [H2](http://www.h2database.com/) result set contains more than
 [MAX_MEMORY_ROWS](http://www.h2database.com/html/grammar.html?highlight=max_memory_rows&search=MAX_MEMORY_ROWS#set_max_memory_rows),
 it is spooled to disk before the first row is provided to the client.
-The default is 40000 per GB of available RAM and setting a non-default value requires database admin rights (which we prefer to avoid using).
+The default is 40000 rows per GB of available RAM and setting a non-default value requires database admin rights (which we prefer to avoid using).
 Analysis in comments in `Extractor.scala` shows that it needs to handle result sets up to 95,004 rows, so allocating 3GB of heap (with `java -Xmx3G`) should avoid spooling.
 
 ## Configuration
