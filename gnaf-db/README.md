@@ -2,12 +2,10 @@
 
 ## Introduction
 
-[Slick](http://slick.typesafe.com/) provides "Functional Relational Mapping for Scala".
 This project provides:
 - scripts to load the [G-NAF data set](http://www.data.gov.au/dataset/geocoded-national-address-file-g-naf) into a relational database;
-- tools to generate a Slick binding from this database; and
-- a pre-generated Slick binding.
-The binding is not tied to any particular relational database.
+- tools to generate a [Slick](http://slick.typesafe.com/) mapping for this database; and
+- a pre-generated Slick mapping.
 
 See `gnaf/src/main/script/run.sh` for automation of the steps described below.
 
