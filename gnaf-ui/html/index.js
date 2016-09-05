@@ -1,3 +1,12 @@
+// TODO: Search swagger.json doesn't have return type of bulkSearch
+
+Array.prototype.flatMap = function(f) {
+  return this.map(f).flatten();
+}
+Array.prototype.flatten = function() {
+  return Array.prototype.concat.apply([], this);
+}
+
 function debug() {
   console.log(arguments)
 }
@@ -20,7 +29,7 @@ var contribUrl; // contrib (database) Service
 
 function initBaseUrl() {
   var host = window.location.protocol === 'file:' ? 'http://localhost' : window.location.protocol + '//' + window.location.hostname;
-  searchUrl = host + ':9040/gnaf/';
+  searchUrl = host + ':9040/';
   dbUrl = host + ':9000/gnaf/';
   contribUrl = host + ':9010/contrib/';
 }
@@ -69,7 +78,7 @@ function getLatLon() {
 
 function getDist() {
   var v = $('#searchDistance').val();
-  return v == -1 ? null : v + 'm';
+  return v == -1 ? null : v;
 }
 
 function createTabs(id, itc) {
@@ -126,37 +135,24 @@ function createBulkLookup() {
 }
 
 function bulkSearch(addresses, elem) {
-  var loc = getLatLon();
-  var dist = getDist();
-  var queries = addresses.map(a => '{}\n' + JSON.stringify(d61AddressQuery(loc, dist, a, 1)) + '\n').join('');
-  debug('bulkSearch: queries =', queries);
+  var q = d61AddressQuery(getLatLon(), getDist(), "", 1);
+  delete q.addr;
+  q.addresses = addresses;
+  debug('bulkSearch: q =', q);
+  
   showLoading(elem);
+  var t0 = new Date().getTime();
   doAjax(
-    searchUrl + '_msearch', 
-    queries,
-    data => {
-      var hits = data.responses.map(r => replaceNulls(r.hits.hits[0]));
-      var max = hits.reduce((z, h) => h._score > z ? h._score : z, 0);
-      elem.empty().append(searchResult({ took: 0, hits: { max_score: max, total: hits.length, hits: hits } }));
-    }, 
-    msg => elem.empty(), 'POST', false, 'json');
+    searchUrl + 'bulkSearch', 
+    JSON.stringify(q),
+    data => { elem.empty().append(
+      searchResult({ elapsedSecs: (new Date().getTime() - t0)/1000, totalHits: data.reduce((z, r) => z + r.totalHits, 0), hits: data.flatMap(r => r.hits) })
+    )}, 
+    msg => elem.empty(),
+    'POST', false, 'json');
 }
 
-//  <div class="header">
-//  <label for="freeText">addresses</label>
-//  <span class="example">one per line e.g.</span>
-//  <span class="example multi-line">7 London Circuit, ACT 2601<br>18 London Circuit, ACT 2601</span>
-//  <a id="clearFreeText" href="#">clear</a>
-//</div>
-//<textarea id="freeText" name="freeText"></textarea>
-//</div>
-//<button type="button">Search</button>}
-
-function toStreet(h) {
-  var s = h._source.street;
-  var r = { street: s, text: filterJoin([ s.name, s.typeCode, s.suffixName ], ' ') };
-  return r;
-}
+var streetToString = s => filterJoin([ s.name, s.typeCode, s.suffixName ], ' ');
 
 // filter array (preserving order) on unique values of f(x)
 function unique(arr, f) {
@@ -182,11 +178,13 @@ function searchAddressesNearMe(elem) {
       $('<a>').attr('href', '#').addClass('refresh').text('refresh').click(stopPropagation(() => searchAddressesNearMe(elem)))
     ]);
   } else {
-    runQuery(
-      locationQuery(loc, dist, null, 1000),
+    doAjax(
+      searchUrl + 'search', 
+      JSON.stringify(locationQuery(loc, dist, null, 1000)),
       function(data) {
-        hitsNearMe = data.hits.hits;
-        unqStreet = unique(hitsNearMe.map(toStreet), s => s.text);
+        data.hits.forEach(h => h.gnaf = JSON.parse(h.json));
+        hitsNearMe = data.hits;
+        unqStreet = unique(hitsNearMe.map(h => ({ street: h.gnaf.street, text: streetToString(h.gnaf.street) })), s => s.text);
         
         var streetId = 'streetFilter';
         var streets = $('<select>').attr({id: streetId, name: streetId })
@@ -220,28 +218,39 @@ function searchAddressesNearMe(elem) {
   }
 }
 
-
 var streetHitsNearMe;
 
 function filterStreet(addrs, street, result) {
   debug('filterStreet: street =', street);
-  streetHitsNearMe = street ? hitsNearMe.filter(i => {
-      var s = i._source.street;
-      var b = s.name == street.name && s.typeCode == street.typeCode && s.suffixName == street.suffixName;
-      return b;
+  streetHitsNearMe = street ? hitsNearMe.filter(h => {
+      var s = h.gnaf.street;
+      return s.name == street.name && s.typeCode == street.typeCode && s.suffixName == street.suffixName;
     }) : hitsNearMe;
+    
+  var loc = getLatLon();
+  var cosLat = Math.cos(loc.lat * Math.PI/180);
+  // distance from loc to l in meters
+  function dist(l) {
+    var dy = (l.lat - loc.lat) * 1e7/90;
+    var dx = (l.lon - loc.lon) * 1e7/90 * cosLat;
+    return Math.sqrt(dx * dx + dy * dy);
+  }
+  var sortBy = (a, b) => dist(a.gnaf.location) - dist(b.gnaf.location);
+  streetHitsNearMe.sort(sortBy);
+  
+  debug('filterStreet: streetHitsNearMe =', streetHitsNearMe);
   addrs.empty();
   var sel = $('<select>').attr({id: 'address', name: 'address' })
     .append($('<option>').attr('value', -1).text('Choose an address'))
-    .append(streetHitsNearMe.map((h, i) => $('<option>').attr('value', i).text(hitToAddress(h._source))));
+    .append(streetHitsNearMe.map((h, i) => $('<option>').attr('value', i).text(h.d61AddressNoAlias)));
   addrs.append(sel);
   sel.val(-1);
   sel.selectmenu({ 
     change: function(ev, ui) {
       debug('filterStreet: change: ev =', ev, 'ui =', ui, 'value =', ui.item.value);
-      var hit = streetHitsNearMe[ui.item.value]._source;
+      var hit = streetHitsNearMe[ui.item.value];
       debug('filterStreet: hit =', hit);
-      result.empty().append(searchResult({ took: 0, hits: { max_score: 1.0, total: 1, hits: [ { _score: 1.0, _source: hit } ] } }));
+      result.empty().append(searchResult({ elapsedSecs: 0, totalHits: 1, hits: [hit]}));
     }
   });
 }
@@ -254,7 +263,7 @@ function initAutoCompleteAddress(elem, result) {
       e.preventDefault();
       debug('address autocomplete: selected =', selected, 'value =', selected.item.value);
       elem.val(selected.item.value);
-      result.empty().append(searchResult({ took: 0, hits: { max_score: 1.0, total: 1, hits: [ { _score: 1.0, _source: selected.item.payload } ] } }));
+      result.empty().append(searchResult({ elapsedSecs: 0, totalHits: 1, hits: [selected.item.payload]}));
     }
   });
   elem.data("ui-autocomplete")._renderItem = function (ul, item) {
@@ -266,10 +275,11 @@ function initAutoCompleteAddress(elem, result) {
 }
 
 function suggestAddress(req, resp) {
-  runQuery(
-    d61AddressQuery(getLatLon(), getDist(), req.term, 10),
+  doAjax(
+    searchUrl + 'search', 
+    JSON.stringify(d61AddressQuery(getLatLon(), getDist(), req.term, 10)),
     function(data) {
-      resp(data.hits.hits.map(i => ({ label: hitToAddress(i._source), payload: i._source }) ));
+      resp(data.hits.map(h => ({ label: h.d61AddressNoAlias, payload: h })));
     },
     function() {
       resp([]);
@@ -291,35 +301,21 @@ function queryPreProcess(addr) {
   return addr.replace(/\/|,/g, ' ');
 }
 
-function qDistance(loc, dist) {
-  return { geo_distance : { distance : dist, location : loc } };
-}
-
 // filtered by location (doesn't affect query score)
 function d61AddressQuery(loc, dist, terms, size) {
   var q = { addr: queryPreProcess(terms), numHits: size, fuzzy: { maxEdits: 2, minLength: 5, prefixLength: 2 } };
-  // TODO: use dist instead of 10
-  if (loc && dist) q["box"] = { minLat: loc.lat - 10, minLon: loc.lon - 10, maxLat: loc.lat + 10, maxLon: loc.lon + 10 };
+  if (loc && dist) {
+    var dlat = 90 * dist/1e7 / 2; // 90 deg lat is about 1e7m (/2 for +/- dlat)
+    var dlon = dlat * Math.cos(loc.lat * Math.PI/180);
+    q["box"] = { minLat: loc.lat - dlat, minLon: loc.lon - dlon, maxLat: loc.lat + dlat, maxLon: loc.lon + dlon };
+  }
   return q;
 }
 
 function locationQuery(loc, dist, street, size) {
-  var qArr = [ qDistance(loc, dist) ];
-  if (street) {
-    qArr.push({ match: { 'street.name': street.name } });
-    qArr.push({ match: { 'street.typeCode': street.typeCode } });
-    if (street.suffixName) qArr.push({ match: { 'street.suffixName': street.suffixName } });
-  };
-  return {
-    query : { "function_score" : {
-      query : qArrToQuery(qArr),
-      exp: { location : {
-        origin: loc,
-        scale: dist
-      }},
-    }},
-    size: size
-  };
+  var q = d61AddressQuery(loc, dist, street ? filterJoin([ street.name, street.typeCode, street.suffixName ], ' ') : '', size);
+  delete q.fuzzy;
+  return q;
 }
 
 function showLoading(elem) {
@@ -329,8 +325,9 @@ function showLoading(elem) {
 function search(inp, elem) {
   return function() {
     showLoading(elem);
-    runQuery(
-      d61AddressQuery(getLatLon(), getDist(), inp.val(), 10),
+    doAjax(
+      searchUrl + 'search', 
+      JSON.stringify(d61AddressQuery(getLatLon(), getDist(), inp.val(), 10)),
       function(data, textStatus, jqXHR) {
         elem.empty().append(searchResult(data));
       },
@@ -340,27 +337,6 @@ function search(inp, elem) {
       }
     );
   };
-}
-
-function replaceNulls(h) {
-  for (var p in h) {
-    var obj = h[p];
-    if (obj === 'D61_NULL' || obj === -1) h[p] = null;
-    else if (typeof obj === 'object' && !Array.isArray(obj)) replaceNulls(obj);
-  }
-  return h;
-}
-
-function runQuery(query, success, error) {
-  doAjax(
-    searchUrl + 'search', 
-    JSON.stringify(query),
-    data => {
-      data.hits.hits.forEach(h => replaceNulls(h));
-      success(data);      
-    },
-    error
-  );
 }
 
 function doAjax(url, data, success, error, method, contentType, dataType) {
@@ -568,19 +544,11 @@ function deleteContrib(contribGeocodeKey, refresh) {
   );
 }
 
-function hitToAddress(h) {
-  return filterJoin([
-    siteColHandler(h),
-    filterJoin([ flatColHandler(h), levelColHandler(h), streetColHandler(h) ], ' '),
-    filterJoin([ h.localityName, h.stateAbbreviation, h.postcode ], ' ')
-  ], ', ');
-}
-
 function dataHits(data) {
-  return data.hits.hits.map(h => {
-    var obj = h._source;
-    obj.score = h._score / data.hits.max_score;
-    obj.record = obj; // for colHandler to access whole record
+  return data.hits.map(h => {
+    var obj = JSON.parse(h.json);
+    obj.score = h.score;
+    obj.record = obj; // for colHandler requiring access to multiple fields/whole record
     return obj;
   });
 }
@@ -589,7 +557,7 @@ function searchResult(data) {
   var geoDetail = $('<div>').addClass('geoDetail');
   var locHandler = locationColHandler(geoDetail);
   return [
-    $('<span>').attr('class', 'stats').text(data.hits.hits.length.toLocaleString() + ' of ' + data.hits.total.toLocaleString() + ' hits in ' + (data.took/1000.0).toFixed(3) + ' sec'),
+    $('<span>').attr('class', 'stats').text(data.hits.length.toLocaleString() + ' of ' + data.totalHits.toLocaleString() + ' hits in ' + data.elapsedSecs.toFixed(3) + ' sec'),
     genTable(dataHits(data), [
                               new Col('Rank', 'score', scoreColHandler),
                               new Col('Site', 'record', siteColHandler),
@@ -653,113 +621,3 @@ function Col(label, field, handler, tdClass) {
 // functions you can use for the above Col.handler
 function defaultColHandler(v) { return v; }
 function scoreColHandler(v) { return v === "NaN" ? "" : v.toPrecision(2); }
-
-
-// Rest is copied over from old app, not used
-
-//function initSearch() {
-//  initBaseUrl();
-//  $('#state').append(states.map(s => {
-//    var opt = $('<option>').val(s.code);
-//    opt.text(s.name);
-//    return opt;
-//  }));
-//  $('#searchForm button').on('click', stopPropagation(search));
-//  $('#clearFreeText').on('click', stopPropagation(clearFreeText));
-//  $('#clearFields').on('click', stopPropagation(clearFields));
-//  initSuggestAddress();
-//  
-//}
-//
-//function initBulk() {
-//  initBaseUrl();
-//  $('#searchForm button').on('click', stopPropagation(bulk));
-//  $('#clearFreeText').on('click', stopPropagation(clearFreeText));
-//}
-//
-//
-//var states = [
-//              { code: 'ACT', name: 'AUSTRALIAN CAPITAL TERRITORY' },
-//              { code: 'NSW', name: 'NEW SOUTH WALES' },
-//              { code: 'NT', name: 'NORTHERN TERRITORY' },
-//              { code: 'OT', name: 'OTHER TERRITORIES' },
-//              { code: 'QLD', name: 'QUEENSLAND' },
-//              { code: 'SA', name: 'SOUTH AUSTRALIA' },
-//              { code: 'TAS', name: 'TASMANIA' },
-//              { code: 'VIC', name: 'VICTORIA' },
-//              { code: 'WA', name: 'WESTERN AUSTRALIA' }
-//            ];
-//
-//
-//function clearFreeText() {
-//  $('#freeText').val('');
-//}
-//
-//var fields = [ 'site', 'level', 'flat', 'street', 'locality', 'postcode', 'state' ];
-//
-//function clearFields() {
-//  fields.forEach(a => $('#' + a).val(a === 'state' ? 'ACT' : ''));
-//}
-//
-///**
-// * @returns object with a key named after each element in `fields` with trimmed, uppercased value taken from the DOM element with that id. 
-// */
-//function getFields() {
-//  return fields.reduce(
-//    (obj, f) => {
-//      obj[f] = $('#' + f).val().trim().toUpperCase();
-//      return obj;
-//    },
-//    ({})
-//  );
-//}
-//
-//
-//function bulk() {
-//  var r = $('#searchResult');
-//  var tbl = genTable([], searchResultCols);
-//  r.empty().append(tbl);
-//  
-//  function q(terms) {
-//    runQuery(
-//      d61AddressQuery(terms, 1),
-//      function(data) {
-//        data.hits.max_score = 1.0;
-//        tbl.append(genRow(dataHits(data)[0], searchResultCols));
-//      },
-//      function() {}
-//    );
-//  }
-//  
-//  $('#freeText').val().split('\n').forEach(addr => q(addr));
-//}
-//
-///**
-//* Replace values used to represent `searchable nulls` with actual nulls.
-//* <p>
-//* Elastic search omits nulls from the index, consequently they cannot be searched for.
-//* The indexing process substitutes 'D61_NULL' for null values to make them searchable and here we do the reverse.
-//* 
-//* @param h
-//*/
-//
-//
-//
-//// add an .onEnter function we can use for input fields
-//// (function($) {
-//// $.fn.onEnter = function(func) {
-//// this.bind('keypress', function(e) {
-//// if (e.keyCode == 13) func.apply(this, [ e ]);
-//// });
-//// return this;
-//// };
-//// })(jQuery);
-//
-//function addSpinner(elem) {
-//  elem.append('<div class="spinner"><img src="ajax-loader.gif" alt="spinner"></div>');
-//}
-//
-//function showError(elem, error) {
-//  elem.append($('<div>').attr('class', 'error').text(error));
-//}
-
