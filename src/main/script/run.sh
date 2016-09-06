@@ -53,22 +53,11 @@ zcat addresses.gz | time java -jar gnaf-indexer/target/scala-${scalaVersion}/gna
 
 
 
-# === Run JSON web services ====
+# === demo gnaf-search and gnaf-test ===
 
 java -jar gnaf-search/target/scala-${scalaVersion}/gnaf-search_${scalaVersion}-${version}-one-jar.jar &
 SEARCH_PID=$!
-
-java -jar gnaf-db-service/target/scala-${scalaVersion}/gnaf-db-service_${scalaVersion}-${version}-one-jar.jar &
-DB_PID=$!
-
-java -jar gnaf-contrib/target/scala-${scalaVersion}/gnaf-contrib_${scalaVersion}-${version}-one-jar.jar &
-CONTRIB_PID=$!
-
-sleep 15 # we could wait for each of the web services to log a message
-
-
-
-# === demo gnaf-search ====
+sleep 15 # we could wait for it to log a message
 
 echo "gnaf-search: swagger.json ..."
 curl http://localhost:9040/api-docs/swagger.json
@@ -83,8 +72,20 @@ curl -X POST --header 'Content-Type: application/json' --header 'Accept: applica
 }' 'http://localhost:9040/search'
 echo
 
+# takes about 15 min
+# gnaf-search must be running
+# gnaf-db-service must not be running (both use the gnaf database in embedded mode, to run at the same time they would need
+# to use different databases or not use embedded mode).
+echo "gnaf-test ..."
+cd gnaf-test
+src/main/script/run.sh
+cd ..
 
-# === demo gnaf-db-service ====
+# === demo gnaf-db-service ===
+
+java -jar gnaf-db-service/target/scala-${scalaVersion}/gnaf-db-service_${scalaVersion}-${version}-one-jar.jar &
+DB_PID=$!
+sleep 15
 
 echo "gnaf-db-service: swagger.json ..."
 curl http://localhost:9000/api-docs/swagger.json
@@ -97,7 +98,11 @@ curl 'http://localhost:9000/gnaf/addressGeocode/GASA_414912543'
 echo
 
 
-# === demo gnaf-contrib ====
+# === demo gnaf-contrib ===
+
+java -jar gnaf-contrib/target/scala-${scalaVersion}/gnaf-contrib_${scalaVersion}-${version}-one-jar.jar &
+CONTRIB_PID=$!
+sleep 15
 
 echo "gnaf-contrib: swagger.json ..."
 curl http://localhost:9010/api-docs/swagger.json
@@ -110,8 +115,7 @@ echo "list contributed geocodes for an addressSite ..."
 curl 'http://localhost:9010/contrib/712279621'
 # there are also delete and update methods
 
-
-# === Stop JSON web services ====
+# === Stop JSON web services ===
 
 kill $SEARCH_PID
 kill $DB_PID

@@ -2,12 +2,21 @@ var fs = require('fs');
 
 /**
  * Usage: node src/main/node/summary.js files ...
+ * 
+ * The test results (our input) are keyed by a description of the test data.
+ * By default we sum the data for all descriptions except 'nofuzTypo', which is excluded because data
+ * potentially containing typos should be searched with 'fuz'.
+ * If a "-{desc}" precedes files then we sum only the descriptions matching this {desc}.  
  */
+var argIdx = 2; // 0 -> node; 1 -> src/main/script/summary.js; 2 -> [-desc] files ...
+var descMatch = process.argv[argIdx].startsWith('-') ? process.argv[argIdx++].substring(1) : null;
+var descPred = descMatch ? desc => desc == descMatch : desc => desc != 'nofuzTypo';
+
 var m = new Map();
-for (i = 2; i < process.argv.length; ++i) { // 0 -> node; 1 -> src/main/script/summary.js; 2 -> file1 ...
-  var stats = JSON.parse(fs.readFileSync(process.argv[i], "utf8"));
+for (; argIdx < process.argv.length; ++argIdx) {
+  var stats = JSON.parse(fs.readFileSync(process.argv[argIdx], "utf8"));
   for (desc in stats.histogram) {
-    if (desc != 'nofuzTypo') { // skip because we cannot match types without fuz
+    if (descPred(desc)) {
       var o = stats.histogram[desc];
       for (p in o) histAdd(m, p, o[p]);
     }

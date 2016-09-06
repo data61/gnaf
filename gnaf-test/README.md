@@ -9,7 +9,7 @@ This approach is motivated by the fact that search tuning must be evaluated acro
 
 1. The [Scala](http://scala-lang.org/) command line program `gnaf-test` produces random selections of addresses with user selected characteristics,
 such as using street or locality aliases, street number prefixes, suffixes or ranges, unit or level numbers,
-out of order elements (such as postcode before state) or intentional errors (to test fuzzy matching).
+out of order elements (postcode before state) or intentional errors (to test fuzzy matching).
 It outputs JSON containing the search input as an address string and the correct result as a G-NAF address without aliases or errors.
 The `addressDetailPid` is not useful as the correct result because G-NAF contains addresses that are not unique (at least over the fields used here).
 2. A [node.js](https://nodejs.org/en/) program [src/main/script/searchLucene.js](src/main/script/searchLucene.js) takes the above JSON, performs bulk lookups using the `gnaf-search` web service,
@@ -24,3 +24,39 @@ The histogram and problematic input addresses are output as JSON.
 
 - install [node.js](https://nodejs.org/en/) and `npm` ([src/main/script/run.sh](src/main/script/run.sh) assumes that `node` executes the node.js interpreter);
 - run `npm install` to install node package dependencies
+
+## Results
+
+Overall results:
+
+	node src/main/script/summary.js stats*.json
+	{"samples":4780,"histogram":[["0",4764],["1",7],["8",1],["-1",8]]}
+
+A potential error reported for test addresses using street and locality aliases is (using [jq](https://stedolan.github.io/jq/) to filter and format):
+
+	jq .errors stats-localityAlias-streetAlias.json
+	"nofuz": {
+	  "-1": [
+	    "MAIDENWELL-BUNYA MOUNTAINS ROAD PIMPIMBUDGEE QLD 4615"
+	  ]
+	}
+
+A non-fuzzy search gets the same score for all the top 10 hits and they are all correct matches, just not the one we were looking for.
+Unfortunately G-NAF contains many duplicates with inconsistent usage of the main name and aliases.
+Most reported potential errors are similarly not actual errors.
+  
+Baseline for following comparisons:
+
+	node src/main/script/summary.js -nofuz stats*.json
+	{"samples":956,"histogram":[["0",955],["-1",1]]}
+
+Inputting a field out or order (postcode before state) looses bigram matches but only introduced one additional potential error:
+	
+	node src/main/script/summary.js -nofuzPostcodeBeforeState stats*.json
+	{"samples":956,"histogram":[["0",954],["-1",2]]}
+
+Adding a single character error and fuzzy matching also only introduced one additional potential error over the baseline:
+
+	node src/main/script/summary.js -fuzTypo stats*.json
+	{"samples":956,"histogram":[["0",954],["1",1],["-1",1]]}
+	
