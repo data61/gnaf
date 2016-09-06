@@ -7,7 +7,7 @@ This approach is motivated by the fact that search tuning must be evaluated acro
 
 ## Project Structure
 
-1. The [Scala](http://scala-lang.org/) command line program `gnaf-test` produces random selections of addresses with user selected characteristics,
+1. The [Scala](http://scala-lang.org/) command line program `gnaf-test` extracts from the database random selections of addresses with user selected characteristics,
 such as using street or locality aliases, street number prefixes, suffixes or ranges, unit or level numbers,
 out of order elements (postcode before state) or intentional errors (to test fuzzy matching).
 It outputs JSON containing the search input as an address string and the correct result as a G-NAF address without aliases or errors.
@@ -19,6 +19,10 @@ Where its not the top hit the problematic input address is output for further in
 The histogram and problematic input addresses are output as JSON.
 3. A [node.js](https://nodejs.org/en/) program [src/main/script/summary.js](src/main/script/summary.js) aggregates the above output into a single histogram. 
 4. A [bash](https://www.gnu.org/software/bash/) script [src/main/script/run.sh](src/main/script/run.sh) runs all of the above.
+
+## Configuration
+
+Configuration is in [application.conf](src/main/resources/application.conf) and most settings can be overridden with environment variables.
 
 ## Dependencies
 

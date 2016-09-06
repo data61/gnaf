@@ -3,7 +3,6 @@ name := "gnaf-search"
 libraryDependencies ++= Seq(
   "com.github.scopt" %% "scopt" % "3.3.0",
   "com.jsuereth" %% "scala-arm" % "2.0.0-M1",
-  "au.csiro.data61.gnaf" %% "gnaf-lucene" % "0.1-SNAPSHOT",
   "ch.megard" %% "akka-http-cors" % "0.1.2",
   "com.github.swagger-akka-http" %% "swagger-akka-http" % "0.7.0", // adding swagger brings in all the horrible old javax.ws & Jackson dependencies!
   "io.swagger" % "swagger-annotations" % "1.5.9",

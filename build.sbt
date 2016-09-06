@@ -35,7 +35,7 @@ lazy val commonSettings = Seq(
   unmanagedSourceDirectories in Compile := (scalaSource in Compile).value :: Nil, // only Scala sources, no Java
   unmanagedSourceDirectories in Test := (scalaSource in Test).value :: Nil,
   
-  filterScalaLibrary := false, // sbt-dependency-graph: include scala library in output
+  // filterScalaLibrary := false, // sbt-dependency-graph: include scala library in output
   scalacOptions in (Compile,doc) := Seq("-diagrams"), // sbt-dependency-graph needs: sudo apt-get install graphviz
   
   EclipseKeys.withSource := true,
@@ -54,6 +54,9 @@ lazy val commonSettings = Seq(
     }
   )
 
+// the sbt build honours transitive dependsOn, however this is not honoured by "com.typesafe.sbteclipse" % "sbteclipse-plugin" % "4.0.0"
+// so we explicitly add the transitive dependencies
+
 lazy val gnafUtil = (project in file("gnaf-util")).
   settings(commonSettings: _*)
 
@@ -62,7 +65,7 @@ lazy val gnafDb = (project in file("gnaf-db")).
   settings(commonSettings: _*)
 
 lazy val gnafExtractor = (project in file("gnaf-extractor")).
-  dependsOn(gnafDb).
+  dependsOn(gnafUtil, gnafDb).
   settings(commonSettings: _*).
   settings(com.github.retronym.SbtOneJar.oneJarSettings: _*).
   settings(
@@ -74,7 +77,7 @@ lazy val gnafLucene = (project in file("gnaf-lucene")).
   settings(commonSettings: _*)
   
 lazy val gnafIndexer = (project in file("gnaf-indexer")).
-  dependsOn(gnafLucene).
+  dependsOn(gnafUtil, gnafLucene).
   settings(commonSettings: _*).
   settings(com.github.retronym.SbtOneJar.oneJarSettings: _*).
   settings(
@@ -82,7 +85,7 @@ lazy val gnafIndexer = (project in file("gnaf-indexer")).
   )
   
 lazy val gnafSearch = (project in file("gnaf-search")).
-  dependsOn(gnafLucene).
+  dependsOn(gnafUtil, gnafLucene).
   settings(commonSettings: _*).
   settings(com.github.retronym.SbtOneJar.oneJarSettings: _*).
   settings(
@@ -90,7 +93,7 @@ lazy val gnafSearch = (project in file("gnaf-search")).
   )
 
 lazy val gnafTest = (project in file("gnaf-test")).
-  dependsOn(gnafDb).
+  dependsOn(gnafUtil, gnafDb).
   settings(commonSettings: _*).
   settings(com.github.retronym.SbtOneJar.oneJarSettings: _*).
   settings(
@@ -98,7 +101,7 @@ lazy val gnafTest = (project in file("gnaf-test")).
   )
   
 lazy val gnafDbService = (project in file("gnaf-db-service")).
-  dependsOn(gnafDb).
+  dependsOn(gnafUtil, gnafDb).
   settings(commonSettings: _*).
   settings(com.github.retronym.SbtOneJar.oneJarSettings: _*).
   settings(
