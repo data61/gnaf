@@ -10,9 +10,6 @@ import scala.language.implicitConversions
 import scala.math.BigDecimal
 import scala.util.{ Failure, Success }
 
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.module.scala.DefaultScalaModule
-import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
 import com.typesafe.config.{ ConfigFactory, ConfigValueFactory }
 
 import au.csiro.data61.gnaf.db.GnafTables
@@ -22,18 +19,13 @@ import slick.collection.heterogeneous._
 import slick.collection.heterogeneous.syntax._
 import scala.util.Random
 
+import spray.json.{ pimpAny, DefaultJsonProtocol }
+
 // Organize Imports deletes this, so make it easy to restore ...
 // import slick.collection.heterogeneous.syntax.::
 
 object Main {
-  val log = Util.getLogger(getClass)
-  
-  val mapper = {
-    val m = new ObjectMapper() with ScalaObjectMapper
-    m.registerModule(DefaultScalaModule)
-    m
-  }
-
+  val log = Util.getLogger(getClass)  
   val config = ConfigFactory.load
   
   object MyGnafTables extends {
@@ -239,6 +231,13 @@ object Main {
     val streetSuffixMap: FutStrMap
   }
   
+  case class Addr(query: String, queryPostcodeBeforeState: String, queryTypo: String, addressDetailPid: String, address: String)
+
+  object JsonProtocol extends DefaultJsonProtocol {
+    implicit val addrFormat = jsonFormat5(Addr)
+  }
+  import JsonProtocol._
+
   def doAll(c: CliOption)(implicit db: Database): Unit = {
     log.debug(s"config = $c")
     
@@ -262,11 +261,9 @@ object Main {
       Future.fold[Seq[Addr], Seq[Addr]](seqFut)(Seq.empty)(_ ++ _)
     }
     val addresses = Await.result(fAddresses, 15.minute)
-    println(mapper.writeValueAsString(addresses))
+    println(addresses.toJson.compactPrint)
   }
       
-  case class Addr(query: String, queryPostcodeBeforeState: String, queryTypo: String, addressDetailPid: String, address: String)
-
   def getRandomElement[T](s: Seq[T]): T = s(Random.nextInt(s.size))
   
   def join(s: Seq[Option[String]], delim: String): Option[String] = {
