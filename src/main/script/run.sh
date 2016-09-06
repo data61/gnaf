@@ -72,13 +72,13 @@ curl -X POST --header 'Content-Type: application/json' --header 'Accept: applica
 }' 'http://localhost:9040/search'
 echo
 
-# takes about 15 min
+# takes about 12 min
 # gnaf-search must be running
 # gnaf-db-service must not be running (both use the gnaf database in embedded mode, to run at the same time they would need
 # to use different databases or not use embedded mode).
 echo "gnaf-test ..."
 cd gnaf-test
-src/main/script/run.sh
+time src/main/script/run.sh
 cd ..
 
 # === demo gnaf-db-service ===
