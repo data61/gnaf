@@ -59,9 +59,9 @@ Automatic builds are available at: https://t3as-jenkins.it.csiro.au/job/gnaf-mas
 
 The command:
 
-    sbt clean one-jar dumpLicenseReport
+    sbt clean test one-jar dumpLicenseReport
 
-from the project's top level directory cleans out previous build products,
+from the project's top level directory cleans out previous build products, runs unit tests,
 builds one-jar files and creates license reports on dependencies.
 
 ## Running and Usage
