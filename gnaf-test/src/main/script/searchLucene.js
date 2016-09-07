@@ -14,7 +14,8 @@ Array.prototype.flatten = function() {
  * Input: one address per line. Performs bulk lookup using gnaf-lucene-service.
  * TODO: add proper command line option handling, add options to set numHits and bulk
  */
-var path = process.argv[2]; // 0 -> node; 1 -> src/main/script/search.js; 2 -> input.json
+var url = process.argv[2]; // 'http://localhost:9040/bulkSearch'
+var path = process.argv[3]; // 0 -> node; 1 -> src/main/script/search.js; 2 -> url; 3 -> input.json
 var numHits = 10;
 
 var addr = JSON.parse(fs.readFileSync(path, "utf8"));
@@ -92,7 +93,7 @@ function doBatch(iter, histMap, errMap) {
     };
     
     function doRequest(qp) {
-      request.post( { url: 'http://localhost:9040/bulkSearch', json: true, body: qp }, (error, response, hits) => {
+      request.post( { url: url, json: true, body: qp }, (error, response, hits) => {
         if (error) console.log('error', error);
         else responseHandler(qp, hits);
       });

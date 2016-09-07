@@ -3,12 +3,13 @@
 version=`sed 's/.*"\(.*\)"/\1/' ../version.sbt`
 scalaVersion=2.11
 
+search="src/main/script/searchLucene.js" # "src/main/script/searchEs.js"
+url="http://localhost:9040/bulkSearch"   # "http://localhost:9200/gnaf/_msearch"
+
 concat() {
   if [[ -n "$2" ]]; then echo "$1-$2"; else echo "$1"; fi
 }
 
-# search="src/main/script/searchEs.js"
-search="src/main/script/searchLucene.js"
 
 for opt1 in "" "--localityAlias"
 do
@@ -23,10 +24,10 @@ do
     then
       time java -jar target/scala-${scalaVersion}/gnaf-test_${scalaVersion}-${version}-one-jar.jar --sampleSize 200 $opt1 $opt2 > $file
       wait # for previous node process
-      node $search $file > stats${file#address} &
+      node $search $url $file > stats${file#address} &
     else
       # re-run with same test data as before
-      node $search $file > stats${file#address}
+      node $search $url $file > stats${file#address}
     fi
   done
 done

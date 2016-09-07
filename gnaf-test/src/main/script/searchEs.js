@@ -14,7 +14,8 @@ Array.prototype.flatten = function() {
  * Input: one address per line. Performs bulk lookup using Elasticsearch index created by gnaf-indexer.
  * TODO: add proper command line option handling, add options to set numHits and bulk
  */
-var path = process.argv[2]; // 0 -> node; 1 -> src/main/script/search.js; 2 -> input.json
+var url = process.argv[2]; // 'http://localhost:9200/gnaf/_msearch'
+var path = process.argv[3]; // 0 -> node; 1 -> src/main/script/search.js; 2 -> url; 3 -> input.json
 var numHits = 10;
 
 var addr = JSON.parse(fs.readFileSync(path, "utf8"));
@@ -111,7 +112,7 @@ function doBatch(iter, histMap, errMap) {
     var esBulk = qBatch.flatMap(q => [ '{}', JSON.stringify(q.qes) ]).join('\n') + '\n';
     // console.log('esBulk', esBulk);
   
-    request.post( { url: 'http://localhost:9200/gnaf/_msearch', body: esBulk }, (error, response, body) => {
+    request.post( { url: url, body: esBulk }, (error, response, body) => {
       if (error) console.log('error', error)
       else {
         // console.log('statusCode', response.statusCode, 'body', body);
