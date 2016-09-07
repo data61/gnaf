@@ -7,7 +7,7 @@ This project:
 - provides JSON web services to access the database and search engine; and
 - provides a demonstration web user interface using the web services.
 
-Users of the search web service `gnaf-search` should note the [suggested preprocessing](gnaf-lucene/README.md#suggested-preprocessing-for-client-applications] for
+Users of the search web service `gnaf-search` should note the [suggested preprocessing](gnaf-lucene/README.md#suggested-preprocessing-for-client-applications) for
 query strings.
 
 ## Project Structure
