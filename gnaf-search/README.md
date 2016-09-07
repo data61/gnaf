@@ -3,6 +3,8 @@
 ## Introduction
 
 This project provides a JSON web service to search the [Lucene](https://lucene.apache.org/) index created by `gnaf-indexer`.
+Users should note the [suggested preprocessing](../gnaf-lucene/README.md#suggested-preprocessing-for-client-applications) for
+query strings.
 
 ## Configuration
 
