@@ -289,7 +289,7 @@ function suggestAddress(req, resp) {
 
 /**
  * Instead of "UNIT 2 12 BLAH STREET" people often use "2 / 12 BLAH STREET".
- * If the shingle filter is used to store 2 & 3-grams "2 12 BLAH" will get a high score, but "2 / 12 BLAH" won't;
+ * If the shingle filter is used to store bigrams "2 12 BLAH" will get a high score, but "2 / 12 BLAH" won't;
  * so we replace the "/" with " ".
  * 
  * Also replace commas with space in case anyone pastes CSV data.

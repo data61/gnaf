@@ -152,15 +152,13 @@ object Search {
 
 /*
  * Stuff that can get wiped out by Eclipse organize imports:
-import LuceneService._
-import LuceneService.JsonProtocol._
-
-@Api(value = "lucene", produces = "application/json")
- */
-
 import Search._
 import Search.JsonProtocol._
-import ch.megard.akka.http.cors.CorsSettings
+
+@Api(value = "search", produces = "application/json")
+ */
+import Search._
+import Search.JsonProtocol._
 
 @Api(value = "search", produces = "application/json")
 @Path("")
@@ -179,7 +177,7 @@ class LuceneService(c: CliOption, searcher: Searcher[Hit, Result])
   }
   
   @Path("bulkSearch")
-  @ApiOperation(value = "Search for many addresses", nickname = "bulkSearch", notes="""longer description""", httpMethod = "POST", response = classOf[Seq[Result]])
+  @ApiOperation(value = "Search for many addresses", nickname = "bulkSearch", notes="""longer description""", httpMethod = "POST", response = classOf[Array[Result]])
   def bulkSearchRoute(
     @ApiParam(value = "bulkQueryParam", required = true) q: BulkQueryParam
   ) = {

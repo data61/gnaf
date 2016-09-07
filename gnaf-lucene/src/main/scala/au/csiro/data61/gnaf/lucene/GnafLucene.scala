@@ -97,13 +97,29 @@ object GnafLucene {
       .setSimilarity(AddressSimilarity)
   )
   
-  case class FuzzyParam(maxEdits: Int, minLength: Int, prefixLength: Int)
+  case class FuzzyParam(
+      /** max number of edits permitted for a match (0 for no fuzzy matching) */
+      maxEdits: Int, 
+      /** fuzzy matching only applied to terms of at least this length */
+      minLength: Int,
+      /** the initial length that must match exactly before fuzzy matching is applied to the remainder */
+      prefixLength: Int
+  )
   
   case class BoundingBox(minLat: Double, minLon: Double, maxLat: Double, maxLon: Double) {
     def toQuery = DoublePoint.newRangeQuery(F_LOCATION, Array[Double](minLat, minLon), Array[Double](maxLat, maxLon))
   }
   
-  case class QueryParam(addr: String, numHits: Int, fuzzy: Option[FuzzyParam], box: Option[BoundingBox]) {
+  case class QueryParam(
+      /** address search terms - best results if ordered: site/building name, unit/flat, level, street, locality, state abbreviation, postcode */
+      addr: String,
+      /** number of search results to return */
+      numHits: Int,
+      /** optional fuzzy matching */
+      fuzzy: Option[FuzzyParam], 
+      /** optional filtering by a bounding box (addr may be blank) */
+      box: Option[BoundingBox]
+    ) {
     def toQuery: Query = {
       val q = tokenIter(shingleWhiteLowerAnalyzer, F_D61ADDRESS, addr).foldLeft {
         val b = new BooleanQuery.Builder
