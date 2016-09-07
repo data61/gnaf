@@ -37,6 +37,45 @@ The top level directory provides:
   - take a look as its intended as executable documentation and you may not wish to run it all each time
   - install tools
 
+## Install Tools
+
+To run the Scala code install:
+- a JRE e.g. from openjdk-8 (version 8 or higher is required by some dependencies);
+- the build tool [sbt](http://www.scala-sbt.org/).
+
+To develop [Scala](http://scala-lang.org/) code install:
+- the above items (you may prefer to install the full JDK instead of just the JRE but I think the JRE is sufficient);
+- the [Scala IDE](http://scala-ide.org/download/current.html).
+
+### Dependencies
+
+- scripts assume a *nix environment
+- [src/main/script/run.sh](src/main/script/run.sh) requires the Postgres client `psql` to load the database (see [gnaf-db](gnaf-db) for an alternative method using the h2 client)
+- [gnaf-test](gnaf-test) has additional dependencies - see its README
+
+## Running and Usage
+
+See [src/main/script/run.sh](src/main/script/run.sh).
+
+## Build
+
+Automatic builds are available at: https://t3as-jenkins.it.csiro.au/ (only within the CSIRO network).
+
+The command:
+
+    sbt clean test one-jar dumpLicenseReport
+
+from the project's top level directory cleans out previous build products, runs unit tests,
+builds one-jar files and creates license reports on dependencies.
+
+## Develop With Eclipse
+
+The command:
+
+    sbt update-classifiers eclipse
+
+uses the [sbteclipse](https://github.com/typesafehub/sbteclipse/wiki/Using-sbteclipse) plugin to create the .project and .classpath files required by Eclipse (with source attachments for dependencies).
+
 ## Search Strategy
 
 ### Indexing
@@ -81,45 +120,6 @@ Bigrams will provide a high score for "2 12 BLAH" but not for "2 / 12 BLAH", so 
 Similarly any commas in the input should also be replaced with a space.
 The only useful non-alphanumeric characters are '-' as a number range separator and some non-alphanumeric characters that may appear
 in names such as "-" and "'".
-
-## Install Tools
-
-To run the Scala code install:
-- a JRE e.g. from openjdk-8 (version 8 or higher is required by some dependencies);
-- the build tool [sbt](http://www.scala-sbt.org/).
-
-To develop [Scala](http://scala-lang.org/) code install:
-- the above items (you may prefer to install the full JDK instead of just the JRE but I think the JRE is sufficient);
-- the [Scala IDE](http://scala-ide.org/download/current.html).
-
-### Dependencies
-
-- scripts assume a *nix environment
-- [src/main/script/run.sh](src/main/script/run.sh) requires the Postgres client `psql` to load the database (see [gnaf-db](gnaf-db) for an alternative method using the h2 client)
-- [gnaf-test](gnaf-test) has additional dependencies - see its README
-
-## Build
-
-Automatic builds are available at: https://t3as-jenkins.it.csiro.au/job/gnaf-master/ (only within the CSIRO network).
-
-The command:
-
-    sbt clean test one-jar dumpLicenseReport
-
-from the project's top level directory cleans out previous build products, runs unit tests,
-builds one-jar files and creates license reports on dependencies.
-
-## Running and Usage
-
-See [src/main/script/run.sh](src/main/script/run.sh).
-
-## Develop With Eclipse
-
-The command:
-
-    sbt update-classifiers eclipse
-
-uses the [sbteclipse](https://github.com/typesafehub/sbteclipse/wiki/Using-sbteclipse) plugin to create the .project and .classpath files required by Eclipse (with source attachments for dependencies).
 
 ## Software License
 
