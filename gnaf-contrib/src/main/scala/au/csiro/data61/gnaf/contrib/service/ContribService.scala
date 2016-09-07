@@ -22,6 +22,7 @@ import au.csiro.data61.gnaf.contrib.db.ContribTables
 import ch.megard.akka.http.cors.CorsDirectives.cors
 import ch.megard.akka.http.cors.CorsSettings.defaultSettings
 import io.swagger.annotations.{ Api, ApiParam, ApiImplicitParams, ApiImplicitParam, ApiOperation }
+import io.swagger.models.Swagger
 import javax.ws.rs.{ Path, PathParam, DefaultValue }
 import slick.dbio.DBIOAction
 import slick.jdbc.ResultSetAction
@@ -35,6 +36,7 @@ object JsonProtocol extends DefaultJsonProtocol {
   implicit val contribGeocodeKeyFormat = jsonFormat2(ContribGeocodeKey.apply)
 }
 import JsonProtocol._
+import io.swagger.models.Swagger
 
 @Api(value = "contrib", produces = "application/json")
 @Path("contrib")
@@ -174,8 +176,7 @@ object ContribService {
     override implicit val actorSystem = sys
     override implicit val materializer = mat
     override val apiTypes = Seq(ru.typeOf[ContribService])
-    override val host = interface + ":" + port
-    override val info = Info(version = "1.0")
+    override def swaggerConfig = new Swagger().basePath(prependSlashIfNecessary(basePath)) // don't specify protocol://host
   }
 
   def main(args: Array[String]): Unit = {

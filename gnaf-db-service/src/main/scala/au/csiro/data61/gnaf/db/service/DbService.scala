@@ -17,6 +17,7 @@ import au.csiro.data61.gnaf.db.GnafTables
 import au.csiro.data61.gnaf.util.Util
 import ch.megard.akka.http.cors.CorsDirectives.cors
 import io.swagger.annotations.{ Api, ApiOperation }
+import io.swagger.models.Swagger
 import javax.ws.rs.{ Path, PathParam }
 import spray.json.DefaultJsonProtocol
 
@@ -131,9 +132,7 @@ object DbService {
   val interface = config.getString("http.interface")
   val port = config.getInt("http.port")
   
-  val service = new DbService(logger, config) {    
-    val myRoutes =  { routes }
-  }
+  val service = new DbService(logger, config)
   
   // /api-docs/swagger.json
   val swagger = new SwaggerHttpService with HasActorSystem {
@@ -142,8 +141,7 @@ object DbService {
     override implicit val actorSystem = sys
     override implicit val materializer = mat
     override val apiTypes = Seq(ru.typeOf[DbService])
-    override val host = interface + ":" + port
-    override val info = Info(version = "1.0")
+    override def swaggerConfig = new Swagger().basePath(prependSlashIfNecessary(basePath)) // don't specify protocol://host
   }
 
   def main(args: Array[String]): Unit = {

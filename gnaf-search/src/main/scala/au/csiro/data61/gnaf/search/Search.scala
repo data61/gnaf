@@ -26,6 +26,7 @@ import au.csiro.data61.gnaf.lucene.LuceneUtil.{ Searcher, directory }
 import au.csiro.data61.gnaf.util.Util.getLogger
 import ch.megard.akka.http.cors.CorsDirectives.cors
 import io.swagger.annotations.{ Api, ApiOperation, ApiParam }
+import io.swagger.models.Swagger
 import javax.ws.rs.Path
 import spray.json.DefaultJsonProtocol
 
@@ -136,8 +137,7 @@ object Search {
       override implicit val actorSystem = sys
       override implicit val materializer = mat
       override val apiTypes = Seq(ru.typeOf[LuceneService])
-      override val host = c.interface + ":" + c.port
-      override val info = Info(version = "1.0")
+      override def swaggerConfig = new Swagger().basePath(prependSlashIfNecessary(basePath)) // don't specify protocol://host
     }
     
     val routes = cors() {
@@ -159,6 +159,9 @@ import Search.JsonProtocol._
  */
 import Search._
 import Search.JsonProtocol._
+import io.swagger.models.Swagger
+import io.swagger.models.Swagger
+import io.swagger.models.Swagger
 
 @Api(value = "search", produces = "application/json")
 @Path("")
