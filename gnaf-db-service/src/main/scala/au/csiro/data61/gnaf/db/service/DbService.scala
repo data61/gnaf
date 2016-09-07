@@ -121,34 +121,36 @@ class DbService(logger: LoggingAdapter, config: Config)(implicit system: ActorSy
   }
 }
 
-object DbService { self =>
-  implicit val system = ActorSystem()
-  implicit val executor = system.dispatcher
-  implicit val materializer = ActorMaterializer()
+object DbService {
+  implicit val sys = ActorSystem()
+  implicit val exec = sys.dispatcher
+  implicit val mat = ActorMaterializer()
   
-  val logger = Logging(system, getClass)
+  val logger = Logging(sys, getClass)
   val config = ConfigFactory.load
   val interface = config.getString("http.interface")
   val port = config.getInt("http.port")
   
-  object MyService extends DbService(logger, config) {    
-    val myRoutes = logRequestResult("DbService") { cors() { routes } }
+  val service = new DbService(logger, config) {    
+    val myRoutes =  { routes }
   }
   
-  // route: /api-docs/swagger.json
-  object SwaggerService extends SwaggerHttpService with HasActorSystem {
+  // /api-docs/swagger.json
+  val swagger = new SwaggerHttpService with HasActorSystem {
     import scala.reflect.runtime.{ universe => ru }
 
-    override implicit val actorSystem = self.system
-    override implicit val materializer = self.materializer
+    override implicit val actorSystem = sys
+    override implicit val materializer = mat
     override val apiTypes = Seq(ru.typeOf[DbService])
     override val host = interface + ":" + port
     override val info = Info(version = "1.0")
-
-    val myRoutes = logRequestResult("Swagger") { cors() { routes } }
   }
 
   def main(args: Array[String]): Unit = {
-    Http().bindAndHandle(MyService.myRoutes ~ SwaggerService.myRoutes, interface, port)
+    val routes = cors() {
+      logRequestResult("DbService") { service.routes } ~ 
+      logRequestResult("Swagger") { swagger.routes }
+    }
+    Http().bindAndHandle(routes, interface, port)
   }
 }

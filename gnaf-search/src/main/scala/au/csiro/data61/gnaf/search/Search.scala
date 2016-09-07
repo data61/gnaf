@@ -129,7 +129,7 @@ object Search {
     
     val luceneService = new LuceneService(c, mkSearcher(c))
     
-    // serves: /api-docs/swagger.json
+    // /api-docs/swagger.json
     val swaggerService = new SwaggerHttpService() with HasActorSystem {
       import scala.reflect.runtime.{ universe => ru }
   

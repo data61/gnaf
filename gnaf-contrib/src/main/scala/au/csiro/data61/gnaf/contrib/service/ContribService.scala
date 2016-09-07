@@ -155,39 +155,36 @@ dateCreated input ignored (but still required); version and dateCreated output s
   }
 }
 
-object ContribService { self =>
-  implicit val system = ActorSystem()
-  implicit val executor = system.dispatcher
-  implicit val materializer = ActorMaterializer()
+object ContribService {
+  implicit val sys = ActorSystem()
+  implicit val exec = sys.dispatcher
+  implicit val mat = ActorMaterializer()
   
-  val logger = Logging(system, getClass)
+  val logger = Logging(sys, getClass)
   val config = ConfigFactory.load
   val interface = config.getString("http.interface")
   val port = config.getInt("http.port")
 
-  object MyService extends ContribService(logger, config) {    
-    val myRoutes = logRequestResult("GnafContrib") {
-      cors(defaultSettings.copy(allowedMethods = HttpMethods.DELETE +: defaultSettings.allowedMethods)) {
-        routes
-      }
-    }
-  }
+  val service = new ContribService(logger, config)
   
-  // route: /api-docs/swagger.json
-  object SwaggerService extends SwaggerHttpService with HasActorSystem {
+  // /api-docs/swagger.json
+  val swagger = new SwaggerHttpService with HasActorSystem {
     import scala.reflect.runtime.{ universe => ru }
 
-    override implicit val actorSystem = self.system
-    override implicit val materializer = self.materializer
+    override implicit val actorSystem = sys
+    override implicit val materializer = mat
     override val apiTypes = Seq(ru.typeOf[ContribService])
     override val host = interface + ":" + port
     override val info = Info(version = "1.0")
-
-    val myRoutes = logRequestResult("Swagger") {  cors() { routes } }
   }
 
   def main(args: Array[String]): Unit = {
-    MyService.createSchemaIfNotExists
-    Http().bindAndHandle(MyService.myRoutes ~ SwaggerService.myRoutes, interface, port)
+    service.createSchemaIfNotExists
+    
+    val routes = cors(defaultSettings.copy(allowedMethods = HttpMethods.DELETE +: defaultSettings.allowedMethods)) {
+      logRequestResult("GnafContrib") { service.routes } ~
+      logRequestResult("Swagger") { swagger.routes }
+    }
+    Http().bindAndHandle(routes, interface, port)
   }
 }
