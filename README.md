@@ -41,18 +41,18 @@ The top level directory provides:
 
 ### Indexing
 
-The following G-NAF data is formatted into an array of strings, one per bullet point:
+The following G-NAF data is formatted into an array of strings (one array element per bullet point):
 
-- site name, building name
+- site name, building name (commas not included)
 - unit/flat,
 - level,
 - street (number ranges are formatted with a minus separator and no space e.g. "2-4 Reed Street South"),
-- locality, state abbreviation, postcode
+- locality, state abbreviation, postcode;
 
 plus:
 
-- one element for each street alias
-- for each locality alias: locality alias, state abbreviation, postcode
+- one array element for each street alias; and
+- one array element for each locality alias: locality alias, state abbreviation, postcode
 
 These strings are indexed into the same Lucene field using `WhitespaceTokenizer`, `LowerCaseFilter` and `ShingleFilter` producing unigram and bigram tokens.
 Bigrams provide a reward for terms appearing in the above order.
