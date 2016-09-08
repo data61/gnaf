@@ -7,7 +7,7 @@ This project:
 - provides JSON web services to access the database and search engine; and
 - provides a demonstration web user interface using the web services.
 
-Users of the search web service `gnaf-search` should note the [suggested preprocessing](gnaf-lucene/README.md#suggested-preprocessing-for-client-applications) for
+Users of `gnaf-search` should note the [suggested preprocessing](gnaf-lucene/README.md#suggested-preprocessing-for-client-applications) for
 query strings.
 
 ## Project Structure
@@ -33,7 +33,7 @@ Nature of Sub-projects:
 - 3, 5 & 7 produce command line programs packaged as a [onejar](https://github.com/sbt/sbt-onejar).
 This is a jar file containing all dependencies and run simply with: `java -jar {filename.jar}`
 - 6, 8 & 9 produce JSON web services also packaged as a [onejar](https://github.com/sbt/sbt-onejar).
-These are run as above (not in a servlet container).
+These are run as above (not in a servlet container). They produce [Swagger](http://swagger.io/) API documentation at `/api-docs/swagger.json`.
 
 The top level directory provides:
 - the [sbt](http://www.scala-sbt.org/) build for the [Scala](http://scala-lang.org/) code in projects 1-9 (no build is required for 10); and
