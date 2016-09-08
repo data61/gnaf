@@ -1,20 +1,29 @@
 #! /bin/bash
 
+# Note: to count total searches performed:
+# for i in address*.json; do jq '.|length' $i; done | awk '{ sum += $1 } END { print sum*6 }'
+
+# Note: searchLucene.js performs 6 searches for each address:
+# { fuz, noFuz } * { query, queryTypo, queryPostcodeBeforeState }
+
 version=`sed 's/.*"\(.*\)"/\1/' ../version.sbt`
 scalaVersion=2.11
 
 search="src/main/script/searchLucene.js" # "src/main/script/searchEs.js"
 url="http://localhost:9040/bulkSearch"   # "http://localhost:9200/gnaf/_msearch"
 skip="false"
+sampleSize=200
 
-while getopts "u:sh" opt
+while getopts "u:n:sh" opt
 do
   case $opt in
     u) url=$OPTARG ;;
+    n) sampleSize=$OPTARG ;;
     s) skip="true" ;;
     h|"?") cat <<EOF
 usage: $0 -u url -s -h
-  -u url to set the search service endpoint (default $url)
+  -u url to set the search service endpoint, blank to skip search (default $url)
+  -n sampleSize passed to gnaf-test (default $sampleSize)
   -s to skip generation of test address data (it must already exist in the current directory)
   -h for this help
 EOF
@@ -37,9 +46,9 @@ do
     # and others have no addresses with the requested characteristics (haven't figured out how to filter them out cheaply)
     if [[ "$skip" != "true" ]]
     then
-      time java -jar target/scala-${scalaVersion}/gnaf-test_${scalaVersion}-${version}-one-jar.jar --sampleSize 200 $opt1 $opt2 > $file
+      time java -jar target/scala-${scalaVersion}/gnaf-test_${scalaVersion}-${version}-one-jar.jar --sampleSize $sampleSize $opt1 $opt2 > $file
       wait # for previous node process
-      node $search $url $file > stats${file#address} &
+      [[ -n "$url" ]] && node $search $url $file > stats${file#address} &
     else
       # re-run with same test data as before
       node $search $url $file > stats${file#address}
