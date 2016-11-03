@@ -9,4 +9,4 @@ libraryDependencies ++= Seq(
 libraryDependencies ++= Seq(
   "lucene-core",
   "lucene-analyzers-common"
-) map ("org.apache.lucene" % _ % "6.2.0")
+) map ("org.apache.lucene" % _ % "6.2.1")

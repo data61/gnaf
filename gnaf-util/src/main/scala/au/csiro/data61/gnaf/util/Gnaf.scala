@@ -4,8 +4,6 @@ import spray.json.DefaultJsonProtocol
 
 object Gnaf {
   
-  val D61_NO_NUM = "d61_no_num" // lowercase so query generator doesn't need to 'analyze' it 
-    
   def join(s: Seq[Option[String]], delim: String): Option[String] = {
     val r = s.flatten.filter(_.nonEmpty).mkString(delim)
     if (r.nonEmpty) Some(r) else None
@@ -29,19 +27,21 @@ object Gnaf {
         
     def toD61Address = {
       val streetNum = numberFirst.toOptStr.map(f => f + numberLast.toOptStr.map("-" + _).getOrElse(""))
-      def seqNoAlias(streetNumDefault: Option[String] = None) = Seq(
+      val seqNoAlias = Seq(
         Seq( addressSiteName, buildingName ), // each inner Seq optionally produces a String in the final Seq
         Seq( flatTypeName, flat.toOptStr ), 
         Seq( levelTypeName, level.toOptStr ),
-        Seq( streetNum.orElse(streetNumDefault), street.map(_.name), street.flatMap(_.typeCode), street.flatMap(_.suffixName) ),
+        Seq( streetNum, street.map(_.name), street.flatMap(_.typeCode), street.flatMap(_.suffixName) ),
         Seq( Some(localityName), Some(stateAbbreviation), postcode )
       )
-      val seqWithAlias = seqNoAlias(Some(D61_NO_NUM)) ++
+      val seqWithAlias = seqNoAlias ++
         streetVariant.map(v => Seq( streetNum, Some(v.name), v.typeCode, v.suffixName )) ++
         localityVariant.map(v => Seq( Some(v.localityName), Some(stateAbbreviation), postcode ))
       val d61Address = seqWithAlias.map(inner => join(inner, " ")).flatten
-      val d61AddressNoAlias = join(seqNoAlias().map(inner => join(inner, " ")), " ").getOrElse("")
-      (d61Address, d61AddressNoAlias)
+      val seqNoAlias2 = seqNoAlias.map(inner => join(inner, " "))
+      val noneCount = (streetNum +: seqNoAlias2).count(_.isEmpty) // count each empty streetNum and inner seq: site/building, flat, level 
+      val d61AddressNoAlias = join(seqNoAlias.map(inner => join(inner, " ")), " ").getOrElse("")
+      (d61Address, noneCount, d61AddressNoAlias)
     }
   }
 

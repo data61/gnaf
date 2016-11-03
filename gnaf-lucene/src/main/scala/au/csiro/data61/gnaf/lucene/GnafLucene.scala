@@ -12,9 +12,9 @@ import org.apache.lucene.search.similarities.ClassicSimilarity
 import org.apache.lucene.store.Directory
 
 import LuceneUtil.tokenIter
-import au.csiro.data61.gnaf.util.Gnaf.D61_NO_NUM
 import au.csiro.data61.gnaf.util.Util.getLogger
 import org.apache.lucene.search.MatchAllDocsQuery
+import org.apache.lucene.search.similarities.PerFieldSimilarityWrapper
 
 /**
  * GNAF specific field names, analyzers and scoring for Lucene.
@@ -27,7 +27,10 @@ object GnafLucene {
   val F_LOCATION = "location"
   val F_D61ADDRESS = "d61Address"
   val F_D61ADDRESS_NOALIAS = "d61AddressNoAlias"
+  val F_D61NO_DATA = "d61NoData"
   
+  val D61_NO_DATA = "N" // store this token in F_D61NO_DATA once for each missing streetNum, site/building, flat, level 
+    
   /** count occurrences of x in s, x must be non-empty */
   def countOccurrences(s: String, x: String) = {
     assert(x.nonEmpty)
@@ -53,6 +56,10 @@ object GnafLucene {
     override def tf(freq: Float): Float = 1.0f // don't boost street and locality name being the same
     override def idf(docFreq: Long, docCount: Long): Float = 1.0f // don't penalize SMITH STREET for being common
     // coord factor boosts docs that match more query terms, so correct match scores higher than spuriously same street and locality name
+  }
+  val classicSimilarity = new ClassicSimilarity
+  object GnafSimilarity extends PerFieldSimilarityWrapper(classicSimilarity) {
+    override def get(name: String) = if (name == F_D61ADDRESS) AddressSimilarity else classicSimilarity
   }
 
   val storedNotIndexedFieldType = {
@@ -95,7 +102,7 @@ object GnafLucene {
     dir,
     new IndexWriterConfig(shingleWhiteLowerAnalyzer)
       .setOpenMode(IndexWriterConfig.OpenMode.CREATE)
-      .setSimilarity(AddressSimilarity)
+      .setSimilarity(GnafSimilarity)
   )
   
   case class FuzzyParam(
@@ -125,13 +132,13 @@ object GnafLucene {
       val q = tokenIter(shingleWhiteLowerAnalyzer, F_D61ADDRESS, addr).foldLeft {
         val b = new BooleanQuery.Builder
         // small score increment for addresses with no number (smaller than for a number match)
-        b.add(new BooleanClause(new BoostQuery(new TermQuery(new Term(F_D61ADDRESS, D61_NO_NUM)), 0.1f), BooleanClause.Occur.SHOULD))
+        b.add(new BooleanClause(new BoostQuery(new TermQuery(new Term(F_D61NO_DATA, D61_NO_DATA)), 0.1f), BooleanClause.Occur.SHOULD))
         box.foreach(x => b.add(new BooleanClause(x.toQuery, BooleanClause.Occur.FILTER)))
         if (addr.trim.isEmpty)
           // mobile use case: all addresses in box around me
           b.add(new BooleanClause(new MatchAllDocsQuery, BooleanClause.Occur.SHOULD))
         else
-          b.setMinimumNumberShouldMatch(2) // could be D61_NO_NUM and 1 user term or 2 user terms
+          b.setMinimumNumberShouldMatch(2) // could be D61_NO_DATA and 1 user term or 2 user terms
         b
       }{ (b, t) =>
         val q = {
