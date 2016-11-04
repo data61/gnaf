@@ -119,7 +119,7 @@ object Search {
   
   def mkSearcher(c: CliOption) = {
     val s = new Searcher(directory(c.indexDir), toHit, toResult)
-    s.searcher.setSimilarity(AddressSimilarity)
+    s.searcher.setSimilarity(GnafSimilarity)
     s
   }
   

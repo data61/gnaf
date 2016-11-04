@@ -14,7 +14,9 @@ sbt one-jar
 
 
 
-# === Create database ===
+# === Delete/Create database ===
+
+rm -f ~/gnaf.*.db
 
 # create SQL load script
 cd gnaf-db
@@ -22,7 +24,16 @@ src/main/script/createGnafDb.sh
 cd ..
 
 # run h2 with postgres protocol, remembering its PID
-java -Xmx3G -jar ~/.ivy2/cache/com.h2database/h2/jars/h2-1.4.191.jar -web -pg &
+
+# get h2 version - approach may be too brittle?
+h2ver=`sed -n '/com.h2database/p' gnaf-db/build.sbt`
+read -a h2verArr <<< $h2ver
+h2ver=${h2verArr[4]}
+h2ver=${h2ver#\"}
+h2ver=${h2ver%\"}
+echo $h2ver
+
+java -Xmx3G -jar ~/.ivy2/cache/com.h2database/h2/jars/h2-${h2ver}.jar -web -pg &
 H2_PID=$!
 sleep 10
 
@@ -78,6 +89,7 @@ echo
 # to use different databases or not use embedded mode).
 echo "gnaf-test ..."
 cd gnaf-test
+npm install
 time src/main/script/run.sh
 cd ..
 

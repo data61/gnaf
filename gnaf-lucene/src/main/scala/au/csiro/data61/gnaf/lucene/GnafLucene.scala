@@ -50,16 +50,23 @@ object GnafLucene {
   /** get n-gram size n */
   def shingleSize(s: String) = countOccurrences(s, ShingleFilter.DEFAULT_TOKEN_SEPARATOR) + 1
   
-  /** tf-idf doesn't work well with addresses, so disable  tf, idf and length norm */
-  object AddressSimilarity extends ClassicSimilarity {
+  /**
+   * gnaf-test shows tf-idf doesn't work well with addresses
+   * For F_D61ADDRESS disable tf, idf and length norm,
+   * but for F_D61NO_DATA keep tf to favour multiple D61_NO_DATA tokens.
+   */
+  class NoDataSimilarity extends ClassicSimilarity {
     override def lengthNorm(state: FieldInvertState) = state.getBoost // no length norm, don't penalize multiple aliases
-    override def tf(freq: Float): Float = 1.0f // don't boost street and locality name being the same
     override def idf(docFreq: Long, docCount: Long): Float = 1.0f // don't penalize SMITH STREET for being common
-    // coord factor boosts docs that match more query terms, so correct match scores higher than spuriously same street and locality name
+  }
+  class AddressSimilarity extends NoDataSimilarity {
+    override def tf(freq: Float): Float = 1.0f // don't boost street and locality name being the same
   }
   val classicSimilarity = new ClassicSimilarity
   object GnafSimilarity extends PerFieldSimilarityWrapper(classicSimilarity) {
-    override def get(name: String) = if (name == F_D61ADDRESS) AddressSimilarity else classicSimilarity
+    val noData = new NoDataSimilarity
+    val addr = new AddressSimilarity
+    override def get(name: String) = if (name == F_D61ADDRESS) addr else if (name == F_D61NO_DATA) noData else classicSimilarity
   }
 
   val storedNotIndexedFieldType = {
@@ -76,10 +83,20 @@ object GnafLucene {
   val d61AddrFieldType = {
     val t = new FieldType
     // copied from TextField
+    t.setOmitNorms(true); // AddressSimilarity not using norms
     t.setStored(true);
     t.setTokenized(true);
-    t.setIndexOptions(IndexOptions.DOCS); // TextField has DOCS_AND_FREQS_AND_POSITIONS
-    t.setOmitNorms(true); // AddressSimilarity not using norms
+    t.setIndexOptions(IndexOptions.DOCS); // not using term freq, TextField has DOCS_AND_FREQS_AND_POSITIONS
+    t.freeze();
+    t
+  }
+  
+  val d61NoDataFieldType = {
+    val t = new FieldType
+    t.setOmitNorms(true); // NoDataSimilarity not using norms
+    t.setStored(false);
+    t.setTokenized(false);
+    t.setIndexOptions(IndexOptions.DOCS_AND_FREQS); // using term freq
     t.freeze();
     t
   }
@@ -131,7 +148,7 @@ object GnafLucene {
     def toQuery: Query = {
       val q = tokenIter(shingleWhiteLowerAnalyzer, F_D61ADDRESS, addr).foldLeft {
         val b = new BooleanQuery.Builder
-        // small score increment for addresses with no number (smaller than for a number match)
+        // small score increment for missing streetNo, build/site, flat, level (smaller than for an actual match)
         b.add(new BooleanClause(new BoostQuery(new TermQuery(new Term(F_D61NO_DATA, D61_NO_DATA)), 0.1f), BooleanClause.Occur.SHOULD))
         box.foreach(x => b.add(new BooleanClause(x.toQuery, BooleanClause.Occur.FILTER)))
         if (addr.trim.isEmpty)

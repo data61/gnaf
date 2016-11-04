@@ -5,12 +5,22 @@ set -ex
 baseDir=$PWD
 scriptDir=$baseDir/src/main/script
 dataDir=$baseDir/data
-mkdir -p $dataDir
- 
-zip=$dataDir/FEB16_GNAF+EULA_PipeSeparatedValue_20160222170142.zip
-[[ -f "$zip" ]] || ( cd $dataDir; wget https://s3-ap-southeast-2.amazonaws.com/datagovau/FEB16_GNAF%2BEULA_PipeSeparatedValue_20160222170142.zip )
-
 unzipped=$dataDir/unzipped
+mkdir -p $dataDir
+
+# update these vars for new release
+gnafUrl="https://s3-ap-southeast-2.amazonaws.com/datagovau/AUG16_GNAF%2BEULA_PipeSeparatedValue.zip"
+gnafDataDirName="G-NAF AUGUST 2016"
+
+gnafName=${gnafUrl##*/}
+gnafName=${gnafName%.zip}
+gnafName=${gnafName/'%2B'/+}
+gnaf="$unzipped/${gnafName}/G-NAF"
+gnafData="$gnaf/$gnafDataDirName"
+
+zip=$dataDir/${gnafName}.zip
+[[ -f "$zip" ]] || ( cd $dataDir; wget "$gnafUrl" )
+
 [[ -d "$unzipped" ]] || ( mkdir -p $unzipped; cd $unzipped; unzip $zip )
 
 # Load GNAF into a relational database following https://www.psma.com.au/sites/default/files/g-naf_-_getting_started_guide.pdf
@@ -19,17 +29,20 @@ unzipped=$dataDir/unzipped
 
 # issue message during SQL script execution
 progress() {
+  echo
   echo "SELECT '$1' AS Progress, CURRENT_TIME() AS Time;"
+  echo
 }
 
-gnaf="$unzipped/FEB16_GNAF_PipeSeparatedValue_20160222170142/G-NAF"
+
 progress "modified: $gnaf/Extras/GNAF_TableCreation_Scripts/create_tables_ansi.sql"
+
 sed -e 's/DROP TABLE/DROP TABLE IF EXISTS/' -e 's/numeric([0-9])/integer/' "$gnaf/Extras/GNAF_TableCreation_Scripts/create_tables_ansi.sql"
 
 progress "load Authority Code ..."
 while read tbl file
 do
-  echo "INSERT INTO $tbl SELECT * FROM CSVREAD('$gnaf/G-NAF FEBRUARY 2016/Authority Code/$file', null, 'fieldSeparator=|');"
+  echo "INSERT INTO $tbl SELECT * FROM CSVREAD('$gnafData/Authority Code/$file', null, 'fieldSeparator=|');"
 done <<-'EoF'
 ADDRESS_ALIAS_TYPE_AUT Authority_Code_ADDRESS_ALIAS_TYPE_AUT_psv.psv
 ADDRESS_TYPE_AUT Authority_Code_ADDRESS_TYPE_AUT_psv.psv
@@ -54,7 +67,7 @@ while read tbl file
 do
   progress "load $tbl ..."
   name=${file#ACT}
-  ls "$gnaf/G-NAF FEBRUARY 2016/Standard/"*$name | egrep "/[A-Z]+$name" | while read f # don't load ACT_STREET_LOCALITY_psv.psv into LOCALITY
+  ls "$gnafData/Standard/"*$name | egrep "/[A-Z]+$name" | while read f # don't load ACT_STREET_LOCALITY_psv.psv into LOCALITY
   do
     echo "INSERT INTO $tbl SELECT * FROM CSVREAD('$f', null, 'fieldSeparator=|');"
   done
@@ -94,7 +107,7 @@ CREATE USER READONLY PASSWORD 'READONLY';
 GRANT SELECT ON SCHEMA PUBLIC TO READONLY;
 EoF
 
-} > $dataDir/createGnafDb.sql
+} | sed 's/REM/--/' > $dataDir/createGnafDb.sql
 
 cat <<-'EoF'
 

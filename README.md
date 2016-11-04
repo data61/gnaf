@@ -54,8 +54,9 @@ To develop [Scala](http://scala-lang.org/) code install:
 ### Dependencies
 
 - scripts assume a *nix environment
-- [src/main/script/run.sh](src/main/script/run.sh) requires the Postgres client `psql` to load the database (see [gnaf-db](gnaf-db) for an alternative method using the h2 client)
-- [gnaf-test](gnaf-test) has additional dependencies - see its README
+- [src/main/script/run.sh](src/main/script/run.sh) requires:
+  - the Postgres client `psql` to load the database (see [gnaf-db](gnaf-db) for an alternative method using the h2 client);
+  - `node` and `npm` to run [gnaf-test](gnaf-test) (see its README).
 
 ## Running and Usage
 

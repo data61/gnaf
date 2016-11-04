@@ -1,7 +1,7 @@
 name := "gnaf-contrib"
 
 libraryDependencies ++= Seq(
-  "com.h2database" % "h2" % "1.4.191", // or postgres or whatever,  % "runtime" should be enough, but sbt slick.codegen needs it on compile classpath
+  "com.h2database" % "h2" % "1.4.193", // or postgres or whatever,  % "runtime" should be enough, but sbt slick.codegen needs it on compile classpath
   "ch.megard" %% "akka-http-cors" % "0.1.2",
   "com.github.swagger-akka-http" %% "swagger-akka-http" % "0.7.0", // adding swagger brings in all the horrible old javax.ws & Jackson dependencies!
   "io.swagger" % "swagger-annotations" % "1.5.9"

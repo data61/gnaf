@@ -1,7 +1,7 @@
 name := "gnaf-db"
 
 libraryDependencies ++= Seq(
-  "com.h2database" % "h2" % "1.4.191" // or postgres or whatever,  % "runtime" should be enough, but sbt slick.codegen needs it on compile classpath
+  "com.h2database" % "h2" % "1.4.193" // or postgres or whatever,  % "runtime" should be enough, but sbt slick.codegen needs it on compile classpath
   )
 
 libraryDependencies ++= Seq(

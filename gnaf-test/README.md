@@ -26,7 +26,8 @@ Configuration is in [application.conf](src/main/resources/application.conf) and 
 
 ## Dependencies
 
-- install [node.js](https://nodejs.org/en/) and `npm` ([src/main/script/run.sh](src/main/script/run.sh) assumes that `node` executes the node.js interpreter);
+- install [node.js](https://nodejs.org/en/) and `npm`.
+  The Ubuntu packaged versions are too old but up-to-date packages are available [here](https://github.com/nodesource/distributions).
 - run `npm install` to install node package dependencies
 
 ## Results

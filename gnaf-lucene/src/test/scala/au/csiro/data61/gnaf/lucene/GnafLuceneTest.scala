@@ -1,18 +1,14 @@
 package au.csiro.data61.gnaf.lucene
 
-import org.apache.lucene.document.{ Document, Field }
-import org.apache.lucene.search.{ MatchAllDocsQuery, ScoreDoc }
+import org.apache.lucene.document.{ Document, DoublePoint, Field }
+import org.apache.lucene.search.ScoreDoc
 import org.apache.lucene.store.{ Directory, RAMDirectory }
-import org.scalatest.{ FlatSpec, Matchers }
+import org.scalatest.{ Finders, FlatSpec, Matchers }
 
-import GnafLucene._
-import LuceneUtil._
+import GnafLucene.{ D61_NO_DATA, F_D61ADDRESS, F_D61ADDRESS_NOALIAS, F_D61NO_DATA, F_LOCATION, GnafSimilarity, QueryParam, countOccurrences, d61AddrFieldType, d61NoDataFieldType, mkIndexer, storedNotIndexedFieldType }
+import LuceneUtil.Searcher
 import au.csiro.data61.gnaf.util.Util.getLogger
 import resource.managed
-
-import java.io.File
-
-import org.apache.lucene.document.DoublePoint
 
 /**
  * More a test bed for examining unexpected results than a conventional unit test.
@@ -47,29 +43,30 @@ class GnafLuceneTest extends FlatSpec with Matchers {
   
   def mkSearcher(dir: Directory) = {
     val s = new Searcher(dir, toHit, toResult)
-    s.searcher.setSimilarity(AddressSimilarity)
+    s.searcher.setSimilarity(GnafSimilarity)
     s
   }
   
-  def mkDoc(addr: (Seq[String], String, Double, Double)) = {
+  def mkDoc(addr: (Seq[String], Int, String, Double, Double)) = {
     val d = new Document
     // d.add(new Field(F_JSON, "", storedNotIndexedFieldType))
-    d.add(new DoublePoint(F_LOCATION, addr._3, addr._4))
     for (a <- addr._1) { 
       log.debug(s"mkDoc: add: $a")
       d.add(new Field(F_D61ADDRESS, a, d61AddrFieldType))
     }
-    d.add(new Field(F_D61ADDRESS_NOALIAS, addr._2, storedNotIndexedFieldType))
+    for (i <- 0 until addr._2) d.add(new Field(F_D61NO_DATA, D61_NO_DATA, d61NoDataFieldType))
+    d.add(new Field(F_D61ADDRESS_NOALIAS, addr._3, storedNotIndexedFieldType))
+    d.add(new DoublePoint(F_LOCATION, addr._4, addr._5))
     d
   }
   
   "searcher" should "find" in {
 	  for (dir <- managed(new RAMDirectory)) {
 		  for (indexer <- managed(mkIndexer(dir))) {
-			  Seq(
-				  (Seq("D61_NO_NUM INVERNESS ROAD", "DUMGREE QLD 4715"), "INVERNESS ROAD DUMGREE QLD 4715", 1.5d, 11.5d),
-				  (Seq("3204 INVERNESS ROAD", "DUMGREE QLD 4715"), "3204 INVERNESS ROAD DUMGREE QLD 4715", 0.5d, 10.5d),
-				  (Seq("2400 INVERNESS ROAD", "DUMGREE QLD 4715"), "2400 INVERNESS ROAD DUMGREE QLD 4715", 0d, 10d)
+			  Seq( //                                            v noneCount = number of fields with missing data: streetNo, build/site, flat, level
+				  (Seq("3204 INVERNESS ROAD", "DUMGREE QLD 4715"), 3, "3204 INVERNESS ROAD DUMGREE QLD 4715", 0.5d, 10.5d),
+				  (Seq("INVERNESS ROAD", "DUMGREE QLD 4715"), 4, "INVERNESS ROAD DUMGREE QLD 4715", 0.7d, 11.5d),
+				  (Seq("FLAT 1", "2400 INVERNESS ROAD", "DUMGREE QLD 4715"), 2, "FLAT 1 2400 INVERNESS ROAD DUMGREE QLD 4715", 0d, 10d)
 			  ).foreach(a => indexer.addDocument(mkDoc(a)))
 		  } // indexer.close
 
@@ -83,13 +80,13 @@ class GnafLuceneTest extends FlatSpec with Matchers {
 				  log.debug(searcher.searcher.explain(q, h.id).toString)
 			  }
 	  	  r.hits(0).d61AddressNoAlias should be("INVERNESS ROAD DUMGREE QLD 4715")
+	  	  // Lucene docId is 0, 1, 2 in order that docs are indexed
+	  	  r.hits.map(_.id) should be(Seq(1, 0, 2)) // in order of decreasing noneCount: 4, 3, 2
 	  	  
 	  	  val gq = DoublePoint.newRangeQuery(F_LOCATION, Array[Double](-0.25, 9.75), Array[Double](0.75, 10.75))
 	  	  val gr = searcher.search(gq, 3)
 			  log.debug(gr.toString)
-			  gr.hits.size should be(2)
-	  	  val expected = Set("2400 INVERNESS ROAD DUMGREE QLD 4715", "3204 INVERNESS ROAD DUMGREE QLD 4715")
-	  	  gr.hits.foreach(h => expected.contains(h.d61AddressNoAlias) should be(true))
+			  gr.hits.map(_.id).toSet should be(Set(0, 2)) // doc 1 not in box
 		  } // searcher.close
 	  } // dir.close
   }
