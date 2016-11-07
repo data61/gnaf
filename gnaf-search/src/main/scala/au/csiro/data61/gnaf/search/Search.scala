@@ -76,7 +76,7 @@ object Search {
   
   case class Hit(score: Float, json: String, d61Address: List[String], d61AddressNoAlias: String)
   def toHit(scoreDoc: ScoreDoc, doc: Document) = {
-    Hit(scoreDoc.score, doc.get(F_JSON), doc.getValues(F_D61ADDRESS).toList, doc.get(F_D61ADDRESS_NOALIAS))
+    Hit(scoreDoc.score, doc.get(F_JSON), doc.getValues(F_ADDRESS).toList, doc.get(F_ADDRESS_NOALIAS))
   }
   
   case class Result(totalHits: Int, elapsedSecs: Float, hits: Seq[Hit], error: Option[String])

@@ -37,31 +37,25 @@ EOF
   esac
 done
 
-concat() {
-  if [[ -n "$2" ]]; then echo "$1-$2"; else echo "$1"; fi
-}
-
-for opt1 in "" "--localityAlias"
+for opt in "" "--numberAdornments" "--flat" "--flat --noFlatType" "--level" "--streetAlias" "--localityAlias"
 do
-  filePrefix=`concat "address" "${opt1#--}"` 
-  for opt2 in "" "--numberAdornments" "--unit" "--level" "--streetAlias"
-  do
-    name=`concat "$filePrefix" "${opt2#--}"`.json
-    afile=$addrDir/$name
-    sfile=$statsDir/stats${name#address}
-    echo "options: $opt1 $opt2 ..."
+    echo "options: $opt ..."
+    name=${opt//--/}
+    name=${name// /-}
+    [[ -n "$name" ]] && name=-${name}
+    afile=$addrDir/address${name}.json
+    sfile=$statsDir/stats${name}.json
     # sample size turns out smaller than requested because some locations have no addresses
     # and others have no addresses with the requested characteristics (haven't figured out how to filter them out cheaply)
     if [[ "$skip" != "true" ]]
     then
-      time java -jar target/scala-${scalaVersion}/gnaf-test_${scalaVersion}-${version}-one-jar.jar --sampleSize $sampleSize $opt1 $opt2 > $afile
+      time java -jar target/scala-${scalaVersion}/gnaf-test_${scalaVersion}-${version}-one-jar.jar --sampleSize $sampleSize $opt > $afile
       wait # for previous node process
       [[ -n "$url" ]] && node $search $url $afile > $sfile &
     else
       # re-run with same test data as before
       node $search $url $afile > $sfile
     fi
-  done
 done
 wait # for last node process
 

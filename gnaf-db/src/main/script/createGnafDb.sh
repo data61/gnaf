@@ -10,7 +10,7 @@ mkdir -p $dataDir
 
 # update these vars for new release
 gnafUrl="https://s3-ap-southeast-2.amazonaws.com/datagovau/AUG16_GNAF%2BEULA_PipeSeparatedValue.zip"
-gnafDataDirName="G-NAF AUGUST 2016"
+gnafDataDirName="G-NAF AUGUST 2016" # TODO: try to set this from the dir in the zip file
 
 gnafName=${gnafUrl##*/}
 gnafName=${gnafName%.zip}
@@ -97,9 +97,9 @@ sed --regexp-extended --file=$scriptDir/constraint.sed "$gnaf/Extras/GNAF_TableC
 progress "add an index on STREET_NAME (this is not part of the getting_started_guide)..."
 echo "create index STREET_LOCALITY_NAME_IDX on STREET_LOCALITY (STREET_NAME);"
 
-progress "add view (suggested in getting_started_guide) ..."
-cat "$gnaf/Extras/GNAF_View_Scripts/address_view.sql"
-echo ";"
+# progress "add view (suggested in getting_started_guide) ..."
+# cat "$gnaf/Extras/GNAF_View_Scripts/address_view.sql"
+# echo ";"
 
 progress "Create READONLY user ..."
 cat <<-'EoF'

@@ -6,7 +6,7 @@ import scala.io.Source
 
 import org.apache.lucene.document.{ Document, DoublePoint, Field }
 
-import au.csiro.data61.gnaf.lucene.GnafLucene.{ D61_NO_DATA, F_D61ADDRESS, F_D61ADDRESS_NOALIAS, F_D61NO_DATA, F_JSON, F_LOCATION, d61AddrFieldType, d61NoDataFieldType, mkIndexer, storedNotIndexedFieldType }
+import au.csiro.data61.gnaf.lucene.GnafLucene._
 import au.csiro.data61.gnaf.lucene.LuceneUtil.directory
 import au.csiro.data61.gnaf.util.Gnaf.Address
 import au.csiro.data61.gnaf.util.Gnaf.JsonProtocol.addressFormat
@@ -40,9 +40,13 @@ object Indexer {
     val doc = new Document
     doc.add(new Field(F_JSON, line, storedNotIndexedFieldType))
     for (l <- addr.location) doc.add(new DoublePoint(F_LOCATION, l.lat.toDouble, l.lon.toDouble))
-    for (a <- d61Address) doc.add(new Field(F_D61ADDRESS, a, d61AddrFieldType))
-    for (i <- 0 until noneCount) doc.add(new Field(F_D61NO_DATA, D61_NO_DATA, d61NoDataFieldType))
-    doc.add(new Field(F_D61ADDRESS_NOALIAS, d61AddressNoAlias, storedNotIndexedFieldType))
+    for (a <- d61Address) doc.add(new Field(F_ADDRESS, a, addressFieldType))
+    for {
+      f <- addr.flat.toOptStr if addr.level.toOptStr.isEmpty
+      n <- addr.numberFirst.toOptStr
+    } doc.add(new Field(F_ADDRESS, f + BIGRAM_SEPARATOR + n, addressFieldType)) // explicitly add flat + street num bigram without extra unigrams 
+    for (i <- 0 until noneCount) doc.add(new Field(F_MISSING_DATA, MISSING_DATA_TOKEN, missingDataFieldType))
+    doc.add(new Field(F_ADDRESS_NOALIAS, d61AddressNoAlias, storedNotIndexedFieldType))
     
     doc
   }

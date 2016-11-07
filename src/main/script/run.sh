@@ -13,10 +13,11 @@ scalaVersion=2.11
 sbt one-jar
 
 
-
 # === Delete/Create database ===
 
-rm -f ~/gnaf.*.db
+rm -f ~/gnaf-old.mv.db
+mv ~/gnaf{,-old}.mv.db
+rm -rf gnaf-db/data/unzipped
 
 # create SQL load script
 cd gnaf-db
@@ -46,6 +47,9 @@ sleep 10
 # run load script using Postgres client, takes about 90 minutes with a SSD
 # see gnaf-db/README.md for an alternative method using the h2 client
 psql --host=localhost --port=5435 --username=gnaf --dbname=~/gnaf < gnaf-db/data/createGnafDb.sql
+
+# attempt to avoid gnaf-extractor failing below with: java.sql.SQLTimeoutException: Timeout after 10000ms of waiting for a connection
+sleep 10
 
 # stop h2
 kill $H2_PID

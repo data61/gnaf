@@ -38,8 +38,9 @@ object Main {
   case class CliOption(
       dburl: String,
       sampleSize: Int,
+      noFlatType: Boolean = false,
       numberAdornments: Boolean = false, // with number prefix, suffix or range
-      unit: Boolean = false, // with unit number
+      flat: Boolean = false, // with flat number
       level: Boolean = false, // with level number
       streetAlias: Boolean = false,
       localityAlias: Boolean = false
@@ -59,12 +60,15 @@ object Main {
      opt[Int]('s', "sampleSize") action { (x, c) =>
         c.copy(sampleSize = x)
       } text (s"test sample size, default ${defaultCliOption.sampleSize}")
+     opt[Unit]('t', "noFlatType") action { (_, c) =>
+        c.copy(noFlatType = true)
+      } text (s"addresses with a flat and without a level have the flat type ommitted, default ${defaultCliOption.noFlatType}")
      opt[Unit]('n', "numberAdornments") action { (_, c) =>
         c.copy(numberAdornments = true)
       } text (s"addresses with number prefix, suffix or range, default ${defaultCliOption.numberAdornments}")
-     opt[Unit]('u', "unit") action { (_, c) =>
-        c.copy(unit = true)
-      } text (s"addresses with unit number, default ${defaultCliOption.unit}")
+     opt[Unit]('f', "flat") action { (_, c) =>
+        c.copy(flat = true)
+      } text (s"addresses with flat number, default ${defaultCliOption.flat}")
      opt[Unit]('l', "level") action { (_, c) =>
         c.copy(level = true)
       } text (s"addresses with level number, default ${defaultCliOption.level}")
@@ -168,7 +172,7 @@ object Main {
       if ad.localityPid === localityPid && ad.confidence > -1
   } yield (ad, as, sl, sla)
 
-  /** addresses without: number prefix, suffix or range; unit; level; or street alias */
+  /** addresses without: number prefix, suffix or range; flat; level; or street alias */
   val qAddressDetailWithoutNumberAdornments = {
     def q(localityPid: Rep[String]) = qAddressDetailBase(localityPid).filter { case (ad, as, sl, sla) =>
       ad.numberFirstPrefix.isEmpty && ad.numberFirstSuffix.isEmpty && ad.numberLast.isEmpty && ad.flatNumber.isEmpty && ad.levelNumber.isEmpty && sla.isEmpty
@@ -183,7 +187,7 @@ object Main {
     Compiled(q _)
   }
   
-  val qAddressDetailWithUnit = {
+  val qAddressDetailWithFlat = {
     def q(localityPid: Rep[String]) = qAddressDetailBase(localityPid).filter { case (ad, _, _, _) =>
       ad.flatNumber.nonEmpty
     }
@@ -208,7 +212,7 @@ object Main {
   : Future[Seq[(AddressDetailRow, AddressSiteRow, StreetLocalityRow, Seq[StreetLocalityAliasRow])]]
   = {
     val q = if (c.numberAdornments) qAddressDetailWithNumberAdornments(localityPid)
-      else if (c.unit) qAddressDetailWithUnit(localityPid)
+      else if (c.flat) qAddressDetailWithFlat(localityPid)
       else if (c.level) qAddressDetailWithLevel(localityPid)
       else if (c.streetAlias) qAddressDetailWithStreetAlias(localityPid)
       else qAddressDetailWithoutNumberAdornments(localityPid)
@@ -331,16 +335,20 @@ object Main {
           (sla.streetName, sla.streetTypeCode, sla.streetSuffixCode)
         } else (sl.streetName, sl.streetTypeCode, sl.streetSuffixCode)
         
-        val qSeq = Seq(
-          as.addressSiteName,
-          buildingName,
-          flatTypeCode.map(flatTypeMap), preNumSuf(flatNumberPrefix, flatNumber, flatNumberSuffix),
-          levelTypeCode.map(levelTypeMap), preNumSuf(levelNumberPrefix, levelNumber, levelNumberSuffix),
+        val flatNum = preNumSuf(flatNumberPrefix, flatNumber, flatNumberSuffix)
+        val levelNum = preNumSuf(levelNumberPrefix, levelNumber, levelNumberSuffix)
+        val flatLevel = if (c.noFlatType && flatNum.isDefined && levelNum.isEmpty)
+            Seq(flatNum)
+          else Seq(
+            flatTypeCode.map(flatTypeMap), flatNum,
+            levelTypeCode.map(levelTypeMap), levelNum
+            )
+        
+        val qSeq = Seq(as.addressSiteName, buildingName) ++ flatLevel ++ Seq(
           join(Seq(preNumSuf(numberFirstPrefix, numberFirst, numberFirstSuffix), preNumSuf(numberLastPrefix, numberLast, numberLastSuffix)), "-"),
           Some(streetName), streetTypeCode, streetSuffixCode.map(streetSuffixMap),
           Some(localityName)
         )
-        
         
         val state = Some(stateMap(statePid))
         val query = join(qSeq ++ Seq(state, postcode), " ").getOrElse("")

@@ -25,11 +25,13 @@ object GnafLucene {
   /** GNAF Lucene field names */
   val F_JSON = "json"
   val F_LOCATION = "location"
-  val F_D61ADDRESS = "d61Address"
-  val F_D61ADDRESS_NOALIAS = "d61AddressNoAlias"
-  val F_D61NO_DATA = "d61NoData"
+  val F_ADDRESS = "address"
+  val F_ADDRESS_NOALIAS = "addressNoAlias"
+  val F_MISSING_DATA = "noData"
   
-  val D61_NO_DATA = "N" // store this token in F_D61NO_DATA once for each missing streetNum, site/building, flat, level 
+  val MISSING_DATA_TOKEN = "N" // store this token in F_MISSING_DATA once for each missing: site/building, flat, level, streetNum
+  
+  val BIGRAM_SEPARATOR = "~"
     
   /** count occurrences of x in s, x must be non-empty */
   def countOccurrences(s: String, x: String) = {
@@ -48,30 +50,31 @@ object GnafLucene {
   }
   
   /** get n-gram size n */
-  def shingleSize(s: String) = countOccurrences(s, ShingleFilter.DEFAULT_TOKEN_SEPARATOR) + 1
+  def shingleSize(s: String) = countOccurrences(s, BIGRAM_SEPARATOR) + 1
   
   /**
    * gnaf-test shows tf-idf doesn't work well with addresses
-   * For F_D61ADDRESS disable tf, idf and length norm,
-   * but for F_D61NO_DATA keep tf to favour multiple D61_NO_DATA tokens.
+   * For F_DADDRESS disable tf, idf and length norm,
+   * but for F_MISSING_DATA keep tf to favour multiple MISSING_DATA_TOKENs.
    */
-  class NoDataSimilarity extends ClassicSimilarity {
-    override def lengthNorm(state: FieldInvertState) = state.getBoost // no length norm, don't penalize multiple aliases
-    override def idf(docFreq: Long, docCount: Long): Float = 1.0f // don't penalize SMITH STREET for being common
+  class MissingDataSimilarity extends ClassicSimilarity {
+    // default tf - boost repeated MISSING_DATA_TOKEN tokens
+    override def lengthNorm(state: FieldInvertState) = state.getBoost // no length norm, don't penalize multiple MISSING_DATA_TOKENs or multiple aliases
+    override def idf(docFreq: Long, docCount: Long): Float = 1.0f // don't penalize MISSING_DATA_TOKEN or SMITH STREET for being common
   }
-  class AddressSimilarity extends NoDataSimilarity {
+  class AddressSimilarity extends MissingDataSimilarity {
     override def tf(freq: Float): Float = 1.0f // don't boost street and locality name being the same
   }
   val classicSimilarity = new ClassicSimilarity
   object GnafSimilarity extends PerFieldSimilarityWrapper(classicSimilarity) {
-    val noData = new NoDataSimilarity
+    val md = new MissingDataSimilarity
     val addr = new AddressSimilarity
-    override def get(name: String) = if (name == F_D61ADDRESS) addr else if (name == F_D61NO_DATA) noData else classicSimilarity
+    override def get(name: String) = if (name == F_ADDRESS) addr else if (name == F_MISSING_DATA) md else classicSimilarity
   }
 
   val storedNotIndexedFieldType = {
     val t = new FieldType
-    // copied from StringField
+    // based on StringField
     t.setOmitNorms(true);
     t.setStored(true);
     t.setTokenized(false);
@@ -80,10 +83,10 @@ object GnafLucene {
     t
   }
   
-  val d61AddrFieldType = {
+  val addressFieldType = {
     val t = new FieldType
-    // copied from TextField
-    t.setOmitNorms(true); // AddressSimilarity not using norms
+    // based on TextField
+    t.setOmitNorms(true);
     t.setStored(true);
     t.setTokenized(true);
     t.setIndexOptions(IndexOptions.DOCS); // not using term freq, TextField has DOCS_AND_FREQS_AND_POSITIONS
@@ -91,9 +94,19 @@ object GnafLucene {
     t
   }
   
-  val d61NoDataFieldType = {
+  val flatStreetNumFieldType = {
     val t = new FieldType
-    t.setOmitNorms(true); // NoDataSimilarity not using norms
+    t.setOmitNorms(true);
+    t.setStored(false);
+    t.setTokenized(false);
+    t.setIndexOptions(IndexOptions.DOCS);
+    t.freeze();
+    t
+  }
+  
+  val missingDataFieldType = {
+    val t = new FieldType
+    t.setOmitNorms(true);
     t.setStored(false);
     t.setTokenized(false);
     t.setIndexOptions(IndexOptions.DOCS_AND_FREQS); // using term freq
@@ -109,6 +122,7 @@ object GnafLucene {
       //   minShingleSize = 2 (error if set < 2), maxShingleSize = 2
       //   outputUnigrams = true
       val result = new ShingleFilter(new LowerCaseFilter(source), 2, 2)
+      result.setTokenSeparator(BIGRAM_SEPARATOR) // default is " ", changed so we can explicitly add a bigram by passing "a~b" through the tokenizer
       new TokenStreamComponents(source, result)
     }
     
@@ -146,20 +160,20 @@ object GnafLucene {
       box: Option[BoundingBox]
     ) {
     def toQuery: Query = {
-      val q = tokenIter(shingleWhiteLowerAnalyzer, F_D61ADDRESS, addr).foldLeft {
+      val q = tokenIter(shingleWhiteLowerAnalyzer, F_ADDRESS, addr).foldLeft {
         val b = new BooleanQuery.Builder
-        // small score increment for missing streetNo, build/site, flat, level (smaller than for an actual match)
-        b.add(new BooleanClause(new BoostQuery(new TermQuery(new Term(F_D61NO_DATA, D61_NO_DATA)), 0.1f), BooleanClause.Occur.SHOULD))
+        // small score increment for missing: build/site, flat, level, streetNo (smaller than for an actual match)
+        b.add(new BooleanClause(new BoostQuery(new TermQuery(new Term(F_MISSING_DATA, MISSING_DATA_TOKEN)), 0.05f), BooleanClause.Occur.SHOULD))
         box.foreach(x => b.add(new BooleanClause(x.toQuery, BooleanClause.Occur.FILTER)))
         if (addr.trim.isEmpty)
           // mobile use case: all addresses in box around me
           b.add(new BooleanClause(new MatchAllDocsQuery, BooleanClause.Occur.SHOULD))
         else
-          b.setMinimumNumberShouldMatch(2) // could be D61_NO_DATA and 1 user term or 2 user terms
+          b.setMinimumNumberShouldMatch(2) // could be MISSING_DATA_TOKEN and 1 user term or 2 user terms
         b
       }{ (b, t) =>
         val q = {
-          val term = new Term(F_D61ADDRESS, t)
+          val term = new Term(F_ADDRESS, t)
           val q = fuzzy
             .filter(f => f.maxEdits > 0 && t.length >= f.minLength)
             .map(f => new FuzzyQuery(term, f.maxEdits, f.prefixLength))
@@ -169,7 +183,7 @@ object GnafLucene {
         }
         b.add(new BooleanClause(q, BooleanClause.Occur.SHOULD))
       }.build
-      log.debug(s"mkQuery: bool query = ${q.toString(F_D61ADDRESS)}")
+      log.debug(s"mkQuery: bool query = ${q.toString(F_ADDRESS)}")
       q
     }
   }
