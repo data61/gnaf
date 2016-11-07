@@ -620,4 +620,4 @@ function Col(label, field, handler, tdClass) {
 
 // functions you can use for the above Col.handler
 function defaultColHandler(v) { return v; }
-function scoreColHandler(v) { return v === "NaN" ? "" : v.toPrecision(2); }
+function scoreColHandler(v) { return v === "NaN" ? "" : v.toPrecision(4); }
