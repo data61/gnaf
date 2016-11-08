@@ -11,14 +11,14 @@ See `gnaf/src/main/script/run.sh` for automation of the steps described below.
 
 ## Install Tools
 
-Running sbt from the top level gnaf directory, e.g. `sbt update-classifiers` downloads dependencies including the H2 database engine used in the next section. Sbt puts the h2 jar at `~/.ivy2/cache/com.h2database/h2/jars/h2-1.4.191.jar`. Alternatively you can download it from the H2 database website.
+Running sbt from the top level gnaf directory, e.g. `sbt update-classifiers` downloads dependencies including the H2 database engine used in the next section. Sbt puts the h2 jar at `~/.ivy2/cache/com.h2database/h2/jars/h2-1.4.193.jar`. Alternatively you can download it from the H2 database website.
 
 ## H2 database
 H2 provides a single file, zero-admin database that can be run embedded (within the application process) or client-server.
 
 The H2 database engine and SQL Console webapp is started with:
 
-    java -Xmx3G -jar ~/.ivy2/cache/com.h2database/h2/jars/h2-1.4.191.jar -web
+    java -Xmx3G -jar ~/.ivy2/cache/com.h2database/h2/jars/h2-1.4.193.jar -web
 
 with the webapp available at `http://127.0.1.1:8082`.
 
@@ -75,6 +75,9 @@ On a macbook-pro (with SSD) it takes 26 min to load the data and another 53 min 
 The script creates a user `READONLY` with password `READONLY` that has only the `SELECT` right. This user should be used for read-only access.
 
 ## Exploring Address Data
+
+This section is based on the first public release of the G-NAF data in February 2016. Some data anomolies may have been addressed in subsequent releases.
+
 Find an address (fast):
 
     SELECT SL.*, AD.*
