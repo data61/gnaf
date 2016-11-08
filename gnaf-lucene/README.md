@@ -26,21 +26,31 @@ These strings are indexed into the same Lucene field using `WhitespaceTokenizer`
 Bigrams provide a reward for terms appearing in the above order.
 A PositionIncrementGap is used to prevent bigrams going across string boundaries so that only ordering within each string is rewarded, not between them.
 
+A case where this indexing scheme doesn't work well is a user query for "2 17 SMITH STREET". We understand the 2 represents a unit/flat number, because if it was a level number it would need some text to indicate that. The 2 and the 17 appear in separate array elements so "2 17" will not produce a bigram match. The "2" will only score as a unigram match to any "2" e.g. possibly a level or street number. In the case that an address has a flat number and a street number but no level, a flat number/street number bigram is added to the index specifically to handle queries of this form.
+
+A search for a street address with no flat specified should score a match to the street address with no flat higher than one with a spurious match to a flat. More generally it is desirable to add a slight boost (less than the score increment for a correct match) to results with missing data for: site/building, flat, level, and street number. This is facilitated by adding a MISSING_DATA_TOKEN to the field F_MISSING_DATA for each missing data element from this list.
+
+### Searching
+
+Query tokenization and filtering is as discussed above (under Indexing).
+Bigram term matches are boosted by a factor of 3 to reward correct ordering.
+MISSING_DATA_TOKEN is added to the query boosted by 0.05 to slightly boost results for each missing data element.
+
+### Scoring
+
 Analysis of results using `gnaf-test` has shown that Lucene's default scoring based on language models doesn't work well with address data.
-`AddressSimilarity` is used to override this behaviour:
+
+`AddressSimilarity` is used to override the default scoring:
 
 - length norm is disabled so that multiple aliases are not penalized
 - term frequency is disabled so that a matching street and locality name isn't unduly rewarded
 - document frequency is disabled so that common street names are not penalized
 
-For a street address with no street number, a "d61_no_num" token is indexed to represent the missing number.
+`MissingDataSimilarity` overrides the scoring for the field F_MISSING_DATA:
 
-### Searching
-
-Bigram term matches are boosted by a factor of 3 to reward correct ordering.
-"d61_no_num" is added to the query boosted by 0.1 so that a matching street number will score much higher, but otherwise a street with
-no number will be preferred over one with a spurious number.
-Input tokenization and filtering is as discussed above (under Indexing) and scoring is provided by `AddressSimilarity` also as above.
+- length norm is disabled so that multiple tokens are not penalized
+- term frequency is enabled so that multiple tokens score more
+- document frequency is disabled (it's a constant as we only have one unique token)
 
 #### Suggested preprocessing for client applications
 
