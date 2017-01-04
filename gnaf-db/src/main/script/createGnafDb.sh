@@ -5,23 +5,24 @@ set -ex
 baseDir=$PWD
 scriptDir=$baseDir/src/main/script
 dataDir=$baseDir/data
-unzipped=$dataDir/unzipped
 mkdir -p $dataDir
 
-# update these vars for new release
-gnafUrl="https://s3-ap-southeast-2.amazonaws.com/datagovau/AUG16_GNAF%2BEULA_PipeSeparatedValue.zip"
-gnafDataDirName="G-NAF AUGUST 2016" # TODO: try to set this from the dir in the zip file
+# JSON URL from near top-right of: http://www.data.gov.au/dataset/geocoded-national-address-file-g-naf
+jsonUrl=http://www.data.gov.au/api/3/action/package_show?id=19432f89-dc3a-4ef3-b943-5326ef1dbecc
+# get data URL for current version from JSON
+dataUrl=$( curl -s $jsonUrl | jq '.result.resources[] | select(.format == "ZIP") | .url' | sed -e 's/^"//' -e 's/"$//' )
 
-gnafName=${gnafUrl##*/}
-gnafName=${gnafName%.zip}
-gnafName=${gnafName/'%2B'/+}
-gnaf="$unzipped/${gnafName}/G-NAF"
-gnafData="$gnaf/$gnafDataDirName"
-
-zip=$dataDir/${gnafName}.zip
+# download ZIP data file unless already done
+zip=$dataDir/${dataUrl##*/}
 [[ -f "$zip" ]] || ( cd $dataDir; wget "$gnafUrl" )
 
-[[ -d "$unzipped" ]] || ( mkdir -p $unzipped; cd $unzipped; unzip $zip )
+unzipped=$dataDir/unzipped
+# get dir path where the zip file's */G-NAF/Extras will be extracted (contains release month so releases don't clobber each other)
+gnafExtras="$unzipped/$( unzip -l "$zip" */G-NAF/Extras/ | awk '/Extras/ { print gensub("/$", "", "g", $NF) }' )"
+# unzip unless $gnafExtras already exists 
+[[ -d "$gnafExtras" ]] || ( mkdir -p $unzipped; cd $unzipped; unzip $zip )
+# get dir path where the zip file's pipe separated data files have been extracted
+gnafData="${gnafExtras%Extras}G-NAF*"
 
 # Load GNAF into a relational database following https://www.psma.com.au/sites/default/files/g-naf_-_getting_started_guide.pdf
 
@@ -35,70 +36,71 @@ progress() {
 }
 
 
-progress "modified: $gnaf/Extras/GNAF_TableCreation_Scripts/create_tables_ansi.sql"
+progress "modified: $gnafExtras/GNAF_TableCreation_Scripts/create_tables_ansi.sql"
 
-sed -e 's/DROP TABLE/DROP TABLE IF EXISTS/' -e 's/numeric([0-9])/integer/' "$gnaf/Extras/GNAF_TableCreation_Scripts/create_tables_ansi.sql"
+sed -e 's/DROP TABLE/DROP TABLE IF EXISTS/' -e 's/numeric([0-9])/integer/' "$gnafExtras/GNAF_TableCreation_Scripts/create_tables_ansi.sql"
 
 progress "load Authority Code ..."
-while read tbl file
+while read tbl
 do
-  echo "INSERT INTO $tbl SELECT * FROM CSVREAD('$gnafData/Authority Code/$file', null, 'fieldSeparator=|');"
+  echo "INSERT INTO ${tbl} SELECT * FROM CSVREAD('$gnafData/Authority Code/Authority_Code_${tbl}_psv.psv', null, 'fieldSeparator=|');"
 done <<-'EoF'
-ADDRESS_ALIAS_TYPE_AUT Authority_Code_ADDRESS_ALIAS_TYPE_AUT_psv.psv
-ADDRESS_TYPE_AUT Authority_Code_ADDRESS_TYPE_AUT_psv.psv
-FLAT_TYPE_AUT Authority_Code_FLAT_TYPE_AUT_psv.psv
-GEOCODE_RELIABILITY_AUT Authority_Code_GEOCODE_RELIABILITY_AUT_psv.psv
-GEOCODE_TYPE_AUT Authority_Code_GEOCODE_TYPE_AUT_psv.psv
-GEOCODED_LEVEL_TYPE_AUT Authority_Code_GEOCODED_LEVEL_TYPE_AUT_psv.psv
-LEVEL_TYPE_AUT Authority_Code_LEVEL_TYPE_AUT_psv.psv
-LOCALITY_ALIAS_TYPE_AUT Authority_Code_LOCALITY_ALIAS_TYPE_AUT_psv.psv
-LOCALITY_CLASS_AUT Authority_Code_LOCALITY_CLASS_AUT_psv.psv
-MB_MATCH_CODE_AUT Authority_Code_MB_MATCH_CODE_AUT_psv.psv
-PS_JOIN_TYPE_AUT Authority_Code_PS_JOIN_TYPE_AUT_psv.psv
-STREET_CLASS_AUT Authority_Code_STREET_CLASS_AUT_psv.psv
-STREET_TYPE_AUT Authority_Code_STREET_TYPE_AUT_psv.psv
-STREET_LOCALITY_ALIAS_TYPE_AUT Authority_Code_STREET_LOCALITY_ALIAS_TYPE_AUT_psv.psv
-STREET_SUFFIX_AUT Authority_Code_STREET_SUFFIX_AUT_psv.psv
+ADDRESS_ALIAS_TYPE_AUT
+ADDRESS_TYPE_AUT
+FLAT_TYPE_AUT
+GEOCODE_RELIABILITY_AUT
+GEOCODE_TYPE_AUT
+GEOCODED_LEVEL_TYPE_AUT
+LEVEL_TYPE_AUT
+LOCALITY_ALIAS_TYPE_AUT
+LOCALITY_CLASS_AUT
+MB_MATCH_CODE_AUT
+PS_JOIN_TYPE_AUT
+STREET_CLASS_AUT
+STREET_TYPE_AUT
+STREET_LOCALITY_ALIAS_TYPE_AUT
+STREET_SUFFIX_AUT
 EoF
-# table name / data file pairs above pasted from g-naf_-_getting_started_guide.pdf referenced above
+# table names pasted from g-naf_-_getting_started_guide.pdf referenced above
 
 progress "load Standard ..."
-while read tbl file
+while read tbl
 do
-  progress "load $tbl ..."
-  name=${file#ACT}
-  ls "$gnafData/Standard/"*$name | egrep "/[A-Z]+$name" | while read f # don't load ACT_STREET_LOCALITY_psv.psv into LOCALITY
+  progress "load ${tbl} ..."
+  # A-Z mess matches 2 and 3 char state abreviations (note * would try to load {state}_STREET_LOCALITY_psv.psv into LOCALITY)
+  ls -1 "${gnafData}"/Standard/{[A-Z][A-Z],[A-Z][A-Z][A-Z]}_${tbl}_psv.psv | while read f
   do
-    echo "INSERT INTO $tbl SELECT * FROM CSVREAD('$f', null, 'fieldSeparator=|');"
+    echo "INSERT INTO ${tbl} SELECT * FROM CSVREAD('$f', null, 'fieldSeparator=|');"
   done
 done <<-'EoF'
-ADDRESS_ALIAS ACT_ADDRESS_ALIAS_psv.psv
-ADDRESS_DEFAULT_GEOCODE ACT_ADDRESS_DEFAULT_GEOCODE_psv.psv
-ADDRESS_DETAIL ACT_ADDRESS_DETAIL_psv.psv
-ADDRESS_MESH_BLOCK_2011 ACT_ADDRESS_MESH_BLOCK_2011_psv.psv
-ADDRESS_SITE_GEOCODE ACT_ADDRESS_SITE_GEOCODE_psv.psv
-ADDRESS_SITE ACT_ADDRESS_SITE_psv.psv
-LOCALITY ACT_LOCALITY_psv.psv
-LOCALITY_ALIAS ACT_LOCALITY_ALIAS_psv.psv
-LOCALITY_NEIGHBOUR ACT_LOCALITY_NEIGHBOUR_psv.psv
-LOCALITY_POINT ACT_LOCALITY_POINT_psv.psv
-MB_2011 ACT_MB_2011_psv.psv
-PRIMARY_SECONDARY ACT_PRIMARY_SECONDARY_psv.psv
-STATE ACT_STATE_psv.psv
-STREET_LOCALITY ACT_STREET_LOCALITY_psv.psv
-STREET_LOCALITY_ALIAS ACT_STREET_LOCALITY_ALIAS_psv.psv
-STREET_LOCALITY_POINT ACT_STREET_LOCALITY_POINT_psv.psv
+ADDRESS_ALIAS
+ADDRESS_DEFAULT_GEOCODE
+ADDRESS_DETAIL
+ADDRESS_MESH_BLOCK_2011
+ADDRESS_SITE_GEOCODE
+ADDRESS_SITE
+LOCALITY
+LOCALITY_ALIAS
+LOCALITY_NEIGHBOUR
+LOCALITY_POINT
+MB_2011
+PRIMARY_SECONDARY
+STATE
+STREET_LOCALITY
+STREET_LOCALITY_ALIAS
+STREET_LOCALITY_POINT
 EoF
-# table name / data file pairs above pasted from g-naf_-_getting_started_guide.pdf referenced above
+# table names pasted from g-naf_-_getting_started_guide.pdf referenced above
 
 progress "add constraints ..."
-sed --regexp-extended --file=$scriptDir/constraint.sed "$gnaf/Extras/GNAF_TableCreation_Scripts/add_fk_constraints.sql"
+sed --regexp-extended --file=$scriptDir/constraint.sed "$gnafExtras/GNAF_TableCreation_Scripts/add_fk_constraints.sql"
 
 progress "add an index on STREET_NAME (this is not part of the getting_started_guide)..."
 echo "create index STREET_LOCALITY_NAME_IDX on STREET_LOCALITY (STREET_NAME);"
 
 # progress "add view (suggested in getting_started_guide) ..."
-# cat "$gnaf/Extras/GNAF_View_Scripts/address_view.sql"
+# commented out as not useful/too slow
+# cat "$gnafExtras/GNAF_View_Scripts/address_view.sql"
 # echo ";"
 
 progress "Create READONLY user ..."

@@ -68,15 +68,29 @@ In the SQL box enter: `RUNSCRIPT FROM '{gnaf}/gnaf-createdb/data/createGnafDb.sq
 
 1. Start H2 with the `-pg` option and run the Postgres client:
 
-	psql --host=localhost --port=5435 --username=gnaf --dbname=~/gnaf < data/createGnafDb.sql
-	Password for user gnaf: gnaf
+    psql --host=localhost --port=5435 --username=gnaf --dbname=~/gnaf < data/createGnafDb.sql
+    Password for user gnaf: gnaf
 
 On a macbook-pro (with SSD) it takes 26 min to load the data and another 53 min to create the indexes.
 The script creates a user `READONLY` with password `READONLY` that has only the `SELECT` right. This user should be used for read-only access.
 
 ## Exploring Address Data
 
-This section is based on the first public release of the G-NAF data in February 2016. Some data anomolies may have been addressed in subsequent releases.
+### Observations from November 2016 Release
+
+New addresses provided in updates can be found with something like:
+
+    SELECT * FROM ADDRESS_DETAIL ad
+    join STREET_LOCALITY sl on sl.STREET_LOCALITY_PID = ad.STREET_LOCALITY_PID
+    WHERE ad.DATE_CREATED > '2016-09-01'
+
+This query finds new rows for units on 5 KERRIDGE STREET KINGSTON ACT 2604, with `STREET_LOCALITY_PID` = ACT3556514.
+
+There are still no `ADRESS_DETAIL` rows with a non-null `DATE_RETIRED` (which could be used to implement data quality improvements).
+
+### Observations from Febuary 2016 Release
+
+This section is based on the first public release of the G-NAF in February 2016. Data anomalies noted below may or may not have been addressed in post February 2016 releases.
 
 Find an address (fast):
 
@@ -89,7 +103,7 @@ Find an address (fast):
 
 The nullable type of `ADDRESS_DETAIL.STREET_LOCALITY_PID` would indicate use of a `LEFT JOIN`, however the column contains no `NULL` values so `(INNER) JOIN` can be used instead.
 
-The same thing using the view is very slow (45892 ms):
+The `G-NAF getting started guide` suggests a database view `ADDRESS_VIEW`. Its creation is currently commented out in the database creation script, but here are some results using it. Replicating the above query using the view is very slow (45892 ms):
 
     SELECT * FROM ADDRESS_VIEW 
     WHERE STREET_NAME = 'BARRGANA'
@@ -99,6 +113,8 @@ but at least this is fast:
 
     SELECT * FROM ADDRESS_VIEW 
     WHERE ADDRESS_DETAIL_PID = 'GAWA_162637248'
+
+Presumably creating the right indices would speed up the slow view query.
 
 Although data quality is generally very good, this shows some dodgy `STREET_LOCALITY_ALIAS` records:
 
@@ -117,7 +133,7 @@ The corresponding row in `STREET_TYPE_AUT` with `CODE` = 'SOUTH' is possibly err
 
 There are inconsistencies in the usage of LOCALITY.LOCALITY_NAME and LOCALITY_ALIAS.NAME (some addresses have them reversed compared to others).
 
-Here is an example showing a cul-de-sac with some even numbered houses:
+Here is an interesting example showing how G-NAF records a cul-de-sac with some even numbered houses:
 
     SELECT
       SL.STREET_NAME, SL.STREET_TYPE_CODE, SL.STREET_SUFFIX_CODE, SL.STREET_LOCALITY_PID,
@@ -141,7 +157,7 @@ Looking at cases where the alias has a different STREET_NAME (27119 cases):
 - the vast majority appear to be spelling variants with an edit distance of 1 - exception FLAGSTONE -> WHISKEY BAY
 - in some cases the number of tokens is different e.g. DE CHAIR -> DECHAIR, TWELVETREES -> TWELVE TREES
 - there are aliases for SAINT X -> ST X (237), ST X -> SAINT X (26), MOUNT X -> MT X (577) and MT X -> MOUNT X (110).
-Perhaps G-NAF could impose some simplifying standardisation, using SAINT/MOUNT in the main record and abreviations in the aliases? 
+Perhaps G-NAF could impose some simplifying standardisation, using SAINT/MOUNT in the main record and abbreviations in the aliases? 
 
 The following columns are always NULL:
  - ADDRESS_SITE_GEOCODE columns: BOUNDARY_EXTENT, PLANIMETRIC_ACCURACY, ELEVATION, GEOCODE_SITE_NAME and GEOCODE_SITE_DESCRIPTION;
@@ -155,7 +171,7 @@ There are `LOCALITY` rows:
 - with duplicate `LOCALITY_NAME`; and
 - without any `ADDRESS_DETAIL` rows.
   
-	SELECT * FROM LOCALITY where LOCALITY_NAME = 'VERRAN'
+    SELECT * FROM LOCALITY where LOCALITY_NAME = 'VERRAN'
 
 LOCALITY_PID | DATE_CREATED | DATE_RETIRED | LOCALITY_NAME | PRIMARY_POSTCODE | LOCALITY_CLASS_CODE | STATE_PID | GNAF_LOCALITY_PID | GNAF_RELIABILITY_CODE
 ---|---|---|---|---|---|---|---|---
@@ -183,7 +199,7 @@ The following sections show sample rows from these tables and the number of rows
 
 #### FLAT_TYPE_AUT
 
-	SELECT * FROM FLAT_TYPE_AUT
+    SELECT * FROM FLAT_TYPE_AUT
 
 CODE | NAME | DESCRIPTION
 ---|---|---
@@ -199,7 +215,7 @@ UNIT | UNIT | UNIT
 
 #### LEVEL_TYPE_AUT
     
-	SELECT * FROM LEVEL_TYPE_AUT
+    SELECT * FROM LEVEL_TYPE_AUT
 
 CODE | NAME | DESCRIPTION
 ---|---|---
@@ -216,7 +232,7 @@ M | MEZZANINE | MEZZANINE
 
 #### STREET_SUFFIX_AUT
 
-	SELECT * FROM STREET_SUFFIX_AUT
+    SELECT * FROM STREET_SUFFIX_AUT
 
 CODE | NAME | DESCRIPTION | 
 ---|---|---
@@ -231,7 +247,7 @@ LR | LOWER | LOWER
 
 #### STREET_TYPE_AUT
        
-	SELECT * FROM STREET_TYPE_AUT
+    SELECT * FROM STREET_TYPE_AUT
 
 CODE | NAME | DESCRIPTION | 
 ---|---|---
@@ -279,12 +295,12 @@ close to address site boundary"
 
 GEOCODE_TYPE_CODE | NAME | COUNT(*)
 ----|---------|-------
-BC	 | BUILDING CENTROID | 201520
-PCM	 | PROPERTY CENTROID MANUAL | 2307
-PC	 | PROPERTY CENTROID | 9479989
+BC   | BUILDING CENTROID | 201520
+PCM  | PROPERTY CENTROID MANUAL | 2307
+PC   | PROPERTY CENTROID | 9479989
 PAPS | PROPERTY ACCESS POINT SETBACK | 221312
-FCS	 | FRONTAGE CENTRE SETBACK | 3464774
-GG	 | GAP GEOCODE | 186160
+FCS  | FRONTAGE CENTRE SETBACK | 3464774
+GG   | GAP GEOCODE | 186160
 
 - ADDRESS_SITEs have at most 2 geocodes (58,165 have 2):
 
@@ -293,11 +309,11 @@ GG	 | GAP GEOCODE | 186160
         GROUP BY ADDRESS_SITE_PID
         ORDER BY cnt desc;
     
-ADDRESS_SITE_PID | 	CNT 
+ADDRESS_SITE_PID |  CNT 
 ---|---
-415053318 |	2
-415095264 |	2
-415102559 |	2
+415053318 | 2
+415095264 | 2
+415102559 | 2
 ... | ...
 
 Looking at the first of these (ADDRESS_DETAIL_PID: GASA_414912543, 26 STRANGMAN ROAD, WAIKERIE SA 5330):

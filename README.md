@@ -54,7 +54,9 @@ To develop [Scala](http://scala-lang.org/) code install:
 ### Dependencies
 
 - scripts assume a *nix environment
+- [gnaf-db/src/main/script/createGnafDb.sh](gnaf-db/src/main/script/createGnafDb.sh) requires [jq](https://stedolan.github.io/jq/)
 - [src/main/script/run.sh](src/main/script/run.sh) requires:
+  - `jq` (because it runs `createGnafDb.sh`)
   - the Postgres client `psql` to load the database (see [gnaf-db](gnaf-db) for an alternative method using the h2 client);
   - `node` and `npm` to run [gnaf-test](gnaf-test) (see its README).
 
