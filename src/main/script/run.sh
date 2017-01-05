@@ -16,7 +16,7 @@ sbt one-jar
 # === Delete/Create database ===
 
 rm -f ~/gnaf-old.mv.db
-mv ~/gnaf{,-old}.mv.db
+[[ -f ~/gnaf.mv.db ]] && mv ~/gnaf{,-old}.mv.db
 rm -rf gnaf-db/data/unzipped
 
 # create SQL load script
