@@ -14,7 +14,7 @@ dataUrl=$( curl -s $jsonUrl | jq '.result.resources[] | select(.format == "ZIP")
 
 # download ZIP data file unless already done
 zip=$dataDir/${dataUrl##*/}
-[[ -f "$zip" ]] || ( cd $dataDir; wget "$gnafUrl" )
+[[ -f "$zip" ]] || ( cd $dataDir; wget "$dataUrl" )
 
 unzipped=$dataDir/unzipped
 # get dir path where the zip file's */G-NAF/Extras will be extracted (contains release month so releases don't clobber each other)
