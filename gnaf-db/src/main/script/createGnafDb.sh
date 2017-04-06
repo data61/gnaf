@@ -17,12 +17,14 @@ zip=$dataDir/${dataUrl##*/}
 [[ -f "$zip" ]] || ( cd $dataDir; wget "$dataUrl" )
 
 unzipped=$dataDir/unzipped
-# get dir path where the zip file's */G-NAF/Extras will be extracted (contains release month so releases don't clobber each other)
-gnafExtras="$unzipped/$( unzip -l "$zip" */G-NAF/Extras/ | awk '/Extras/ { print gensub("/$", "", "g", $NF) }' )"
+# get dir path where the zip file's */Extras/ will be extracted (contains release month so releases don't clobber each other)
+# get path from zip, discard leading info up to time and following spaces, keep the rest apart from the trailing /
+# maybe a bit too brittle?
+gnafExtras="$unzipped/$( unzip -l "$zip" '*/Extras/' | sed -rn '/Extras/s~^.*[0-9][0-9]:[0-9][0-9] *(.*)/$~\1~p' )"
 # unzip unless $gnafExtras already exists 
 [[ -d "$gnafExtras" ]] || ( mkdir -p $unzipped; cd $unzipped; unzip $zip )
-# get dir path where the zip file's pipe separated data files have been extracted
-gnafData="${gnafExtras%Extras}G-NAF*"
+# get dir path parent of Standard/
+gnafData="$unzipped/$( unzip -l "$zip" '*/Standard/' | sed -rn '/Standard/s~^.*[0-9][0-9]:[0-9][0-9] *(.*)/Standard/$~\1~p' )"
 
 # Load GNAF into a relational database following https://www.psma.com.au/sites/default/files/g-naf_-_getting_started_guide.pdf
 

@@ -15,9 +15,11 @@ sbt one-jar
 
 # === Delete/Create database ===
 
-rm -f ~/gnaf-old.mv.db
-[[ -f ~/gnaf.mv.db ]] && mv ~/gnaf{,-old}.mv.db
-rm -rf gnaf-db/data/unzipped
+if [[ -f ~/gnaf.mv.db ]]; then
+  rm -f ~/gnaf-old.mv.db
+  [[ -f ~/gnaf.mv.db ]] && mv ~/gnaf{,-old}.mv.db
+fi
+# rm -rf gnaf-db/data/unzipped
 
 # create SQL load script
 cd gnaf-db
@@ -25,13 +27,8 @@ src/main/script/createGnafDb.sh
 cd ..
 
 # run h2 with postgres protocol, remembering its PID
-
-# get h2 version - approach may be too brittle?
-h2ver=`sed -n '/com.h2database/p' gnaf-db/build.sbt`
-read -a h2verArr <<< $h2ver
-h2ver=${h2verArr[4]}
-h2ver=${h2ver#\"}
-h2ver=${h2ver%\"}
+# get h2 version
+h2ver=$( sed --quiet --regexp-extended '/com.h2database/s/.*"h2"[^"]*"([^"]*)".*/\1/p' gnaf-db/build.sbt )
 echo $h2ver
 
 java -Xmx3G -jar ~/.ivy2/cache/com.h2database/h2/jars/h2-${h2ver}.jar -web -pg &
