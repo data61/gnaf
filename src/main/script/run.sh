@@ -8,23 +8,22 @@ version=`sed 's/.*"\(.*\)"/\1/' version.sbt`
 scalaVersion=2.11
 
 
-# === Build ===
-
-sbt one-jar
-
-
 # === Delete/Create database ===
 
 if [[ -f ~/gnaf.mv.db ]]; then
   rm -f ~/gnaf-old.mv.db
-  [[ -f ~/gnaf.mv.db ]] && mv ~/gnaf{,-old}.mv.db
+  mv ~/gnaf{,-old}.mv.db
 fi
 # rm -rf gnaf-db/data/unzipped
 
 # create SQL load script
-cd gnaf-db
-src/main/script/createGnafDb.sh
-cd ..
+( cd gnaf-db; src/main/script/createGnafDb.sh )
+
+# build scala projects
+# 1. above gnaf-db/src/main/script/createGnafDb.sh creates gnaf-db/target/generated/version.json
+# 2. this version.json file is included in the gnaf-search jar by gnaf-search/build.sbt (so we need to build after running the above script)
+# 3. h2 (used below) is downloaded by the build if necessary, so we need build before running h2
+sbt one-jar
 
 # run h2 with postgres protocol, remembering its PID
 # get h2 version

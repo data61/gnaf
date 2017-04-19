@@ -4,13 +4,13 @@ import java.io.File
 
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.{ ExecutionContextExecutor, Future }
+import scala.io.Source
 import scala.reflect.runtime.universe
 
 import org.apache.lucene.document.Document
 import org.apache.lucene.search.{ ScoreDoc, Sort }
 
 import com.github.swagger.akka.{ HasActorSystem, SwaggerHttpService }
-import com.github.swagger.akka.model.Info
 import com.typesafe.config.ConfigFactory
 
 import akka.actor.ActorSystem
@@ -23,12 +23,13 @@ import akka.http.scaladsl.server.directives.LoggingMagnet.forRequestResponseFrom
 import akka.stream.{ ActorMaterializer, Materializer }
 import au.csiro.data61.gnaf.lucene.GnafLucene._
 import au.csiro.data61.gnaf.lucene.LuceneUtil.{ Searcher, directory }
+import au.csiro.data61.gnaf.search.Search.Result
 import au.csiro.data61.gnaf.util.Util.getLogger
 import ch.megard.akka.http.cors.CorsDirectives.cors
 import io.swagger.annotations.{ Api, ApiOperation, ApiParam }
 import io.swagger.models.Swagger
 import javax.ws.rs.Path
-import spray.json.DefaultJsonProtocol
+import spray.json.{ DefaultJsonProtocol, pimpString }
 
 object Search {
   val log = getLogger(getClass)
@@ -82,7 +83,7 @@ object Search {
   case class Result(totalHits: Int, elapsedSecs: Float, hits: Seq[Hit], error: Option[String])
   def toResult(totalHits: Int, elapsedSecs: Float, hits: Seq[Hit], error: Option[String])
     = Result(totalHits, elapsedSecs, hits, error)
-  
+    
   def toSort(f: Option[String], asc: Boolean): Option[Sort] = None
   
   def validationBuf(c: CliOption, qp: QueryParam): ListBuffer[String] = {
@@ -108,6 +109,8 @@ object Search {
     b
   }
   
+  case class Version(`git-commit`: String, `sbt-version`: String, `gnaf-version`: String)
+  
   object JsonProtocol extends DefaultJsonProtocol {
     implicit val hitFormat = jsonFormat4(Hit)
     implicit val resultFormat = jsonFormat4(Result)
@@ -115,7 +118,10 @@ object Search {
     implicit val boundingBoxFormat = jsonFormat4(BoundingBox)
     implicit val queryParamFormat = jsonFormat4(QueryParam)
     implicit val bulkQueryParamFormat = jsonFormat4(BulkQueryParam)
+    implicit val versionFormat = jsonFormat3(Version)
   }
+  import JsonProtocol._
+
   
   def mkSearcher(c: CliOption) = {
     val s = new Searcher(directory(c.indexDir), toHit, toResult)
@@ -124,19 +130,23 @@ object Search {
   }
   
   def run(c: CliOption) = {
+    
+    val version = {
+      val json = Source.fromInputStream(getClass.getResourceAsStream("/version.json")).getLines.mkString("\n")
+      json.parseJson.convertTo[Version]
+    }
+    
     implicit val sys = ActorSystem()
     implicit val exec = sys.dispatcher
     implicit val mat = ActorMaterializer()
     
-    val luceneService = new LuceneService(c, mkSearcher(c))
+    val luceneService = new LuceneService(c, mkSearcher(c), version)
     
     // /api-docs/swagger.json
     val swaggerService = new SwaggerHttpService() with HasActorSystem {
-      import scala.reflect.runtime.{ universe => ru }
-  
       override implicit val actorSystem = sys
       override implicit val materializer = mat
-      override val apiTypes = Seq(ru.typeOf[LuceneService])
+      override val apiTypes = Seq(scala.reflect.runtime.universe.typeOf[LuceneService])
       override def swaggerConfig = new Swagger().basePath(prependSlashIfNecessary(basePath)) // don't specify protocol://host
     }
     
@@ -147,26 +157,22 @@ object Search {
     log.info("starting service ...")
     Http().bindAndHandle(routes, c.interface, c.port)
   }
-    
 }
 
-/*
- * Stuff that can get wiped out by Eclipse organize imports:
 import Search._
 import Search.JsonProtocol._
-
-@Api(value = "search", produces = "application/json")
- */
-import Search._
-import Search.JsonProtocol._
-import io.swagger.models.Swagger
-import io.swagger.models.Swagger
-import io.swagger.models.Swagger
 
 @Api(value = "search", produces = "application/json")
 @Path("")
-class LuceneService(c: CliOption, searcher: Searcher[Hit, Result])
+class LuceneService(c: CliOption, searcher: Searcher[Hit, Result], version: Version)
 (implicit system: ActorSystem, executor: ExecutionContextExecutor, materializer: Materializer) {
+  
+  @Path("version")
+  @ApiOperation(value = "Version of software and data", nickname = "version", notes="""longer description""", httpMethod = "GET", response = classOf[Version])
+  def versionRoute =
+    complete { // Future { 
+      version
+    } //}
   
   @Path("search")
   @ApiOperation(value = "Search for an address", nickname = "search", notes="""longer description""", httpMethod = "POST", response = classOf[Result])
@@ -174,7 +180,7 @@ class LuceneService(c: CliOption, searcher: Searcher[Hit, Result])
     @ApiParam(value = "queryParam", required = true) q: QueryParam
   ) = {
     val err = validationError(validationBuf(c, q))
-    validate(err.isEmpty, err) { complete { Future { 
+    validate(err.isEmpty, err) { complete { Future {
       searcher.search(q.toQuery, q.numHits)
     }}}
   }
@@ -192,9 +198,9 @@ class LuceneService(c: CliOption, searcher: Searcher[Hit, Result])
   }
   
   val routes = { 
+    pathPrefix("version")    { get                                 { versionRoute    } } ~
     pathPrefix("search")     { (post & entity(as[QueryParam]))     { searchRoute     } } ~
     pathPrefix("bulkSearch") { (post & entity(as[BulkQueryParam])) { bulkSearchRoute } }
   }
 
 }
-

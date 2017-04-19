@@ -1,5 +1,20 @@
 name := "gnaf-search"
 
+// resourceGenerators in Compile += Def.task {
+//   val file = (resourceManaged in Compile).value / "demo" / "myapp.properties"
+//   val contents = "name=%s\nversion=%s".format(name.value,version.value)
+//   IO.write(file, contents)
+//   Seq(file)
+// }.taskValue
+
+// mappings in (Compile, packageBin) += {
+//   (resourceManaged in Compile).value / "demo" / "myapp.properties" -> "demo/myapp.properties"
+// }
+
+mappings in (Compile, packageBin) += {
+  new File("gnaf-db/target/generated/version.json") -> "version.json"
+}
+
 libraryDependencies ++= Seq(
   "com.github.scopt" %% "scopt" % "3.3.0",
   "com.jsuereth" %% "scala-arm" % "2.0.0-M1",

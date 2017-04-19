@@ -59,6 +59,8 @@ To develop [Scala](http://scala-lang.org/) code install:
   - `jq` (because it runs `createGnafDb.sh`)
   - the Postgres client `psql` to load the database (see [gnaf-db](gnaf-db) for an alternative method using the h2 client);
   - `node` and `npm` to run [gnaf-test](gnaf-test) (see its README).
+- the `/version` endpoint provided by `gnaf-search` reports the software and data version, but relies on a file created by `createGnafDb.sh`
+  being available when gnaf-search is built. `run.sh` does things in the right order for this to work.
 
 ## Running and Usage
 

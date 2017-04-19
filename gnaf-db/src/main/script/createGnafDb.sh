@@ -26,6 +26,15 @@ gnafExtras="$unzipped/$( unzip -l "$zip" '*/Extras/' | sed -rn '/Extras/s~^.*[0-
 # get dir path parent of Standard/
 gnafData="$unzipped/$( unzip -l "$zip" '*/Standard/' | sed -rn '/Standard/s~^.*[0-9][0-9]:[0-9][0-9] *(.*)/Standard/$~\1~p' )"
 
+mkdir -p target/generated
+cat > target/generated/version.json <<EoF
+{
+  "git-commit": "$( git rev-parse HEAD )",
+  "sbt-version": "$( sed --regexp-extended 's/.*:=\s*"([^"]+)"/\1/' ../version.sbt )",
+  "gnaf-version": "$( echo ${gnafData##*/G-NAF } )"
+}
+EoF
+
 # Load GNAF into a relational database following https://www.psma.com.au/sites/default/files/g-naf_-_getting_started_guide.pdf
 
 {
