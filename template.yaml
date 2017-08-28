@@ -61,13 +61,13 @@ Resources:
               server {
                 listen 80 default_server;
                 location / {
-                  proxy_pass http://localhost:8080/;
+                  proxy_pass http://localhost:8080;
                   add_header Access-Control-Allow-Headers 'Content-Type';
                   add_header Access-Control-Allow-Origin '*';
                   }
                 }
         runcmd:
-          - "curl -fsSL get.docker.com bash"
+          - "curl -fsSL get.docker.com | bash"
           - "curl --silent --show-error --retry 5 https://bootstrap.pypa.io/get-pip.py | python3"
           - "pip install awscli"
           - "$(aws ecr get-login --no-include-email --region ap-southeast-2)"
