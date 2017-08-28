@@ -72,7 +72,7 @@ Resources:
           - "pip install awscli"
           - "$(aws ecr get-login --no-include-email --region ap-southeast-2)"
           - "nginx -s reload"
-          - "docker run -p 8080:9040 933940466036.dkr.ecr.ap-southeast-2.amazonaws.com/gnaf:latest"
+          - "docker run -p 8080:9040 --restart=always 933940466036.dkr.ecr.ap-southeast-2.amazonaws.com/gnaf:latest"
   gnafasg:
     UpdatePolicy:
         AutoScalingRollingUpdate:
