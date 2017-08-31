@@ -28,11 +28,11 @@ Resources:
         Fn::GetAZs: 'ap-southeast-2'
       CrossZone: True
       HealthCheck:
-          HealthyThreshold: '2'
-          Interval: '120'
-          Target: 'HTTP:80/api-docs/swagger.json'
-          Timeout: '60'
-          UnhealthyThreshold: '2'
+          HealthyThreshold: '5'
+          Interval: '10'
+          Target: 'HTTP:80/v2/api-docs/swagger.json'
+          Timeout: '9'
+          UnhealthyThreshold: '5'
       Listeners:
         -
           InstancePort: '80'
@@ -61,7 +61,10 @@ Resources:
               server {
                 listen 80 default_server;
                 location / {
-                  proxy_pass http://localhost:8080;
+                  rewrite ^/$ https://github.com/data61/gnaf/ redirect;
+                  }
+                location /v2/ {
+                  proxy_pass http://localhost:8080/;
                   add_header Access-Control-Allow-Headers 'Content-Type';
                   add_header Access-Control-Allow-Origin '*';
                   }

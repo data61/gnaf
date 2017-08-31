@@ -17,7 +17,9 @@ fi
 # rm -rf gnaf-db/data/unzipped
 
 # create SQL load script
-( cd gnaf-db; src/main/script/createGnafDb.sh )
+( cd gnaf-db; src/main/script/createGnafDb.sh;)
+
+if [[ $? -eq 5 ]]; then echo "no new data found, cancelling build"; exit 0; fi
 
 # build scala projects
 # 1. above gnaf-db/src/main/script/createGnafDb.sh creates gnaf-db/target/generated/version.json
