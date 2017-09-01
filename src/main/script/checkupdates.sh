@@ -10,10 +10,11 @@ last_modified=$( curl -s $jsonUrl | jq -r '.result.resources[] | select(.format 
 
 existing_last_modified=$(curl -s $prodUrl | jq -r '.["gnaf-version"]' || echo None_Found)
 
+echo "Last modified date in production: $existing_last_modified";
+echo "Last modified date from data.gov.au: $last_modified";
+
 if [[ "$last_modified" != "$existing_last_modified" ]]; then
     echo "New data found!";
-    echo "Last modified date in production: $existing_last_modified";
-    echo "Last modified date from data.gov.au: $last_modified";
     exit 0
 else
     echo "No new data found, exiting with exit code 1";
