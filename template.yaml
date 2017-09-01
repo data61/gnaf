@@ -1,5 +1,9 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: 'This stack hosts the gnaf-search service in a docker container'
+Parameters:
+  sslcertificate:
+    Type: 'String'
+    Description: 'The ARN for the SSL certificate to use on the load balancer to handle https traffic. See Amazon Certificate Manager to find this'
 Resources:
   gnafelbsg:
     Type: 'AWS::EC2::SecurityGroup'
@@ -10,6 +14,11 @@ Resources:
           IpProtocol: 'tcp'
           FromPort: '80'
           ToPort: '80'
+          CidrIp: '0.0.0.0/0'
+        -
+          IpProtocol: 'tcp'
+          FromPort: '443'
+          ToPort: '443'
           CidrIp: '0.0.0.0/0'
   gnafec2sg:
     Type: 'AWS::EC2::SecurityGroup'
@@ -39,6 +48,12 @@ Resources:
           InstanceProtocol: 'HTTP'
           LoadBalancerPort: '80'
           Protocol: 'HTTP'
+        -
+          InstancePort: '80'
+          InstanceProtocol: 'HTTP'
+          LoadBalancerPort: '443'
+          Protocol: 'HTTPS'
+          SSLCertificateId: !Ref sslcertificate
       SecurityGroups:
         - !GetAtt gnafelbsg.GroupId
   gnaflc:
@@ -48,7 +63,7 @@ Resources:
       InstanceType: 't2.medium'
       SecurityGroups:
         - !GetAtt gnafec2sg.GroupId
-      IamInstanceProfile: 'arn:aws:iam::933940466036:instance-profile/gnafECRPullAccess'
+      IamInstanceProfile: !GetAtt gnafecraccessinstanceprofile.Arn #'arn:aws:iam::933940466036:instance-profile/gnafECRPullAccess'
       UserData: !Base64 |
         #cloud-config
         apt_upgrade: True
@@ -81,7 +96,7 @@ Resources:
         AutoScalingRollingUpdate:
           MinInstancesInService: '1'
           MaxBatchSize: '1'
-          PauseTime: 'PT30S'
+          PauseTime: 'PT2M30S'
     Type: "AWS::AutoScaling::AutoScalingGroup"
     Properties:
       AvailabilityZones:
@@ -99,3 +114,47 @@ Resources:
         - Key: 'Name'
           Value: 'gnaf-search-instance'
           PropagateAtLaunch: True
+  gnafecraccessinstanceprofile:
+    Type: "AWS::IAM::InstanceProfile"
+    Properties:
+      Roles:
+        - !Ref gnafecraccessrole
+      InstanceProfileName:
+        Fn::Join:
+          - ''
+          - - !Ref 'AWS::StackName'
+            - '-GNAF-ECR-Access-instanceprofile'
+  gnafecraccessrole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: "Allow"
+            Principal:
+              Service: "ec2.amazonaws.com"
+            Action: "sts:AssumeRole"
+      Policies:
+        -
+          PolicyDocument: {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Sid": "ecraccessforgnafec2instances",
+                "Effect": "Allow",
+                "Action": [
+                  "ecr:BatchCheckLayerAvailability",
+                  "ecr:BatchGetImage",
+                  "ecr:GetAuthorizationToken",
+                  "ecr:GetDownloadUrlForLayer"
+                ],
+                "Resource": "*"
+              }
+            ]
+          }
+          PolicyName:
+            Fn::Join:
+            - ''
+            - - !Ref 'AWS::StackName'
+              - '-GNAF-ECR-access-policy'
