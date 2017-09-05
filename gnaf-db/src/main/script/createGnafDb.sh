@@ -10,7 +10,8 @@ mkdir -p $dataDir
 # JSON URL from near top-right of: http://www.data.gov.au/dataset/geocoded-national-address-file-g-naf
 jsonUrl=http://www.data.gov.au/api/3/action/package_show?id=19432f89-dc3a-4ef3-b943-5326ef1dbecc
 # get data URL for current version from JSON
-dataUrl=$( curl -s $jsonUrl | jq '.result.resources[] | select(.format == "ZIP") | .url' | sed -e 's/^"//' -e 's/"$//' )
+dataUrl=$( curl -s $jsonUrl | jq -r '.result.resources[] | select(.format == "ZIP") | .url' )
+last_modified=$( curl -s $jsonUrl | jq -r '.result.resources[] | select(.format == "ZIP") | .last_modified' )
 
 # download ZIP data file unless already done
 zip=$dataDir/${dataUrl##*/}
@@ -31,9 +32,11 @@ cat > target/generated/version.json <<EoF
 {
   "git-commit": "$( git rev-parse HEAD )",
   "sbt-version": "$( sed --regexp-extended 's/.*:=\s*"([^"]+)"/\1/' ../version.sbt )",
-  "gnaf-version": "$( echo ${gnafData##*/G-NAF } )"
+  "gnaf-version": "$last_modified"
 }
 EoF
+
+# echo ${gnafData##*/G-NAF } -- old method for determining version
 
 # Load GNAF into a relational database following https://www.psma.com.au/sites/default/files/g-naf_-_getting_started_guide.pdf
 
