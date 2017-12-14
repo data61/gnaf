@@ -63,8 +63,8 @@ object Extractor {
   import MyGnafTables.profile.api._
 
   /** result of command line option processing */
-  case class CliOption(dburl: String)
-  val defaultCliOption = CliOption(config.getString("gnafDb.url"))
+  case class CliOption(dburl: String, localityTimeout: Int, allTimeout: Int)
+  val defaultCliOption = CliOption(config.getString("gnafDb.url"), config.getInt("gnafDb.localityTimeout"), config.getInt("gnafDb.allTimeout"))
 
   def main(args: Array[String]): Unit = {
     val parser = new scopt.OptionParser[CliOption]("gnaf-extractor") {
@@ -73,6 +73,12 @@ object Extractor {
       opt[String]('u', "dburl") action { (x, c) =>
         c.copy(dburl = x)
       } text (s"database URL, default ${defaultCliOption.dburl}")
+      opt[Int]('l', "localityTimeout") action { (x, c) =>
+        c.copy(localityTimeout = x)
+      } text (s"timeout in minutes for all queries for a locality, default ${defaultCliOption.localityTimeout}")
+      opt[Int]('a', "allTimeout") action { (x, c) =>
+        c.copy(allTimeout = x)
+      } text (s"timeout in minutes for all queries, default ${defaultCliOption.allTimeout}")
       help("help") text ("prints this usage text")
     }
     parser.parse(args, defaultCliOption) foreach run
@@ -85,7 +91,7 @@ object Extractor {
   def run(c: CliOption) = {
     val conf = config.withValue("gnafDb.url", ConfigValueFactory.fromAnyRef(c.dburl)) // CliOption.dburl overrides gnafDb.url
     for (db <- managed(Database.forConfig("gnafDb", conf))) {
-      doAll()(db)
+      doAll(c)(db)
     }
   }
 
@@ -126,7 +132,7 @@ object Extractor {
 
   type FutStrMap = Future[Map[String, String]]
 
-  def doAll()(implicit db: Database) = {
+  def doAll(c: CliOption)(implicit db: Database) = {
     // These code -> name mappings are all small enough to keep in memory
     val stateMap: Future[Map[String, (String, String)]] = db.run((for (s <- State) yield s.statePid -> (s.stateAbbreviation, s.stateName)).result).map(_.toMap)
     val flatTypeMap: FutStrMap = db.run((for (f <- FlatTypeAut) yield f.code -> f.name).result).map(_.toMap)
@@ -139,12 +145,12 @@ object Extractor {
       val seqFut: Seq[Future[Unit]] = seq.map {
         case (localityPid, localityName, statePid) =>
           val locDone = doLocality(localityPid, localityName, statePid, stateMap, flatTypeMap, streetTypeMap, streetSuffixMap)
-          Await.result(locDone, 10.minute) // without this it runs out of memory before outputting anything!
+          Await.result(locDone, c.localityTimeout.minute) // without this it runs out of memory before outputting anything!
           locDone
       }
       Future.fold(seqFut)(())((_, _) => ())
     }
-    Await.result(done, 2.hour)
+    Await.result(done, c.allTimeout.minute)
     log info "all done"
   }
 
