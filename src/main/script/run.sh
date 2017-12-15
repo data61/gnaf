@@ -7,6 +7,7 @@ set -ex
 version=`sed 's/.*"\(.*\)"/\1/' version.sbt`
 scalaVersion=2.11
 
+if false; then 
 
 # === Delete/Create database ===
 
@@ -53,7 +54,7 @@ sleep 10
 kill $H2_PID
 wait
 
-
+fi
 
 # === Extract JSON address data and load into Lucene ===
 
