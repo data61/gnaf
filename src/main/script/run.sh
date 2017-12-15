@@ -59,7 +59,9 @@ wait
 
 # takes about 23 min
 # without -Xmx3g it will spool resultsets to disk and fail with a timeout
-time java -Xmx3g -jar gnaf-extractor/target/scala-${scalaVersion}/gnaf-extractor_${scalaVersion}-${version}-one-jar.jar | gzip > addresses.gz
+# on jenkins host getting timeouts - I think because its going over the threshold for spooling to disk
+# see comments in gnaf-extractor Extractor.scala, so trying with more memory -> higher threshold
+time java -Xmx3500M -jar gnaf-extractor/target/scala-${scalaVersion}/gnaf-extractor_${scalaVersion}-${version}-one-jar.jar | gzip > addresses.gz
 
 # takes about 13 min
 zcat addresses.gz | time java -jar gnaf-indexer/target/scala-${scalaVersion}/gnaf-indexer_${scalaVersion}-${version}-one-jar.jar

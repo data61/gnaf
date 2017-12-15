@@ -173,10 +173,11 @@ object Extractor {
   So if we set -Xmx3G  and partition by LOCALITY_PID we should be OK:
   There are 16398 LOCALITY rows and max ADDRESS_DETAILs for a LOCALITY is 95004.
   SELECT LOCALITY_PID , count(*) cnt FROM ADDRESS_DETAIL group by LOCALITY_PID order by cnt desc limit 3;
-  LOCALITY_PID    CNT  
-  VIC1634 95004
-  NSW3749 44656
-  QLD2772 34712
+  
+  LOCALITY_PID    CNT Feb 2016    CNT Nov 2017  
+  VIC1634         95004           105960
+  NSW3749         44656            45502
+  QLD2772         34712            39162
   
   http://slick.typesafe.com/doc/3.1.1/dbio.html
   Slick's Database.stream produces a `Reactive Stream` that can be consumed with a foreach that takes a callback for each row.
@@ -190,8 +191,10 @@ object Extractor {
 
   def doLocality(
     localityPid: String, localityName: String, statePid: String,
-    stateMap: Future[Map[String, (String, String)]], flatTypeMap: FutStrMap, streetTypeMap: FutStrMap, streetSuffixMap: FutStrMap)(
-      implicit db: Database): Future[Unit] = {
+    stateMap: Future[Map[String, (String, String)]], flatTypeMap: FutStrMap, streetTypeMap: FutStrMap, streetSuffixMap: FutStrMap
+  )(
+    implicit db: Database
+  ): Future[Unit] = {
     val state = stateMap.map(_.apply(statePid))
     val locVariant = localityVariant(localityPid)
 
