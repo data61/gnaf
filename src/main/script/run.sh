@@ -7,8 +7,6 @@ set -ex
 version=`sed 's/.*"\(.*\)"/\1/' version.sbt`
 scalaVersion=2.11
 
-if false; then 
-
 # === Delete/Create database ===
 
 if [[ -f ~/gnaf.mv.db ]]; then
@@ -54,15 +52,13 @@ sleep 10
 kill $H2_PID
 wait
 
-fi
-
 # === Extract JSON address data and load into Lucene ===
 
 # takes about 23 min
 # without -Xmx3g it will spool resultsets to disk and fail with a timeout
 # on jenkins host getting timeouts - I think because its going over the threshold for spooling to disk
 # see comments in gnaf-extractor Extractor.scala, so trying with more memory -> higher threshold
-time java -Xmx3500M -jar gnaf-extractor/target/scala-${scalaVersion}/gnaf-extractor_${scalaVersion}-${version}-one-jar.jar | gzip > addresses.gz
+time java -Xmx3G -jar gnaf-extractor/target/scala-${scalaVersion}/gnaf-extractor_${scalaVersion}-${version}-one-jar.jar | gzip > addresses.gz
 
 # takes about 13 min
 zcat addresses.gz | time java -jar gnaf-indexer/target/scala-${scalaVersion}/gnaf-indexer_${scalaVersion}-${version}-one-jar.jar
