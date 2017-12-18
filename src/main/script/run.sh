@@ -7,8 +7,6 @@ set -ex
 version=`sed 's/.*"\(.*\)"/\1/' version.sbt`
 scalaVersion=2.11
 
-if false; then
-
 # === Delete/Create database ===
 
 if [[ -f ~/gnaf.mv.db ]]; then
@@ -58,8 +56,6 @@ wait
 
 # takes about 23 min
 time java -Xmx3G -jar gnaf-extractor/target/scala-${scalaVersion}/gnaf-extractor_${scalaVersion}-${version}-one-jar.jar | gzip > addresses.gz
-
-fi
 
 # takes about 13 min
 time zcat addresses.gz | java -jar gnaf-indexer/target/scala-${scalaVersion}/gnaf-indexer_${scalaVersion}-${version}-one-jar.jar
