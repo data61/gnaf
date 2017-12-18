@@ -132,8 +132,9 @@ object Search {
   def run(c: CliOption) = {
     
     val version = {
-      val json = Source.fromInputStream(getClass.getResourceAsStream("/version.json")).getLines.mkString("\n")
-      json.parseJson.convertTo[Version]
+      Option(getClass.getResourceAsStream("/version.json")).map { s =>
+        Source.fromInputStream(s).getLines.mkString("\n").parseJson.convertTo[Version]
+      }.getOrElse(Version("unknown git-commit", "unknown sbt-version", "unknown gnaf-version"))
     }
     
     implicit val sys = ActorSystem()
