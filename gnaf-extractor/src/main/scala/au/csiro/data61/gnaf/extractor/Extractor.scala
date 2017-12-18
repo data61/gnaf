@@ -57,8 +57,8 @@ object Extractor {
   def run(c: CliOption) = {
     // configure global thread pool
     (new SystemProperties()) ++= Seq(
-      ("scala.concurrent.context.minThreads", "2"), 
-      ("scala.concurrent.context.numThreads", "x2"), 
+      ("scala.concurrent.context.minThreads", "4"), 
+      ("scala.concurrent.context.numThreads", "4"), 
       ("scala.concurrent.context.maxThreads", "4")
     )
   
