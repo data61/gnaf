@@ -1,8 +1,6 @@
 package au.csiro.data61.gnaf.extractor
 
-import java.util.concurrent.{ ArrayBlockingQueue, ThreadFactory, ThreadPoolExecutor, TimeUnit }
-
-import scala.concurrent.{ Await, ExecutionContext, Future }
+import scala.concurrent.{ Await, ExecutionContext, Future }, ExecutionContext.Implicits.global
 import scala.concurrent.duration.DurationInt
 import scala.language.implicitConversions
 import scala.util.{ Failure, Success }
@@ -17,6 +15,7 @@ import resource.managed
 import slick.collection.heterogeneous.HNil
 import slick.collection.heterogeneous.syntax.::
 import spray.json.pimpAny
+import scala.sys.SystemProperties
 
 // Organize Imports deletes this, so make it easy to restore ...
 // import slick.collection.heterogeneous.syntax.::
@@ -24,36 +23,6 @@ import spray.json.pimpAny
 object Extractor {
   val log = Util.getLogger(getClass)
   
-  // use a bounded blocking queue
-  // http://blog.quantifind.com/instantiations-of-scala-futures
-  // I unsuccessfully tried a small queue to limit concurrent locations and a larger queue for everything else
-  // but it seems to be too hard to control what happens on each queue.
-
-  def mkPool(namePrefix: String, queueCapacity: Int) = {
-    var i = 0
-    val numWorkers = sys.runtime.availableProcessors
-    val p = new ThreadPoolExecutor(
-      numWorkers, numWorkers, 0L, TimeUnit.SECONDS,
-      new ArrayBlockingQueue[Runnable](queueCapacity) {
-        override def offer(e: Runnable) = {
-          put(e) // may block until queue has space
-          true
-        }
-      },
-      new ThreadFactory {
-        override def newThread(r: Runnable) = {
-          i += 1
-          new Thread(r, s"${namePrefix}-thread-${i}")
-        }
-      })
-    ExecutionContext.fromExecutorService(p, e => log.error("ThreadPool", e))
-  }
-
-  // warning against even trying!
-  // https://github.com/alexandru/scala-best-practices/blob/master/sections/4-concurrency-parallelism.md
-
-  implicit val pool = mkPool("Pool-1", 1000000) // ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(4), e => log.error("ThreadPool", e)) // unbounded queue
-
   val config = ConfigFactory.load
   
   object MyGnafTables extends {
@@ -82,13 +51,17 @@ object Extractor {
       help("help") text ("prints this usage text")
     }
     parser.parse(args, defaultCliOption) foreach run
-
-    pool.shutdown
-    pool.awaitTermination(5, TimeUnit.SECONDS)
-    log.info("thread pool terminated")
+    log.info("complete")
   }
 
   def run(c: CliOption) = {
+    // configure global thread pool
+    (new SystemProperties()) ++= Seq(
+      ("scala.concurrent.context.minThreads", "2"), 
+      ("scala.concurrent.context.numThreads", "x2"), 
+      ("scala.concurrent.context.maxThreads", "4")
+    )
+  
     val conf = config.withValue("gnafDb.url", ConfigValueFactory.fromAnyRef(c.dburl)) // CliOption.dburl overrides gnafDb.url
     for (db <- managed(Database.forConfig("gnafDb", conf))) {
       doAll(c)(db)
