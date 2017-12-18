@@ -54,15 +54,15 @@ sleep 10
 kill $H2_PID
 wait
 
-fi
-
 # === Extract JSON address data and load into Lucene ===
 
 # takes about 23 min
 time java -Xmx3G -jar gnaf-extractor/target/scala-${scalaVersion}/gnaf-extractor_${scalaVersion}-${version}-one-jar.jar | gzip > addresses.gz
 
+fi
+
 # takes about 13 min
-zcat addresses.gz | time java -jar gnaf-indexer/target/scala-${scalaVersion}/gnaf-indexer_${scalaVersion}-${version}-one-jar.jar
+time zcat addresses.gz | java -jar gnaf-indexer/target/scala-${scalaVersion}/gnaf-indexer_${scalaVersion}-${version}-one-jar.jar
 
 #
 #
