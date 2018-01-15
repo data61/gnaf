@@ -14,7 +14,7 @@ RUN apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 2EE0EA64E40A89B
 
 RUN apt-get update
 
-RUN apt-get -y install openjdk-8-jre sbt jq postgresql wget curl zip time
+RUN apt-get -y install openjdk-8-jre sbt jq postgresql-client-9.5 wget curl zip time
 
 ADD . /
 
