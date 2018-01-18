@@ -7,6 +7,9 @@ set -ex
 version=`sed 's/.*"\(.*\)"/\1/' version.sbt`
 scalaVersion=2.11
 
+# optional recovery from gnaf-extractor connection timeout after successful population of database
+if [[ "$1" != "skip" ]]; then
+
 # === Delete/Create database ===
 
 if [[ -f ~/gnaf.mv.db ]]; then
@@ -51,6 +54,8 @@ sleep 10
 # stop h2
 kill $H2_PID
 wait
+
+fi
 
 # === Extract JSON address data and load into Lucene ===
 
