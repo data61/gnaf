@@ -59,10 +59,11 @@ Resources:
   gnaflc:
     Type: 'AWS::AutoScaling::LaunchConfiguration'
     Properties:
-      ImageId: 'ami-bb1901d8'
+      ImageId: 'ami-09332079312dc6085'
       InstanceType: 't2.medium'
       SecurityGroups:
         - !GetAtt gnafec2sg.GroupId
+      KeyName: 'natmap-peter'
       IamInstanceProfile: !GetAtt gnafecraccessinstanceprofile.Arn #'arn:aws:iam::933940466036:instance-profile/gnafECRPullAccess'
       UserData: !Base64 |
         #cloud-config
@@ -80,7 +81,7 @@ Resources:
                   }
                 location /v2/ {
                   proxy_pass http://localhost:8080/;
-                  add_header Access-Control-Allow-Headers 'Content-Type';
+                  add_header Access-Control-Allow-Headers 'Content-Typ
                   add_header Access-Control-Allow-Origin '*';
                   }
                 }
@@ -158,3 +159,5 @@ Resources:
             - ''
             - - !Ref 'AWS::StackName'
               - '-GNAF-ECR-access-policy'
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
