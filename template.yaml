@@ -81,7 +81,7 @@ Resources:
                   }
                 location /v2/ {
                   proxy_pass http://localhost:8080/;
-                  add_header Access-Control-Allow-Headers 'Content-Typ
+                  add_header Access-Control-Allow-Headers 'Content-Type';
                   add_header Access-Control-Allow-Origin '*';
                   }
                 }
