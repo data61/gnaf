@@ -36,6 +36,9 @@ Resources:
       AvailabilityZones:
         Fn::GetAZs: 'ap-southeast-2'
       CrossZone: True
+      AccessLoggingPolicy:
+        Enabled: True
+        S3BucketName: 'gnaf-logs'
       HealthCheck:
           HealthyThreshold: '5'
           Interval: '10'
