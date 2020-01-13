@@ -11,8 +11,8 @@ mkdir -p $dataDir
 jsonUrl=http://www.data.gov.au/api/3/action/package_show?id=19432f89-dc3a-4ef3-b943-5326ef1dbecc
 # get data URL for current version from JSON
 curl -sL $jsonUrl > meta.json
-dataUrl=$( jq -r '.result.resources[] | select(.format == "ZIP") | .url' meta.json )
-last_modified=$( jq -r '.result.resources[] | select(.format == "ZIP") | .last_modified' meta.json )
+dataUrl=$( jq -r '.result.resources[] | select((.format == "ZIP") and (.name | test("GDA2020"))) | .url' meta.json )
+last_modified=$( jq -r '.result.resources[] | select((.format == "ZIP") and (.name | test("GDA2020"))) | .last_modified' meta.json )
 
 # download ZIP data file unless already done
 zip=$dataDir/${dataUrl##*/}
