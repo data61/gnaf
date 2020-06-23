@@ -16,7 +16,7 @@ last_modified=$( jq -r '.result.resources[] | select((.format == "ZIP") and (.na
 
 # download ZIP data file unless already done
 zip=$dataDir/${dataUrl##*/}
-[[ -f "$zip" ]] || ( cd $dataDir; wget "$dataUrl" )
+[[ -f "$zip" ]] || ( cd $dataDir; wget --no-clobber "$dataUrl" )
 
 unzipped=$dataDir/unzipped
 # get dir path where the zip file's */Extras/ will be extracted (contains release month so releases don't clobber each other)
