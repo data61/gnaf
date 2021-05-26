@@ -28,6 +28,11 @@ unzipped=$dataDir/unzipped
 gnafExtras="$unzipped/$( unzip -l "$zip" '*/Extras/*' | sed -rn 's~^.*[0-9][0-9]:[0-9][0-9] *(.*/Extras)/.+$~\1~p' | head -1 )"
 # unzip unless $gnafExtras already exists
 [[ -d "$gnafExtras" ]] || ( mkdir -p $unzipped; cd $unzipped; unzip $zip )
+
+# 2021-May: Data no longer containst the Extra scripts. Using local copy ifrom 2021-Feb instead
+gnafExtras="$baseDir/../FEB21_GNAF_GDA2020_Extras"
+
+
 # get dir path parent of Standard/
 # 'unzip -l' prints 
 #   3357974  2020-08-16 22:22   G-NAF/G-NAF AUGUST 2020/Standard/WA_ADDRESS_ALIAS_psv.psv
