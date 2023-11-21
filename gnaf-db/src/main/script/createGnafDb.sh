@@ -11,22 +11,35 @@ mkdir -p $dataDir
 jsonUrl=http://www.data.gov.au/api/3/action/package_show?id=19432f89-dc3a-4ef3-b943-5326ef1dbecc
 # get data URL for current version from JSON
 curl -sL $jsonUrl > meta.json
-dataUrl=$( jq -r '.result.resources[] | select(.format == "ZIP") | .url' meta.json )
-last_modified=$( jq -r '.result.resources[] | select(.format == "ZIP") | .last_modified' meta.json )
+jq -r '.result.resources[] | select((.size > 1000000000) and (.state == "active") and (.name | test("GDA2020")))' meta.json > filtered_meta.json
+# Select the first
+dataUrl=$( jq --slurp -r '.[0] | .url' filtered_meta.json )
+last_modified=$( jq --slurp -r '.[0] | .last_modified' filtered_meta.json )
 
 # download ZIP data file unless already done
 zip=$dataDir/${dataUrl##*/}
-[[ -f "$zip" ]] || ( cd $dataDir; wget "$dataUrl" )
+[[ -f "$zip" ]] || ( cd $dataDir; wget --no-clobber "$dataUrl" )
 
 unzipped=$dataDir/unzipped
 # get dir path where the zip file's */Extras/ will be extracted (contains release month so releases don't clobber each other)
 # get path from zip, discard leading info up to time and following spaces, keep the rest apart from the trailing /
 # maybe a bit too brittle?
-gnafExtras="$unzipped/$( unzip -l "$zip" '*/Extras/' | sed -rn '/Extras/s~^.*[0-9][0-9]:[0-9][0-9] *(.*)/$~\1~p' )"
-# unzip unless $gnafExtras already exists 
+# 'unzip -l' prints 
+#      8868  2020-08-16 22:14   G-NAF/Extras/GNAF_TableCreation_Scripts/create_tables_sqlserver.sql
+# and we extract 'G-NAF'
+gnafExtras="$unzipped/$( unzip -l "$zip" '*/Extras/*' | sed -rn 's~^.*[0-9][0-9]:[0-9][0-9] *(.*/Extras)/.+$~\1~p' | head -1 )"
+# unzip unless $gnafExtras already exists
 [[ -d "$gnafExtras" ]] || ( mkdir -p $unzipped; cd $unzipped; unzip $zip )
+
+# 2021-May: Data no longer containst the Extra scripts. Using local copy ifrom 2021-Feb instead
+gnafExtras="$baseDir/../FEB21_GNAF_GDA2020_Extras"
+
+
 # get dir path parent of Standard/
-gnafData="$unzipped/$( unzip -l "$zip" '*/Standard/' | sed -rn '/Standard/s~^.*[0-9][0-9]:[0-9][0-9] *(.*)/Standard/$~\1~p' )"
+# 'unzip -l' prints 
+#   3357974  2020-08-16 22:22   G-NAF/G-NAF AUGUST 2020/Standard/WA_ADDRESS_ALIAS_psv.psv
+# and we extract 'G-NAF/G-NAF AUGUST 2020'
+gnafData="$unzipped/$( unzip -l "$zip" '*/Standard/*' | sed -rn 's~^.*[0-9][0-9]:[0-9][0-9] *(.*)/Standard/.+~\1~p' | head -1 )"
 
 mkdir -p target/generated
 cat > target/generated/version.json <<EoF
